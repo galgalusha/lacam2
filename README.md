@@ -8,6 +8,8 @@ LaCAM* could be the answer.
 
 This is a code repository of the paper ["Improving LaCAM for Scalable Eventually Optimal Multi-Agent Pathfinding"](https://kei18.github.io/lacam2/) (IJCAI-23), extended from from [the LaCAM repo](https://kei18.github.io/lacam/) presented at AAAI-23.
 
+__A refactored, clean version is available: [lacam0](https://github.com/Kei18/lacam0). I recommend using it instead of this repo.__
+
 ## Building
 
 All you need is [CMake](https://cmake.org/) (≥v3.16). The code is written in C++(17).
