@@ -1,0 +1,33 @@
+{
+  "cmake.debugConfig": {
+    "args": [
+      "-m",
+      "assets/random-32-32-10.map",
+      "-i",
+      "assets/random-32-32-10-random-1.scen",
+      "-N",
+      "20",
+      "-v",
+      "2",
+      "--objective",
+      "2"
+    ],
+    "cwd": "${workspaceFolder}",
+    "stopAtEntry": false,
+    "externalConsole": false,
+    "MIMode": "gdb",
+    "miDebuggerPath": "/usr/bin/gdb",
+    "setupCommands": [
+      {
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      },
+      {
+        "description": "Stop when segmentation fault is raised",
+        "text": "handle SIGSEGV stop print nopass",
+        "ignoreFailures": true
+      }
+    ]
+  }
+}

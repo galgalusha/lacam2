@@ -20,7 +20,8 @@ struct Graph {
   uint width;                          // grid width
   uint height;                         // grid height
   Graph();
-  Graph(const std::string& filename);  // taking map filename
+  Graph(const std::string& filename);        // taking map filename
+  Graph(const std::vector<std::string>& grid);  // '.' = passable, else obstacle
   ~Graph();
 
   uint size() const;  // the number of vertices

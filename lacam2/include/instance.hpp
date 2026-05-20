@@ -17,6 +17,10 @@ struct Instance {
   Instance(const std::string& map_filename,
            const std::vector<uint>& start_indexes,
            const std::vector<uint>& goal_indexes);
+  // for testing with in-memory grid ('.' = passable)
+  Instance(const std::vector<std::string>& grid,
+           const std::vector<uint>& start_indexes,
+           const std::vector<uint>& goal_indexes);
   // for MAPF benchmark
   Instance(const std::string& scen_filename, const std::string& map_filename,
            const uint _N = 1);

@@ -12,6 +12,15 @@ Instance::Instance(const std::string& map_filename,
   for (auto k : goal_indexes) goals.push_back(G.U[k]);
 }
 
+Instance::Instance(const std::vector<std::string>& grid,
+                   const std::vector<uint>& start_indexes,
+                   const std::vector<uint>& goal_indexes)
+    : G(grid), starts(Config()), goals(Config()), N(start_indexes.size())
+{
+  for (auto k : start_indexes) starts.push_back(G.U[k]);
+  for (auto k : goal_indexes) goals.push_back(G.U[k]);
+}
+
 // for load instance
 static const std::regex r_instance =
     std::regex(R"(\d+\t.+\.map\t\d+\t\d+\t(\d+)\t(\d+)\t(\d+)\t(\d+)\t.+)");

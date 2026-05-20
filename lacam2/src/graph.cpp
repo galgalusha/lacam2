@@ -1,5 +1,7 @@
 #include "../include/graph.hpp"
 
+static void build_edges(Graph& g);
+
 Vertex::Vertex(uint _id, uint _index)
     : id(_id), index(_index), neighbor(Vertices())
 {
@@ -62,35 +64,58 @@ Graph::Graph(const std::string& filename) : V(Vertices()), width(0), height(0)
   file.close();
 
   // create edges
-  for (uint y = 0; y < height; ++y) {
-    for (uint x = 0; x < width; ++x) {
-      auto v = U[width * y + x];
+  build_edges(*this);
+}
+
+uint Graph::size() const { return V.size(); }
+
+// shared helper: build neighbour edges once U/width/height are populated
+static void build_edges(Graph& g)
+{
+  for (uint y = 0; y < g.height; ++y) {
+    for (uint x = 0; x < g.width; ++x) {
+      auto v = g.U[g.width * y + x];
       if (v == nullptr) continue;
-      // left
       if (x > 0) {
-        auto u = U[width * y + (x - 1)];
+        auto u = g.U[g.width * y + (x - 1)];
         if (u != nullptr) v->neighbor.push_back(u);
       }
-      // right
-      if (x < width - 1) {
-        auto u = U[width * y + (x + 1)];
+      if (x < g.width - 1) {
+        auto u = g.U[g.width * y + (x + 1)];
         if (u != nullptr) v->neighbor.push_back(u);
       }
-      // up
-      if (y < height - 1) {
-        auto u = U[width * (y + 1) + x];
+      if (y < g.height - 1) {
+        auto u = g.U[g.width * (y + 1) + x];
         if (u != nullptr) v->neighbor.push_back(u);
       }
-      // down
       if (y > 0) {
-        auto u = U[width * (y - 1) + x];
+        auto u = g.U[g.width * (y - 1) + x];
         if (u != nullptr) v->neighbor.push_back(u);
       }
     }
   }
 }
 
-uint Graph::size() const { return V.size(); }
+Graph::Graph(const std::vector<std::string>& grid)
+    : V(Vertices()), width(0), height(0)
+{
+  if (grid.empty()) return;
+  height = grid.size();
+  width = grid[0].size();
+  U = Vertices(width * height, nullptr);
+
+  for (uint y = 0; y < height; ++y) {
+    for (uint x = 0; x < width; ++x) {
+      if (grid[y][x] != '.') continue;
+      auto index = width * y + x;
+      auto v = new Vertex(V.size(), index);
+      V.push_back(v);
+      U[index] = v;
+    }
+  }
+
+  build_edges(*this);
+}
 
 bool is_same_config(const Config& C1, const Config& C2)
 {

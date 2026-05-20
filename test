@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+  echo "Usage: $0 <test_target_name> [build_dir]"
+  echo "Example: $0 test_db_mdd"
+  exit 1
+fi
+
+test_target="$1"
+build_dir="${2:-build}"
+orig_dir="$PWD"
+
+restore_dir() {
+  cd "$orig_dir" >/dev/null 2>&1 || true
+}
+trap restore_dir EXIT
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$repo_root/$build_dir"
+
+cmake ..
+make -j4 "$test_target"
+"./$test_target"

@@ -1,0 +1,70 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug main (random-32-32-10)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/main",
+      "args": [
+        "-m",
+        "assets/random-32-32-10.map",
+        "-i",
+        "assets/random-32-32-10-random-1.scen",
+        "-N",
+        "20",
+        "-v",
+        "2",
+        "--objective",
+        "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "externalConsole": true,
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "Debug main (break on SIGSEGV)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/main",
+      "args": [
+        "-m",
+        "assets/random-32-32-10.map",
+        "-i",
+        "assets/random-32-32-10-random-1.scen",
+        "-N",
+        "20",
+        "-v",
+        "2",
+        "--objective",
+        "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "externalConsole": true,
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "description": "Stop when segmentation fault is raised",
+          "text": "handle SIGSEGV stop print nopass",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
+}

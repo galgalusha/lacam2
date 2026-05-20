@@ -1,5 +1,6 @@
 #include <argparse/argparse.hpp>
 #include <lacam2.hpp>
+#include <CBSH2/map_loader.h>
 
 int main(int argc, char* argv[])
 {
@@ -62,6 +63,11 @@ int main(int argc, char* argv[])
       static_cast<Objective>(std::stoi(program.get<std::string>("objective")));
   const auto restart_rate = std::stof(program.get<std::string>("restart_rate"));
   if (!ins.is_valid(1)) return 1;
+
+
+  MapLoader map_loader(map_name, 0, 0, 0);
+  map_loader.printMap();
+
 
   // solve
   auto additional_info = std::string("");
