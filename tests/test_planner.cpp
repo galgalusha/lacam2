@@ -1,4 +1,8 @@
 #include <lacam2.hpp>
+#include <planner.hpp>
+
+// Define global variable for WDG heuristic
+bool wdg_heuristic = false;
 
 #include "gtest/gtest.h"
 

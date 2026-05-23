@@ -7,5 +7,5 @@ Solution solve(const Instance& ins, std::string& additional_info,
                const Objective objective, const float restart_rate)
 {
   auto planner = Planner(&ins, deadline, MT, verbose, objective, restart_rate);
-  return planner.solve(additional_info);
+  return planner.solve(additional_info, wdg_heuristic);
 }

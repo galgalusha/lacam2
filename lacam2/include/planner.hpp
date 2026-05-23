@@ -9,6 +9,11 @@
 #include "instance.hpp"
 #include "utils.hpp"
 
+#include <fstream>
+#include <unordered_map>
+
+extern bool wdg_heuristic;
+
 // objective function
 enum Objective { OBJ_NONE, OBJ_MAKESPAN, OBJ_SUM_OF_LOSS };
 std::ostream& operator<<(std::ostream& os, const Objective objective);
@@ -43,6 +48,7 @@ struct HNode {
   // costs
   uint g;        // g-value (might be updated)
   const uint h;  // h-value
+  uint h_cbs;    // CBS-based heuristic value
   uint f;        // g + h (might be updated)
 
   // for low-level search
@@ -78,6 +84,8 @@ struct Planner {
   Agents A;
   Agents occupied_now;                          // for quick collision checking
   Agents occupied_next;                         // for quick collision checking
+  std::ofstream cbsh_values_file;
+  std::unordered_map<size_t, uint> cbsh_cache;
 
   Planner(const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
           const int _verbose = 0,
@@ -85,13 +93,16 @@ struct Planner {
           const Objective _objective = OBJ_NONE,
           const float _restart_rate = 0.001);
   ~Planner();
-  Solution solve(std::string& additional_info);
+  Solution solve(std::string& additional_info, bool wdg_heuristic);
   void expand_lowlevel_tree(HNode* H, LNode* L);
   void rewrite(HNode* H_from, HNode* T, HNode* H_goal,
                std::stack<HNode*>& OPEN);
   uint get_edge_cost(const Config& C1, const Config& C2);
   uint get_edge_cost(HNode* H_from, HNode* H_to);
   uint get_h_value(const Config& C);
+  uint cbs_heuristic(HNode* H);
+  void load_cbsh_values();
+  uint get_or_compute_cbs_heuristic(HNode* H);
   bool get_new_config(HNode* H, LNode* L);
   bool funcPIBT(Agent* ai);
 

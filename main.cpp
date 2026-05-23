@@ -1,6 +1,12 @@
 #include <argparse/argparse.hpp>
 #include <lacam2.hpp>
-#include <CBSH2/map_loader.h>
+// #include <CBSH2/map_loader.h>
+#include "/home/galko/.local/include/CBSH2/map_loader.h"
+#include "/home/galko/.local/include/CBSH2/agents_loader.h"
+#include <cbsh2_stuff.hpp>
+
+// Define global variable for WDG heuristic
+bool wdg_heuristic = false;
 
 int main(int argc, char* argv[])
 {
@@ -37,6 +43,10 @@ int main(int argc, char* argv[])
   program.add_argument("-r", "--restart_rate")
       .help("restart rate")
       .default_value(std::string("0.001"));
+  program.add_argument("-wdg", "--with_wdg_heuristic")
+      .help("Enable WDG heuristic calculation")
+      .default_value(false)
+      .implicit_value(true);
 
   try {
     program.parse_known_args(argc, argv);
@@ -62,12 +72,16 @@ int main(int argc, char* argv[])
   const auto objective =
       static_cast<Objective>(std::stoi(program.get<std::string>("objective")));
   const auto restart_rate = std::stof(program.get<std::string>("restart_rate"));
+  const auto wdg_heuristic = program.get<bool>("with_wdg_heuristic");
   if (!ins.is_valid(1)) return 1;
 
 
-  MapLoader map_loader(map_name, 0, 0, 0);
-  map_loader.printMap();
-
+  if (wdg_heuristic) {
+    cbs_map = new MapLoader(map_name, 0, 0, 0);
+    cbs_map->printMap();
+    cbs_agents = new AgentsLoader();
+    load_cbs_agents(ins);
+  }
 
   // solve
   auto additional_info = std::string("");
