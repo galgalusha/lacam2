@@ -8,11 +8,11 @@
 #include "graph.hpp"
 #include "instance.hpp"
 #include "utils.hpp"
+#include "cbsh2_stuff.hpp"
 
 #include <fstream>
 #include <unordered_map>
 
-extern bool wdg_heuristic;
 
 // objective function
 enum Objective { OBJ_NONE, OBJ_MAKESPAN, OBJ_SUM_OF_LOSS };
@@ -63,6 +63,7 @@ struct HNode {
 using HNodes = std::vector<HNode*>;
 
 struct Planner {
+  static bool wdg_flag;
   const Instance* ins;
   const Deadline* deadline;
   std::mt19937* MT;
@@ -93,7 +94,7 @@ struct Planner {
           const Objective _objective = OBJ_NONE,
           const float _restart_rate = 0.001);
   ~Planner();
-  Solution solve(std::string& additional_info, bool wdg_heuristic);
+  Solution solve(std::string& additional_info);
   void expand_lowlevel_tree(HNode* H, LNode* L);
   void rewrite(HNode* H_from, HNode* T, HNode* H_goal,
                std::stack<HNode*>& OPEN);

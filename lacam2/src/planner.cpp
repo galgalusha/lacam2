@@ -15,6 +15,7 @@ LNode::LNode(LNode* parent, uint i, Vertex* v)
 }
 
 uint HNode::HNODE_CNT = 0;
+bool Planner::wdg_flag = false;
 
 // for high-level
 HNode::HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
@@ -117,11 +118,11 @@ uint Planner::get_or_compute_cbs_heuristic(HNode* H)
   return h;
 }
 
-Solution Planner::solve(std::string& additional_info, bool wdg_heuristic)
+Solution Planner::solve(std::string& additional_info)
 {
   solver_info(1, "start search");
 
-  if (wdg_heuristic) {
+  if (wdg_flag) {
     load_cbsh_values();
 
     cbsh_values_file.open("cbsh_values.txt", std::ios::out | std::ios::app);
@@ -138,7 +139,7 @@ Solution Planner::solve(std::string& additional_info, bool wdg_heuristic)
   auto EXPLORED = std::unordered_map<Config, HNode*, ConfigHasher>();
   // insert initial node, 'H': high-level node
   auto H_init = new HNode(ins->starts, D, nullptr, 0, get_h_value(ins->starts));
-  if (wdg_heuristic) {
+  if (wdg_flag) {
     H_init->h_cbs = get_or_compute_cbs_heuristic(H_init);
     H_init->f += H_init->h_cbs;
   }
@@ -213,7 +214,7 @@ Solution Planner::solve(std::string& additional_info, bool wdg_heuristic)
       // insert new search node
       const auto H_new = new HNode(
           C_new, D, H, H->g + get_edge_cost(H->C, C_new), get_h_value(C_new));
-      if (wdg_heuristic) {
+      if (wdg_flag) {
         H_new->h_cbs = get_or_compute_cbs_heuristic(H_new);
         H_new->f += H_new->h_cbs;
       }
