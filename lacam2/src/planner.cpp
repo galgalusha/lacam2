@@ -224,6 +224,11 @@ Solution Planner::solve(std::string& additional_info)
       OPEN.pop();
       continue;
     }
+
+    if (H_goal != nullptr && loop_cnt % 5000 == 0) {
+      OPEN.push(H_init);
+      continue;
+    }
     expand_lowlevel_tree(H, L);
 
     // create successors at the high-level search
@@ -354,7 +359,7 @@ uint Planner::get_h_value(const Config& C)
 void Planner::periodic_node_debug(HNode* H)
 {
   const auto now = std::chrono::steady_clock::now();
-  if (now - last_debug_print < std::chrono::seconds(10)) return;
+  if (now - last_debug_print < std::chrono::seconds(4)) return;
   last_debug_print = now;
 
   uint depth = 0;
@@ -365,7 +370,10 @@ void Planner::periodic_node_debug(HNode* H)
   const auto config_hash = ConfigHasher{}(H->C);
   std::cout << "hash=" << config_hash
             << " ll_search=" << H->ll_search
-            << " depth=" << depth << std::endl;
+            << " depth=" << depth 
+            << " parent^2=" << ConfigHasher{}(H->parent->parent->C)
+            << " parent^2 ll_search=" << H->parent->parent->ll_search
+            << std::endl;
 }
 
 uint Planner::cbs_heuristic(HNode* H)

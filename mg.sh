@@ -71,7 +71,7 @@ if [[ -z "$mem_available_kb" || ! "$mem_available_kb" =~ ^[0-9]+$ ]]; then
 fi
 
 buffer_kb=$((BUFFER_MB * 1024))
-limit_kb=$((mem_available_kb + buffer_kb))
+limit_kb=$((mem_available_kb - buffer_kb))
 
 if (( limit_kb <= 0 )); then
   echo "Error: computed non-positive memory limit" >&2

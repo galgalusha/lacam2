@@ -29,5 +29,15 @@
         "ignoreFailures": true
       }
     ]
+  },
+  "C_Cpp.files.exclude": {
+      "**/.git": true,
+      "**/build": true,
+      "**/dist": true,
+      "**/.mcmcache": true,
+      "**/*.po": true
+  },
+  "search.exclude": {
+      "**/build": true
   }
 }
