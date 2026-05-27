@@ -3,6 +3,8 @@
 #include "/home/galko/.local/include/CBSH2/ICBSSearch.h"
 #include "../include/cbsh2_stuff.hpp"
 
+#include <chrono>
+
 LNode::LNode(LNode* parent, uint i, Vertex* v)
     : who(), where(), depth(parent == nullptr ? 0 : parent->depth + 1)
 {
@@ -16,6 +18,7 @@ LNode::LNode(LNode* parent, uint i, Vertex* v)
 
 uint HNode::HNODE_CNT = 0;
 bool Planner::wdg_flag = false;
+int Planner::max_ll_depth = -1;
 
 // for high-level
 HNode::HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
@@ -29,11 +32,13 @@ HNode::HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
       f(g + h),
       priorities(C.size()),
       order(C.size(), 0),
-      search_tree(std::queue<LNode*>())
+      search_tree(std::queue<LNode*>()),
+      ll_search(0)
 {
   ++HNODE_CNT;
 
   search_tree.push(new LNode());
+  ll_search += 1;
   const auto N = C.size();
 
   // update neighbor
@@ -85,7 +90,8 @@ Planner::Planner(const Instance* _ins, const Deadline* _deadline,
       tie_breakers(V_size, 0),
       A(N, nullptr),
       occupied_now(V_size, nullptr),
-      occupied_next(V_size, nullptr)
+      occupied_next(V_size, nullptr),
+      last_debug_print(std::chrono::steady_clock::now())
 {
 }
 
@@ -156,6 +162,7 @@ Solution Planner::solve(std::string& additional_info)
 
     // do not pop here!
     auto H = OPEN.top();  // high-level node
+    periodic_node_debug(H);
 
     // low-level search end
     if (H->search_tree.empty()) {
@@ -165,6 +172,7 @@ Solution Planner::solve(std::string& additional_info)
 
     // check lower bounds
     if (H_goal != nullptr && H->f >= H_goal->f) {
+//      if (wdg_flag) set_wdg_to_parents(H);
       OPEN.pop();
       continue;
     }
@@ -173,6 +181,7 @@ Solution Planner::solve(std::string& additional_info)
     if (H_goal == nullptr && is_same_config(H->C, ins->goals)) {
       H_goal = H;
       solver_info(1, "found solution, cost: ", H->g);
+      // set_wdg_to_parents(H);
       auto chain = std::vector<HNode*>();
       auto p = H_goal;
       while (p != nullptr) {
@@ -190,6 +199,12 @@ Solution Planner::solve(std::string& additional_info)
     // create successors at the low-level search
     auto L = H->search_tree.front();
     H->search_tree.pop();
+    H->ll_search += 1;
+    if (max_ll_depth >= 0 && static_cast<int>(L->depth) > max_ll_depth) {
+      delete L;
+      OPEN.pop();
+      continue;
+    }
     expand_lowlevel_tree(H, L);
 
     // create successors at the high-level search
@@ -205,16 +220,18 @@ Solution Planner::solve(std::string& additional_info)
     if (iter != EXPLORED.end()) {
       // case found
       rewrite(H, iter->second, H_goal, OPEN);
+
       // re-insert or random-restart
       auto H_insert = (MT != nullptr && get_random_float(MT) >= RESTART_RATE)
                           ? iter->second
                           : H_init;
       if (H_goal == nullptr || H_insert->f < H_goal->f) OPEN.push(H_insert);
+      // set_wdg_to_parents(H);
     } else {
       // insert new search node
       const auto H_new = new HNode(
           C_new, D, H, H->g + get_edge_cost(H->C, C_new), get_h_value(C_new));
-      if (wdg_flag) {
+      if (wdg_flag) { // loop_cnt % 100 == 0) {
         H_new->h_cbs = get_or_compute_cbs_heuristic(H_new);
         H_new->f += H_new->h_cbs;
       }
@@ -316,6 +333,23 @@ uint Planner::get_h_value(const Config& C)
   return cost;
 }
 
+void Planner::periodic_node_debug(HNode* H)
+{
+  const auto now = std::chrono::steady_clock::now();
+  if (now - last_debug_print < std::chrono::seconds(10)) return;
+  last_debug_print = now;
+
+  uint depth = 0;
+  for (auto p = H->parent; p != nullptr; p = p->parent) {
+    depth += 1;
+  }
+
+  const auto config_hash = ConfigHasher{}(H->C);
+  std::cout << "hash=" << config_hash
+            << " ll_search=" << H->ll_search
+            << " depth=" << depth << std::endl;
+}
+
 uint Planner::cbs_heuristic(HNode* H)
 {
   load_cbs_agents(*ins, H->C);
@@ -334,6 +368,48 @@ uint Planner::cbs_heuristic(HNode* H)
   return h;
 }
 
+void Planner::set_wdg_to_parents(HNode* H)
+{
+  if (H->h_cbs == 0) {
+    H->h_cbs = get_or_compute_cbs_heuristic(H);
+  }
+
+  std::vector<HNode*> missing_parents;
+  HNode* found_parent_wdg = nullptr;
+
+  for (auto p = H->parent; p != nullptr; p = p->parent) {
+    const auto p_hash = ConfigHasher{}(p->C);
+    std::cout << "checking parent " << p_hash;
+    const auto it_p = cbsh_cache.find(p_hash);
+    if (it_p == cbsh_cache.end()) {
+      std::cout << ", Computing missing wdg... ";
+      p->h_cbs = get_or_compute_cbs_heuristic(p);
+      std::cout << p->h_cbs << std::endl;
+      // missing_parents.push_back(p);
+      continue;
+    }
+    std::cout << " already has wdg: " << p->h_cbs << ", " << it_p->second << std::endl;
+    found_parent_wdg = p;
+    break;
+  }
+
+  // // if (!found_parent_wdg) return;
+  // // auto min_wdg = std::min(H->h_cbs, found_parent_wdg->h_cbs);
+
+  // // for (auto p : missing_parents) {
+  // //   const auto p_hash = ConfigHasher{}(p->C);
+  // //   cbsh_cache[p_hash] = min_wdg;
+  // //   if (p->h_cbs == 0) {
+  // //     p->h_cbs = min_wdg;
+  // //     p->f += min_wdg;
+  // //   }
+  // // }
+  // if (missing_parents.size()) {
+  //   std::cout << "H cbs " << H->h_cbs << " found parent: " << found_parent_wdg->h_cbs << std::endl;
+  //   std::cout << "Updating " << missing_parents.size() << " parents to h_cbs=" << min_wdg << std::endl;
+  // }
+}
+
 void Planner::expand_lowlevel_tree(HNode* H, LNode* L)
 {
   if (L->depth >= N) return;
@@ -343,7 +419,9 @@ void Planner::expand_lowlevel_tree(HNode* H, LNode* L)
   // randomize
   if (MT != nullptr) std::shuffle(C.begin(), C.end(), *MT);
   // insert
-  for (auto v : C) H->search_tree.push(new LNode(L, i, v));
+  for (auto v : C) {
+    H->search_tree.push(new LNode(L, i, v));
+  }
 }
 
 std::ostream& operator<<(std::ostream& os, const Objective obj)

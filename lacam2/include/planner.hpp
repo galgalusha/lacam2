@@ -10,6 +10,7 @@
 #include "utils.hpp"
 #include "cbsh2_stuff.hpp"
 
+#include <chrono>
 #include <fstream>
 #include <unordered_map>
 
@@ -55,6 +56,7 @@ struct HNode {
   std::vector<float> priorities;
   std::vector<uint> order;
   std::queue<LNode*> search_tree;
+  uint ll_search;
 
   HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
         const uint _h);
@@ -64,6 +66,7 @@ using HNodes = std::vector<HNode*>;
 
 struct Planner {
   static bool wdg_flag;
+  static int max_ll_depth;
   const Instance* ins;
   const Deadline* deadline;
   std::mt19937* MT;
@@ -85,6 +88,7 @@ struct Planner {
   Agents A;
   Agents occupied_now;                          // for quick collision checking
   Agents occupied_next;                         // for quick collision checking
+  std::chrono::steady_clock::time_point last_debug_print;
   std::ofstream cbsh_values_file;
   std::unordered_map<size_t, uint> cbsh_cache;
 
@@ -102,6 +106,8 @@ struct Planner {
   uint get_edge_cost(HNode* H_from, HNode* H_to);
   uint get_h_value(const Config& C);
   uint cbs_heuristic(HNode* H);
+  void set_wdg_to_parents(HNode* H);
+  void periodic_node_debug(HNode* H);
   void load_cbsh_values();
   uint get_or_compute_cbs_heuristic(HNode* H);
   bool get_new_config(HNode* H, LNode* L);
