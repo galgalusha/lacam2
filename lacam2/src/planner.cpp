@@ -4,16 +4,39 @@
 #include "../include/cbsh2_stuff.hpp"
 
 #include <chrono>
+#include <algorithm>
 
-LNode::LNode(LNode* parent, uint i, Vertex* v)
-    : who(), where(), depth(parent == nullptr ? 0 : parent->depth + 1)
+LNode::LNode(std::shared_ptr<LNode> parent, uint i, Vertex* v)
+  : parent(parent), _who(i), _where(v), depth(parent == nullptr ? 0 : parent->depth + 1)
 {
-  if (parent != nullptr) {
-    who = parent->who;
-    who.push_back(i);
-    where = parent->where;
-    where.push_back(v);
+}
+
+std::vector<uint> LNode::who() const
+{
+  std::vector<uint> result;
+  result.reserve(depth);
+
+  for (const auto* node = this; node != nullptr && node->parent != nullptr;
+     node = node->parent.get()) {
+    result.push_back(node->_who);
   }
+
+  std::reverse(result.begin(), result.end());
+  return result;
+}
+
+Vertices LNode::where() const
+{
+  Vertices result;
+  result.reserve(depth);
+
+  for (const auto* node = this; node != nullptr && node->parent != nullptr;
+     node = node->parent.get()) {
+    result.push_back(node->_where);
+  }
+
+  std::reverse(result.begin(), result.end());
+  return result;
 }
 
 uint HNode::HNODE_CNT = 0;
@@ -32,12 +55,13 @@ HNode::HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
       f(g + h),
       priorities(C.size()),
       order(C.size(), 0),
-      search_tree(std::queue<LNode*>()),
+      search_tree(std::queue<std::shared_ptr<LNode>>()),
       ll_search(0)
 {
   ++HNODE_CNT;
 
-  search_tree.push(new LNode());
+      auto root = std::make_shared<LNode>();
+  search_tree.push(root);
   ll_search += 1;
   const auto N = C.size();
 
@@ -67,10 +91,6 @@ HNode::HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
 
 HNode::~HNode()
 {
-  while (!search_tree.empty()) {
-    delete search_tree.front();
-    search_tree.pop();
-  }
 }
 
 Planner::Planner(const Instance* _ins, const Deadline* _deadline,
@@ -201,15 +221,13 @@ Solution Planner::solve(std::string& additional_info)
     H->search_tree.pop();
     H->ll_search += 1;
     if (max_ll_depth >= 0 && static_cast<int>(L->depth) > max_ll_depth) {
-      delete L;
       OPEN.pop();
       continue;
     }
     expand_lowlevel_tree(H, L);
 
     // create successors at the high-level search
-    const auto res = get_new_config(H, L);
-    delete L;  // free
+    const auto res = get_new_config(H, L.get());
     if (!res) continue;
 
     // create new configuration
@@ -410,7 +428,7 @@ void Planner::set_wdg_to_parents(HNode* H)
   // }
 }
 
-void Planner::expand_lowlevel_tree(HNode* H, LNode* L)
+void Planner::expand_lowlevel_tree(HNode* H, const std::shared_ptr<LNode>& L)
 {
   if (L->depth >= N) return;
   const auto i = H->order[L->depth];
@@ -420,7 +438,8 @@ void Planner::expand_lowlevel_tree(HNode* H, LNode* L)
   if (MT != nullptr) std::shuffle(C.begin(), C.end(), *MT);
   // insert
   for (auto v : C) {
-    H->search_tree.push(new LNode(L, i, v));
+    auto child = std::make_shared<LNode>(L, i, v);
+    H->search_tree.push(child);
   }
 }
 

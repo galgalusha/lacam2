@@ -12,6 +12,7 @@
 
 #include <chrono>
 #include <fstream>
+#include <memory>
 #include <unordered_map>
 
 
@@ -30,11 +31,14 @@ using Agents = std::vector<Agent*>;
 
 // low-level node
 struct LNode {
-  std::vector<uint> who;
-  Vertices where;
+  std::shared_ptr<LNode> parent;
+  uint _who;
+  Vertex* _where;
   const uint depth;
-  LNode(LNode* parent = nullptr, uint i = 0,
+  LNode(std::shared_ptr<LNode> parent = nullptr, uint i = 0,
         Vertex* v = nullptr);  // who and where
+  std::vector<uint> who() const;
+  Vertices where() const;
 };
 
 // high-level node
@@ -55,7 +59,7 @@ struct HNode {
   // for low-level search
   std::vector<float> priorities;
   std::vector<uint> order;
-  std::queue<LNode*> search_tree;
+  std::queue<std::shared_ptr<LNode>> search_tree;
   uint ll_search;
 
   HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
@@ -99,7 +103,7 @@ struct Planner {
           const float _restart_rate = 0.001);
   ~Planner();
   Solution solve(std::string& additional_info);
-  void expand_lowlevel_tree(HNode* H, LNode* L);
+  void expand_lowlevel_tree(HNode* H, const std::shared_ptr<LNode>& L);
   void rewrite(HNode* H_from, HNode* T, HNode* H_goal,
                std::stack<HNode*>& OPEN);
   uint get_edge_cost(const Config& C1, const Config& C2);

@@ -4,6 +4,9 @@
 
 bool Planner::get_new_config(HNode* H, LNode* L)
 {
+  const auto who = L->who();
+  const auto where = L->where();
+
   // setup cache
   for (auto a : A) {
     // clear previous cache
@@ -22,8 +25,8 @@ bool Planner::get_new_config(HNode* H, LNode* L)
 
   // add constraints
   for (uint k = 0; k < L->depth; ++k) {
-    const auto i = L->who[k];        // agent
-    const auto l = L->where[k]->id;  // loc
+    const auto i = who[k];        // agent
+    const auto l = where[k]->id;  // loc
 
     // check vertex collision
     if (occupied_next[l] != nullptr) return false;
@@ -34,7 +37,7 @@ bool Planner::get_new_config(HNode* H, LNode* L)
       return false;
 
     // set occupied_next
-    A[i]->v_next = L->where[k];
+    A[i]->v_next = where[k];
     occupied_next[l] = A[i];
   }
 
