@@ -1,9 +1,81 @@
 // PIBT-related methods of Planner (extracted from planner.cpp)
 #include "../include/planner.hpp"
 
+#include <numeric>
+#include <unordered_map>
+
+namespace {
+
+std::vector<std::vector<uint>> build_pibt_clusters(
+    const uint N, const std::vector<std::pair<uint, uint>>& edges,
+    const std::vector<uint>& failure_counts)
+{
+  if (edges.empty()) return {};
+
+  std::vector<uint> parent(N, 0);
+  std::iota(parent.begin(), parent.end(), 0);
+  std::vector<bool> present(N, false);
+
+  const auto find_root = [&](uint x) {
+    while (parent[x] != x) {
+      parent[x] = parent[parent[x]];
+      x = parent[x];
+    }
+    return x;
+  };
+
+  for (const auto& e : edges) {
+    const auto a = e.first;
+    const auto b = e.second;
+    if (a >= N || b >= N) continue;
+    present[a] = true;
+    present[b] = true;
+
+    auto ra = find_root(a);
+    auto rb = find_root(b);
+    if (ra != rb) parent[rb] = ra;
+  }
+
+  std::unordered_map<uint, std::vector<uint>> groups;
+  for (uint i = 0; i < N; ++i) {
+    if (!present[i]) continue;
+    groups[find_root(i)].push_back(i);
+  }
+
+  std::vector<std::vector<uint>> clusters;
+  clusters.reserve(groups.size());
+  for (auto& [_, g] : groups) {
+    std::sort(g.begin(), g.end(), [&](const uint lhs, const uint rhs) {
+      if (failure_counts[lhs] != failure_counts[rhs]) {
+        return failure_counts[lhs] > failure_counts[rhs];
+      }
+      return lhs < rhs;
+    });
+    clusters.push_back(g);
+  }
+
+  std::sort(clusters.begin(), clusters.end(),
+            [&](const std::vector<uint>& lhs, const std::vector<uint>& rhs) {
+              const auto lhs_key = lhs.empty() ? 0 : failure_counts[lhs.front()];
+              const auto rhs_key = rhs.empty() ? 0 : failure_counts[rhs.front()];
+              if (lhs_key != rhs_key) return lhs_key > rhs_key;
+              const auto lhs_id = lhs.empty() ? N : lhs.front();
+              const auto rhs_id = rhs.empty() ? N : rhs.front();
+              return lhs_id < rhs_id;
+            });
+
+  return clusters;
+}
+
+}  // namespace
+
 
 bool Planner::get_new_config(HNode* H, LNode* L)
 {
+  H->pibt_clusters.clear();
+  pibt_failure_counts.assign(N, 0);
+  pibt_influence_edges.clear();
+
   const auto who = L->who();
   const auto where = L->where();
 
@@ -46,6 +118,10 @@ bool Planner::get_new_config(HNode* H, LNode* L)
     auto a = A[k];
     if (a->v_next == nullptr && !funcPIBT(a)) return false;  // planning failure
   }
+
+  H->pibt_clusters =
+      build_pibt_clusters(N, pibt_influence_edges, pibt_failure_counts);
+
   return true;
 }
 
@@ -91,8 +167,13 @@ bool Planner::funcPIBT(Agent* ai)
     ai->v_next = u;
 
     // priority inheritance
-    if (ak != nullptr && ak != ai && ak->v_next == nullptr && !funcPIBT(ak))
-      continue;
+    if (ak != nullptr && ak != ai && ak->v_next == nullptr) {
+      if (!funcPIBT(ak)) {
+        pibt_influence_edges.emplace_back(i, ak->id);
+        pibt_failure_counts[i] += pibt_failure_counts[ak->id];
+        continue;
+      }
+    }
 
     // success to plan next one step
     // pull swap_agent when applicable
@@ -105,6 +186,7 @@ bool Planner::funcPIBT(Agent* ai)
   }
 
   // failed to secure node
+  pibt_failure_counts[i] += 1;
   occupied_next[ai->v_now->id] = ai;
   ai->v_next = ai->v_now;
   return false;

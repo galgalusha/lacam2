@@ -61,6 +61,7 @@ struct HNode {
   std::vector<uint> order;
   std::queue<std::shared_ptr<LNode>> search_tree;
   uint ll_search;
+  std::vector<std::vector<uint>> pibt_clusters;
 
   HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
         const uint _h);
@@ -71,6 +72,8 @@ using HNodes = std::vector<HNode*>;
 struct Planner {
   static bool wdg_flag;
   static int max_ll_depth;
+  static std::array<uint64_t, 10> pibt_agents_bucket_counts;
+  static std::array<uint64_t, 10> pibt_cluster_bucket_counts;
   const Instance* ins;
   const Deadline* deadline;
   std::mt19937* MT;
@@ -89,6 +92,8 @@ struct Planner {
   // used in PIBT
   std::vector<std::array<Vertex*, 5> > C_next;  // next locations, used in PIBT
   std::vector<float> tie_breakers;              // random values, used in PIBT
+  std::vector<uint> pibt_failure_counts;        // temporary counters per get_new_config
+  std::vector<std::pair<uint, uint>> pibt_influence_edges;  // (parent, child)
   Agents A;
   Agents occupied_now;                          // for quick collision checking
   Agents occupied_next;                         // for quick collision checking
@@ -114,6 +119,7 @@ struct Planner {
   void periodic_node_debug(HNode* H);
   void load_cbsh_values();
   uint get_or_compute_cbs_heuristic(HNode* H);
+  void update_pibt_bucket_counters(const HNode* H);
   bool get_new_config(HNode* H, LNode* L);
   bool funcPIBT(Agent* ai);
 

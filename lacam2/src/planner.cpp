@@ -6,6 +6,24 @@
 #include <chrono>
 #include <algorithm>
 
+namespace {
+
+size_t pibt_bucket_index(const size_t value)
+{
+  if (value == 0) return 0;
+  if (value == 1) return 1;
+  if (value == 2) return 2;
+  if (value == 3) return 3;
+  if (value == 4) return 4;
+  if (value == 5) return 5;
+  if (value <= 10) return 6;
+  if (value <= 20) return 7;
+  if (value <= 50) return 8;
+  return 9;
+}
+
+}  // namespace
+
 LNode::LNode(std::shared_ptr<LNode> parent, uint i, Vertex* v)
   : parent(parent), _who(i), _where(v), depth(parent == nullptr ? 0 : parent->depth + 1)
 {
@@ -42,6 +60,8 @@ Vertices LNode::where() const
 uint HNode::HNODE_CNT = 0;
 bool Planner::wdg_flag = false;
 int Planner::max_ll_depth = -1;
+std::array<uint64_t, 10> Planner::pibt_agents_bucket_counts = {0};
+std::array<uint64_t, 10> Planner::pibt_cluster_bucket_counts = {0};
 
 // for high-level
 HNode::HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
@@ -116,6 +136,18 @@ Planner::Planner(const Instance* _ins, const Deadline* _deadline,
 }
 
 Planner::~Planner() {}
+
+void Planner::update_pibt_bucket_counters(const HNode* H)
+{
+  size_t total_agents_in_clusters = 0;
+  for (const auto& cluster : H->pibt_clusters) {
+    total_agents_in_clusters += cluster.size();
+  }
+
+  const auto cluster_count = H->pibt_clusters.size();
+  ++pibt_agents_bucket_counts[pibt_bucket_index(total_agents_in_clusters)];
+  ++pibt_cluster_bucket_counts[pibt_bucket_index(cluster_count)];
+}
 
 void Planner::load_cbsh_values()
 {
@@ -252,6 +284,7 @@ Solution Planner::solve(std::string& additional_info)
       // set_wdg_to_parents(H);
     } else {
       // insert new search node
+      update_pibt_bucket_counters(H);
       const auto H_new = new HNode(
           C_new, D, H, H->g + get_edge_cost(H->C, C_new), get_h_value(C_new));
       if (wdg_flag) { // loop_cnt % 100 == 0) {
@@ -374,6 +407,21 @@ void Planner::periodic_node_debug(HNode* H)
             << " parent^2=" << ConfigHasher{}(H->parent->parent->C)
             << " parent^2 ll_search=" << H->parent->parent->ll_search
             << std::endl;
+
+  static const std::array<const char*, 10> bucket_labels = {
+      "0", "1", "2", "3", "4", "5", "6-10", "11-20", "21-50", ">50"};
+
+  std::cout << "pibt_agents_bucket_counts:";
+  for (size_t i = 0; i < bucket_labels.size(); ++i) {
+    std::cout << " [" << bucket_labels[i] << "]=" << pibt_agents_bucket_counts[i];
+  }
+  std::cout << std::endl;
+
+  std::cout << "pibt_cluster_bucket_counts:";
+  for (size_t i = 0; i < bucket_labels.size(); ++i) {
+    std::cout << " [" << bucket_labels[i] << "]=" << pibt_cluster_bucket_counts[i];
+  }
+  std::cout << std::endl;
 }
 
 uint Planner::cbs_heuristic(HNode* H)
