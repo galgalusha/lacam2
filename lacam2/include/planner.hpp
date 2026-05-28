@@ -59,13 +59,17 @@ struct HNode {
   // for low-level search
   std::vector<float> priorities;
   std::vector<uint> order;
+  std::vector<uint> constraint_order;
   std::queue<std::shared_ptr<LNode>> search_tree;
   uint ll_search;
   std::vector<std::vector<uint>> pibt_clusters;
+  std::vector<std::vector<uint>> incoming_pibt_clusters;
 
   HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
         const uint _h);
   ~HNode();
+  void initialize_order(DistTable& D);
+  void initialize_constraint_order();
 };
 using HNodes = std::vector<HNode*>;
 
@@ -117,6 +121,7 @@ struct Planner {
   uint cbs_heuristic(HNode* H);
   void set_wdg_to_parents(HNode* H);
   void periodic_node_debug(HNode* H);
+  void print_solution_pibt_clusters(const HNode* H_goal) const;
   void load_cbsh_values();
   uint get_or_compute_cbs_heuristic(HNode* H);
   void update_pibt_bucket_counters(const HNode* H);

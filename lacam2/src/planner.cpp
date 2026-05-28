@@ -57,61 +57,10 @@ Vertices LNode::where() const
   return result;
 }
 
-uint HNode::HNODE_CNT = 0;
 bool Planner::wdg_flag = false;
 int Planner::max_ll_depth = -1;
 std::array<uint64_t, 10> Planner::pibt_agents_bucket_counts = {0};
 std::array<uint64_t, 10> Planner::pibt_cluster_bucket_counts = {0};
-
-// for high-level
-HNode::HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
-             const uint _h)
-    : C(_C),
-      parent(_parent),
-      neighbor(),
-      g(_g),
-      h(_h),
-      h_cbs(0),
-      f(g + h),
-      priorities(C.size()),
-      order(C.size(), 0),
-      search_tree(std::queue<std::shared_ptr<LNode>>()),
-      ll_search(0)
-{
-  ++HNODE_CNT;
-
-      auto root = std::make_shared<LNode>();
-  search_tree.push(root);
-  ll_search += 1;
-  const auto N = C.size();
-
-  // update neighbor
-  if (parent != nullptr) parent->neighbor.insert(this);
-
-  // set priorities
-  if (parent == nullptr) {
-    // initialize
-    for (uint i = 0; i < N; ++i) priorities[i] = (float)D.get(i, C[i]) / N;
-  } else {
-    // dynamic priorities, akin to PIBT
-    for (size_t i = 0; i < N; ++i) {
-      if (D.get(i, C[i]) != 0) {
-        priorities[i] = parent->priorities[i] + 1;
-      } else {
-        priorities[i] = parent->priorities[i] - (int)parent->priorities[i];
-      }
-    }
-  }
-
-  // set order
-  std::iota(order.begin(), order.end(), 0);
-  std::sort(order.begin(), order.end(),
-            [&](uint i, uint j) { return priorities[i] > priorities[j]; });
-}
-
-HNode::~HNode()
-{
-}
 
 Planner::Planner(const Instance* _ins, const Deadline* _deadline,
                  std::mt19937* _MT, const int _verbose,
@@ -147,6 +96,28 @@ void Planner::update_pibt_bucket_counters(const HNode* H)
   const auto cluster_count = H->pibt_clusters.size();
   ++pibt_agents_bucket_counts[pibt_bucket_index(total_agents_in_clusters)];
   ++pibt_cluster_bucket_counts[pibt_bucket_index(cluster_count)];
+}
+
+void Planner::print_solution_pibt_clusters(const HNode* H_goal) const
+{
+  if (H_goal == nullptr) return;
+
+  auto chain = std::vector<const HNode*>();
+  for (auto p = H_goal; p != nullptr; p = p->parent) {
+    chain.push_back(p);
+  }
+  std::reverse(chain.begin(), chain.end());
+
+  for (size_t step = 1; step < chain.size(); ++step) {
+    std::cout << "--- step " << step << " --" << std::endl;
+    for (const auto& cluster : chain[step]->incoming_pibt_clusters) {
+      for (size_t i = 0; i < cluster.size(); ++i) {
+        if (i != 0) std::cout << " ";
+        std::cout << cluster[i];
+      }
+      std::cout << std::endl;
+    }
+  }
 }
 
 void Planner::load_cbsh_values()
@@ -244,6 +215,7 @@ Solution Planner::solve(std::string& additional_info)
       std::cout << "h_cbs path:";
       for (auto n : chain) std::cout << " " << n->h_cbs;
       std::cout << std::endl;
+      print_solution_pibt_clusters(H_goal);
       if (objective == OBJ_NONE) break;
       continue;
     }
@@ -257,7 +229,7 @@ Solution Planner::solve(std::string& additional_info)
       continue;
     }
 
-    if (H_goal != nullptr && loop_cnt % 5000 == 0) {
+    if (H_goal != nullptr && loop_cnt % 10000 == 0) {
       OPEN.push(H_init);
       continue;
     }
@@ -274,7 +246,11 @@ Solution Planner::solve(std::string& additional_info)
     const auto iter = EXPLORED.find(C_new);
     if (iter != EXPLORED.end()) {
       // case found
+      const auto old_goal_cost = (H_goal != nullptr) ? H_goal->g : 0;
       rewrite(H, iter->second, H_goal, OPEN);
+      if (H_goal != nullptr && H_goal->g < old_goal_cost) {
+        print_solution_pibt_clusters(H_goal);
+      }
 
       // re-insert or random-restart
       auto H_insert = (MT != nullptr && get_random_float(MT) >= RESTART_RATE)
@@ -287,6 +263,7 @@ Solution Planner::solve(std::string& additional_info)
       update_pibt_bucket_counters(H);
       const auto H_new = new HNode(
           C_new, D, H, H->g + get_edge_cost(H->C, C_new), get_h_value(C_new));
+      H_new->incoming_pibt_clusters = H->pibt_clusters;
       if (wdg_flag) { // loop_cnt % 100 == 0) {
         H_new->h_cbs = get_or_compute_cbs_heuristic(H_new);
         H_new->f += H_new->h_cbs;
@@ -350,6 +327,7 @@ void Planner::rewrite(HNode* H_from, HNode* H_to, HNode* H_goal,
         n_to->g = g_val;
         n_to->f = n_to->g + n_to->h;
         n_to->parent = n_from;
+        // n_to->incoming_pibt_clusters = n_from->pibt_clusters;
         Q.push(n_to);
         if (H_goal != nullptr && n_to->f < H_goal->f) OPEN.push(n_to);
       }
@@ -466,28 +444,12 @@ void Planner::set_wdg_to_parents(HNode* H)
     found_parent_wdg = p;
     break;
   }
-
-  // // if (!found_parent_wdg) return;
-  // // auto min_wdg = std::min(H->h_cbs, found_parent_wdg->h_cbs);
-
-  // // for (auto p : missing_parents) {
-  // //   const auto p_hash = ConfigHasher{}(p->C);
-  // //   cbsh_cache[p_hash] = min_wdg;
-  // //   if (p->h_cbs == 0) {
-  // //     p->h_cbs = min_wdg;
-  // //     p->f += min_wdg;
-  // //   }
-  // // }
-  // if (missing_parents.size()) {
-  //   std::cout << "H cbs " << H->h_cbs << " found parent: " << found_parent_wdg->h_cbs << std::endl;
-  //   std::cout << "Updating " << missing_parents.size() << " parents to h_cbs=" << min_wdg << std::endl;
-  // }
 }
 
 void Planner::expand_lowlevel_tree(HNode* H, const std::shared_ptr<LNode>& L)
 {
   if (L->depth >= N) return;
-  const auto i = H->order[L->depth];
+  const auto i = H->constraint_order[L->depth];
   auto C = H->C[i]->neighbor;
   C.push_back(H->C[i]);
   // randomize
