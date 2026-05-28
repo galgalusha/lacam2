@@ -7,8 +7,7 @@
 namespace {
 
 std::vector<std::vector<uint>> build_pibt_clusters(
-    const uint N, const std::vector<std::pair<uint, uint>>& edges,
-    const std::vector<uint>& failure_counts)
+  const uint N, const std::vector<std::pair<uint, uint>>& edges)
 {
   if (edges.empty()) return {};
 
@@ -45,20 +44,12 @@ std::vector<std::vector<uint>> build_pibt_clusters(
   std::vector<std::vector<uint>> clusters;
   clusters.reserve(groups.size());
   for (auto& [_, g] : groups) {
-    std::sort(g.begin(), g.end(), [&](const uint lhs, const uint rhs) {
-      if (failure_counts[lhs] != failure_counts[rhs]) {
-        return failure_counts[lhs] > failure_counts[rhs];
-      }
-      return lhs < rhs;
-    });
+    std::sort(g.begin(), g.end());
     clusters.push_back(g);
   }
 
   std::sort(clusters.begin(), clusters.end(),
             [&](const std::vector<uint>& lhs, const std::vector<uint>& rhs) {
-              const auto lhs_key = lhs.empty() ? 0 : failure_counts[lhs.front()];
-              const auto rhs_key = rhs.empty() ? 0 : failure_counts[rhs.front()];
-              if (lhs_key != rhs_key) return lhs_key > rhs_key;
               const auto lhs_id = lhs.empty() ? N : lhs.front();
               const auto rhs_id = rhs.empty() ? N : rhs.front();
               return lhs_id < rhs_id;
@@ -72,8 +63,6 @@ std::vector<std::vector<uint>> build_pibt_clusters(
 
 bool Planner::get_new_config(HNode* H, LNode* L)
 {
-  H->pibt_clusters.clear();
-  pibt_failure_counts.assign(N, 0);
   pibt_influence_edges.clear();
 
   const auto who = L->who();
@@ -119,8 +108,9 @@ bool Planner::get_new_config(HNode* H, LNode* L)
     if (a->v_next == nullptr && !funcPIBT(a)) return false;  // planning failure
   }
 
-  H->pibt_clusters =
-      build_pibt_clusters(N, pibt_influence_edges, pibt_failure_counts);
+  H->pibt_links.insert(H->pibt_links.end(), pibt_influence_edges.begin(),
+                       pibt_influence_edges.end());
+  H->pibt_cluster = build_pibt_clusters(N, H->pibt_links);
 
   return true;
 }
@@ -170,7 +160,6 @@ bool Planner::funcPIBT(Agent* ai)
     if (ak != nullptr && ak != ai && ak->v_next == nullptr) {
       if (!funcPIBT(ak)) {
         pibt_influence_edges.emplace_back(i, ak->id);
-        pibt_failure_counts[i] += pibt_failure_counts[ak->id];
         continue;
       }
     }
@@ -186,7 +175,6 @@ bool Planner::funcPIBT(Agent* ai)
   }
 
   // failed to secure node
-  pibt_failure_counts[i] += 1;
   occupied_next[ai->v_now->id] = ai;
   ai->v_next = ai->v_now;
   return false;

@@ -23,7 +23,7 @@ Notes:
 EOF
 }
 
-BUFFER_MB="${MG_BUFFER_MB:-800}"
+BUFFER_MB="${MG_BUFFER_MB:-400}"
 
 if [[ $# -eq 0 ]]; then
   usage

@@ -49,6 +49,10 @@ int main(int argc, char* argv[])
     program.add_argument("-max_ll_depth")
       .help("max allowed low-level node depth; -1 disables cutoff")
       .default_value(std::string("-1"));
+      program.add_argument("-pibt_clustering")
+        .help("Enable PIBT clustering")
+        .default_value(false)
+        .implicit_value(true);
 
   try {
     program.parse_known_args(argc, argv);
@@ -76,6 +80,7 @@ int main(int argc, char* argv[])
   const auto restart_rate = std::stof(program.get<std::string>("restart_rate"));
   Planner::wdg_flag = program.get<bool>("with_wdg_flag");
   Planner::max_ll_depth = std::stoi(program.get<std::string>("max_ll_depth"));
+  Planner::pibt_clustering = program.get<bool>("pibt_clustering");
   if (!ins.is_valid(1)) return 1;
 
 

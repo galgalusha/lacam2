@@ -62,8 +62,8 @@ struct HNode {
   std::vector<uint> constraint_order;
   std::queue<std::shared_ptr<LNode>> search_tree;
   uint ll_search;
-  std::vector<std::vector<uint>> pibt_clusters;
-  std::vector<std::vector<uint>> incoming_pibt_clusters;
+  std::vector<std::vector<uint>> pibt_cluster;
+  std::vector<std::pair<uint, uint>> pibt_links;
 
   HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
         const uint _h);
@@ -76,6 +76,7 @@ using HNodes = std::vector<HNode*>;
 struct Planner {
   static bool wdg_flag;
   static int max_ll_depth;
+  static bool pibt_clustering;
   static std::array<uint64_t, 10> pibt_agents_bucket_counts;
   static std::array<uint64_t, 10> pibt_cluster_bucket_counts;
   const Instance* ins;
@@ -96,7 +97,6 @@ struct Planner {
   // used in PIBT
   std::vector<std::array<Vertex*, 5> > C_next;  // next locations, used in PIBT
   std::vector<float> tie_breakers;              // random values, used in PIBT
-  std::vector<uint> pibt_failure_counts;        // temporary counters per get_new_config
   std::vector<std::pair<uint, uint>> pibt_influence_edges;  // (parent, child)
   Agents A;
   Agents occupied_now;                          // for quick collision checking

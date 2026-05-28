@@ -59,6 +59,7 @@ Vertices LNode::where() const
 
 bool Planner::wdg_flag = false;
 int Planner::max_ll_depth = -1;
+bool Planner::pibt_clustering = false;
 std::array<uint64_t, 10> Planner::pibt_agents_bucket_counts = {0};
 std::array<uint64_t, 10> Planner::pibt_cluster_bucket_counts = {0};
 
@@ -89,11 +90,11 @@ Planner::~Planner() {}
 void Planner::update_pibt_bucket_counters(const HNode* H)
 {
   size_t total_agents_in_clusters = 0;
-  for (const auto& cluster : H->pibt_clusters) {
+  for (const auto& cluster : H->pibt_cluster) {
     total_agents_in_clusters += cluster.size();
   }
 
-  const auto cluster_count = H->pibt_clusters.size();
+  const auto cluster_count = H->pibt_cluster.size();
   ++pibt_agents_bucket_counts[pibt_bucket_index(total_agents_in_clusters)];
   ++pibt_cluster_bucket_counts[pibt_bucket_index(cluster_count)];
 }
@@ -110,7 +111,7 @@ void Planner::print_solution_pibt_clusters(const HNode* H_goal) const
 
   for (size_t step = 1; step < chain.size(); ++step) {
     std::cout << "--- step " << step << " --" << std::endl;
-    for (const auto& cluster : chain[step]->incoming_pibt_clusters) {
+    for (const auto& cluster : chain[step - 1]->pibt_cluster) {
       for (size_t i = 0; i < cluster.size(); ++i) {
         if (i != 0) std::cout << " ";
         std::cout << cluster[i];
@@ -229,10 +230,10 @@ Solution Planner::solve(std::string& additional_info)
       continue;
     }
 
-    if (H_goal != nullptr && loop_cnt % 10000 == 0) {
-      OPEN.push(H_init);
-      continue;
-    }
+    // if (H_goal != nullptr && loop_cnt % 1000 == 0) {
+    //   OPEN.push(H_init);
+    //   continue;
+    // }
     expand_lowlevel_tree(H, L);
 
     // create successors at the high-level search
@@ -263,7 +264,6 @@ Solution Planner::solve(std::string& additional_info)
       update_pibt_bucket_counters(H);
       const auto H_new = new HNode(
           C_new, D, H, H->g + get_edge_cost(H->C, C_new), get_h_value(C_new));
-      H_new->incoming_pibt_clusters = H->pibt_clusters;
       if (wdg_flag) { // loop_cnt % 100 == 0) {
         H_new->h_cbs = get_or_compute_cbs_heuristic(H_new);
         H_new->f += H_new->h_cbs;
