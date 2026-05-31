@@ -1,5 +1,6 @@
 #include <argparse/argparse.hpp>
 #include <lacam2.hpp>
+#include <algorithm>
 // #include <CBSH2/map_loader.h>
 #include "/home/galko/.local/include/CBSH2/map_loader.h"
 #include "/home/galko/.local/include/CBSH2/agents_loader.h"
@@ -46,9 +47,12 @@ int main(int argc, char* argv[])
       .help("Enable WDG heuristic calculation")
       .default_value(false)
       .implicit_value(true);
-    program.add_argument("-max_ll_depth")
-      .help("max allowed low-level node depth; -1 disables cutoff")
+    program.add_argument("-max_ll")
+      .help("max allowed low-level search; -1 disables cutoff")
       .default_value(std::string("-1"));
+      program.add_argument("-max_ll_decay")
+        .help("decay factor for ancestor max_ll when a node exceeds its budget")
+        .default_value(std::string("1.0"));
       program.add_argument("-pibt_clustering")
         .help("Enable PIBT clustering")
         .default_value(false)
@@ -78,8 +82,10 @@ int main(int argc, char* argv[])
   const auto objective =
       static_cast<Objective>(std::stoi(program.get<std::string>("objective")));
   const auto restart_rate = std::stof(program.get<std::string>("restart_rate"));
+  const auto max_ll_decay = std::clamp(std::stof(program.get<std::string>("max_ll_decay")), 0.0f, 1.0f);
   Planner::wdg_flag = program.get<bool>("with_wdg_flag");
-  Planner::max_ll_depth = std::stoi(program.get<std::string>("max_ll_depth"));
+  Planner::max_ll = std::stoi(program.get<std::string>("max_ll"));
+  Planner::max_ll_decay = max_ll_decay;
   Planner::pibt_clustering = program.get<bool>("pibt_clustering");
   if (!ins.is_valid(1)) return 1;
 

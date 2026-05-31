@@ -62,6 +62,8 @@ struct HNode {
   std::vector<uint> constraint_order;
   std::queue<std::shared_ptr<LNode>> search_tree;
   uint ll_search;
+  bool already_decayed_my_parent;
+  float max_ll;
   std::vector<std::vector<uint>> pibt_cluster;
   std::vector<std::pair<uint, uint>> pibt_links;
 
@@ -75,7 +77,8 @@ using HNodes = std::vector<HNode*>;
 
 struct Planner {
   static bool wdg_flag;
-  static int max_ll_depth;
+  static int max_ll;
+  static float max_ll_decay;
   static bool pibt_clustering;
   static std::array<uint64_t, 10> pibt_agents_bucket_counts;
   static std::array<uint64_t, 10> pibt_cluster_bucket_counts;

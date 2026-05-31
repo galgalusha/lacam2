@@ -58,7 +58,8 @@ Vertices LNode::where() const
 }
 
 bool Planner::wdg_flag = false;
-int Planner::max_ll_depth = -1;
+int Planner::max_ll = -1;
+float Planner::max_ll_decay = 1.0f;
 bool Planner::pibt_clustering = false;
 std::array<uint64_t, 10> Planner::pibt_agents_bucket_counts = {0};
 std::array<uint64_t, 10> Planner::pibt_cluster_bucket_counts = {0};
@@ -221,19 +222,24 @@ Solution Planner::solve(std::string& additional_info)
       continue;
     }
 
-    // create successors at the low-level search
-    auto L = H->search_tree.front();
-    H->search_tree.pop();
-    H->ll_search += 1;
-    if (max_ll_depth >= 0 && static_cast<int>(L->depth) > max_ll_depth) {
+    if (H->max_ll > -1 && static_cast<float>(H->ll_search) > H->max_ll) {
+      if (!H->already_decayed_my_parent && H->parent != nullptr) {
+        H->already_decayed_my_parent = true;
+        H->parent->max_ll = std::max(H->max_ll * Planner::max_ll_decay, 2.0f);
+      }
       OPEN.pop();
       continue;
     }
 
-    // if (H_goal != nullptr && loop_cnt % 1000 == 0) {
-    //   OPEN.push(H_init);
-    //   continue;
-    // }
+    // create successors at the low-level search
+    auto L = H->search_tree.front();
+    H->search_tree.pop();    
+    H->ll_search += 1;
+
+    if (H_goal != nullptr && loop_cnt % 20000 == 0) {
+      OPEN.push(H_init);
+      continue;
+    }
     expand_lowlevel_tree(H, L);
 
     // create successors at the high-level search
@@ -386,20 +392,20 @@ void Planner::periodic_node_debug(HNode* H)
             << " parent^2 ll_search=" << H->parent->parent->ll_search
             << std::endl;
 
-  static const std::array<const char*, 10> bucket_labels = {
-      "0", "1", "2", "3", "4", "5", "6-10", "11-20", "21-50", ">50"};
+  // static const std::array<const char*, 10> bucket_labels = {
+  //     "0", "1", "2", "3", "4", "5", "6-10", "11-20", "21-50", ">50"};
 
-  std::cout << "pibt_agents_bucket_counts:";
-  for (size_t i = 0; i < bucket_labels.size(); ++i) {
-    std::cout << " [" << bucket_labels[i] << "]=" << pibt_agents_bucket_counts[i];
-  }
-  std::cout << std::endl;
+  // std::cout << "pibt_agents_bucket_counts:";
+  // for (size_t i = 0; i < bucket_labels.size(); ++i) {
+  //   std::cout << " [" << bucket_labels[i] << "]=" << pibt_agents_bucket_counts[i];
+  // }
+  // std::cout << std::endl;
 
-  std::cout << "pibt_cluster_bucket_counts:";
-  for (size_t i = 0; i < bucket_labels.size(); ++i) {
-    std::cout << " [" << bucket_labels[i] << "]=" << pibt_cluster_bucket_counts[i];
-  }
-  std::cout << std::endl;
+  // std::cout << "pibt_cluster_bucket_counts:";
+  // for (size_t i = 0; i < bucket_labels.size(); ++i) {
+  //   std::cout << " [" << bucket_labels[i] << "]=" << pibt_cluster_bucket_counts[i];
+  // }
+  // std::cout << std::endl;
 }
 
 uint Planner::cbs_heuristic(HNode* H)
