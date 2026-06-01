@@ -20,7 +20,7 @@ HNode::HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
       constraint_order(C.size(), 0),
       search_tree(std::queue<std::shared_ptr<LNode>>()),
       ll_search(0),
-      already_decayed_my_parent(false),
+      max_llalready_decayed(false),
       max_ll(Planner::max_ll)
 {
   ++HNODE_CNT;

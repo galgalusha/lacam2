@@ -62,7 +62,7 @@ struct HNode {
   std::vector<uint> constraint_order;
   std::queue<std::shared_ptr<LNode>> search_tree;
   uint ll_search;
-  bool already_decayed_my_parent;
+  bool max_llalready_decayed;
   float max_ll;
   std::vector<std::vector<uint>> pibt_cluster;
   std::vector<std::pair<uint, uint>> pibt_links;
@@ -121,12 +121,12 @@ struct Planner {
   uint get_edge_cost(const Config& C1, const Config& C2);
   uint get_edge_cost(HNode* H_from, HNode* H_to);
   uint get_h_value(const Config& C);
-  uint cbs_heuristic(HNode* H);
+  uint cbs_heuristic(const Config& C);
   void set_wdg_to_parents(HNode* H);
-  void periodic_node_debug(HNode* H);
+  void periodic_node_debug(HNode* H, uint loop_count);
   void print_solution_pibt_clusters(const HNode* H_goal) const;
   void load_cbsh_values();
-  uint get_or_compute_cbs_heuristic(HNode* H);
+  uint get_or_compute_cbs_heuristic(const Config& C);
   void update_pibt_bucket_counters(const HNode* H);
   bool get_new_config(HNode* H, LNode* L);
   bool funcPIBT(Agent* ai);

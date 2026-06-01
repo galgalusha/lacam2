@@ -136,15 +136,16 @@ void Planner::load_cbsh_values()
   }
 }
 
-uint Planner::get_or_compute_cbs_heuristic(HNode* H)
+uint Planner::get_or_compute_cbs_heuristic(const Config& C)
 {
-  const auto config_hash = ConfigHasher{}(H->C);
+  const auto config_hash = ConfigHasher{}(C);
   const auto it = cbsh_cache.find(config_hash);
   if (it != cbsh_cache.end()) {
     return it->second;
   }
 
-  const auto h = cbs_heuristic(H);
+  auto h = cbs_heuristic(C);
+
   cbsh_cache[config_hash] = h;
   return h;
 }
@@ -171,7 +172,7 @@ Solution Planner::solve(std::string& additional_info)
   // insert initial node, 'H': high-level node
   auto H_init = new HNode(ins->starts, D, nullptr, 0, get_h_value(ins->starts));
   if (wdg_flag) {
-    H_init->h_cbs = get_or_compute_cbs_heuristic(H_init);
+    H_init->h_cbs = get_or_compute_cbs_heuristic(H_init->C);
     H_init->f += H_init->h_cbs;
   }
   OPEN.push(H_init);
@@ -187,7 +188,7 @@ Solution Planner::solve(std::string& additional_info)
 
     // do not pop here!
     auto H = OPEN.top();  // high-level node
-    periodic_node_debug(H);
+    periodic_node_debug(H, loop_cnt);
 
     // low-level search end
     if (H->search_tree.empty()) {
@@ -217,17 +218,22 @@ Solution Planner::solve(std::string& additional_info)
       std::cout << "h_cbs path:";
       for (auto n : chain) std::cout << " " << n->h_cbs;
       std::cout << std::endl;
-      print_solution_pibt_clusters(H_goal);
+      // print_solution_pibt_clusters(H_goal);
       if (objective == OBJ_NONE) break;
       continue;
     }
 
     if (H->max_ll > -1 && static_cast<float>(H->ll_search) > H->max_ll) {
-      if (!H->already_decayed_my_parent && H->parent != nullptr) {
-        H->already_decayed_my_parent = true;
+      if (H->parent != nullptr && !H->parent->max_llalready_decayed) {
+        H->parent->max_llalready_decayed = true;
         H->parent->max_ll = std::max(H->max_ll * Planner::max_ll_decay, 2.0f);
       }
       OPEN.pop();
+      continue;
+    }
+
+    if (H_goal != nullptr && loop_cnt % 20000 == 0) {
+      OPEN.push(H_init);
       continue;
     }
 
@@ -236,10 +242,6 @@ Solution Planner::solve(std::string& additional_info)
     H->search_tree.pop();    
     H->ll_search += 1;
 
-    if (H_goal != nullptr && loop_cnt % 20000 == 0) {
-      OPEN.push(H_init);
-      continue;
-    }
     expand_lowlevel_tree(H, L);
 
     // create successors at the high-level search
@@ -255,9 +257,9 @@ Solution Planner::solve(std::string& additional_info)
       // case found
       const auto old_goal_cost = (H_goal != nullptr) ? H_goal->g : 0;
       rewrite(H, iter->second, H_goal, OPEN);
-      if (H_goal != nullptr && H_goal->g < old_goal_cost) {
-        print_solution_pibt_clusters(H_goal);
-      }
+      // if (H_goal != nullptr && H_goal->g < old_goal_cost) {
+      //   print_solution_pibt_clusters(H_goal);
+      // }
 
       // re-insert or random-restart
       auto H_insert = (MT != nullptr && get_random_float(MT) >= RESTART_RATE)
@@ -268,14 +270,20 @@ Solution Planner::solve(std::string& additional_info)
     } else {
       // insert new search node
       update_pibt_bucket_counters(H);
-      const auto H_new = new HNode(
-          C_new, D, H, H->g + get_edge_cost(H->C, C_new), get_h_value(C_new));
-      if (wdg_flag) { // loop_cnt % 100 == 0) {
-        H_new->h_cbs = get_or_compute_cbs_heuristic(H_new);
-        H_new->f += H_new->h_cbs;
-      }
+      auto new_g = H->g + get_edge_cost(H->C, C_new);
+      auto new_h = get_h_value(C_new);
+      auto new_f = new_g + new_h;
+      if (H_goal != nullptr && new_f >= H_goal->f)
+        continue;
+      uint h_cbs = wdg_flag ? get_or_compute_cbs_heuristic(C_new) : 0;
+      new_f += h_cbs;
+      if (H_goal != nullptr && new_f >= H_goal->f)
+        continue;
+      const auto H_new = new HNode(C_new, D, H, new_g, new_h);
+      H_new->h_cbs = h_cbs;
+      H_new->f += h_cbs;
       EXPLORED[H_new->C] = H_new;
-      if (H_goal == nullptr || H_new->f < H_goal->f) OPEN.push(H_new);
+      OPEN.push(H_new);
     }
   }
 
@@ -314,6 +322,14 @@ Solution Planner::solve(std::string& additional_info)
   return solution;
 }
 
+uint get_depth(HNode* H) {
+  uint depth = 0;
+  for (auto p = H->parent; p != nullptr; p = p->parent) {
+    depth += 1;
+  }
+  return depth;  
+}
+
 void Planner::rewrite(HNode* H_from, HNode* H_to, HNode* H_goal,
                       std::stack<HNode*>& OPEN)
 {
@@ -329,7 +345,7 @@ void Planner::rewrite(HNode* H_from, HNode* H_to, HNode* H_goal,
       auto g_val = n_from->g + get_edge_cost(n_from->C, n_to->C);
       if (g_val < n_to->g) {
         if (n_to == H_goal)
-          solver_info(1, "cost update: ", n_to->g, " -> ", g_val);
+          solver_info(1, "depth(H): ", get_depth(H_from), ", depth(G): ",get_depth(H_goal), ", cost update: ", n_to->g, " -> ", g_val);
         n_to->g = g_val;
         n_to->f = n_to->g + n_to->h;
         n_to->parent = n_from;
@@ -373,23 +389,22 @@ uint Planner::get_h_value(const Config& C)
   return cost;
 }
 
-void Planner::periodic_node_debug(HNode* H)
+void Planner::periodic_node_debug(HNode* H, uint loop_count)
 {
   const auto now = std::chrono::steady_clock::now();
   if (now - last_debug_print < std::chrono::seconds(4)) return;
   last_debug_print = now;
 
-  uint depth = 0;
-  for (auto p = H->parent; p != nullptr; p = p->parent) {
-    depth += 1;
-  }
-
   const auto config_hash = ConfigHasher{}(H->C);
-  std::cout << "hash=" << config_hash
-            << " ll_search=" << H->ll_search
-            << " depth=" << depth 
-            << " parent^2=" << ConfigHasher{}(H->parent->parent->C)
-            << " parent^2 ll_search=" << H->parent->parent->ll_search
+  std::cout 
+            << "depth=" << get_depth(H) 
+            << " H=" << config_hash
+            << " ll=" << H->ll_search
+            << " P1=" << ConfigHasher{}(H->parent->C)
+            << " ll=" << H->parent->ll_search << "/" << H->parent->max_ll
+            << " P2=" << ConfigHasher{}(H->parent->parent->C)
+            << " ll=" << H->parent->parent->ll_search << "/" << H->parent->parent->max_ll
+            << " i=" << loop_count
             << std::endl;
 
   // static const std::array<const char*, 10> bucket_labels = {
@@ -408,17 +423,21 @@ void Planner::periodic_node_debug(HNode* H)
   // std::cout << std::endl;
 }
 
-uint Planner::cbs_heuristic(HNode* H)
+uint Planner::cbs_heuristic(const Config& C)
 {
-  load_cbs_agents(*ins, H->C);
-  auto time_limit = 500;
+  load_cbs_agents(*ins, C);
+  auto time_limit = 4000;
   auto screen = 0;
   auto search = ICBSSearch(*cbs_map, *cbs_agents, 1.0, WG, true, false, time_limit, screen);
   ICBSNode& start_node = *search.dummy_start;
   uint h = static_cast<uint>(search.computeHeuristics(start_node));
+  if (h == -1) {
+    std::cout << "cbs_heuristic timed out" << std::endl;
+    h = 1000000u;
+  }
 
   if (cbsh_values_file.is_open()) {
-    const auto config_hash = ConfigHasher{}(H->C);
+    const auto config_hash = ConfigHasher{}(C);
     cbsh_values_file << config_hash << " " << h << "\n";
     cbsh_values_file.flush();
   }
@@ -429,7 +448,7 @@ uint Planner::cbs_heuristic(HNode* H)
 void Planner::set_wdg_to_parents(HNode* H)
 {
   if (H->h_cbs == 0) {
-    H->h_cbs = get_or_compute_cbs_heuristic(H);
+    H->h_cbs = get_or_compute_cbs_heuristic(H->C);
   }
 
   std::vector<HNode*> missing_parents;
@@ -441,7 +460,7 @@ void Planner::set_wdg_to_parents(HNode* H)
     const auto it_p = cbsh_cache.find(p_hash);
     if (it_p == cbsh_cache.end()) {
       std::cout << ", Computing missing wdg... ";
-      p->h_cbs = get_or_compute_cbs_heuristic(p);
+      p->h_cbs = get_or_compute_cbs_heuristic(p->C);
       std::cout << p->h_cbs << std::endl;
       // missing_parents.push_back(p);
       continue;
