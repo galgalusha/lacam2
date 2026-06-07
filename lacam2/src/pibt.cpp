@@ -1,70 +1,9 @@
 // PIBT-related methods of Planner (extracted from planner.cpp)
 #include "../include/planner.hpp"
 
-#include <numeric>
-#include <unordered_map>
-
-namespace {
-
-std::vector<std::vector<uint>> build_pibt_clusters(
-  const uint N, const std::vector<std::pair<uint, uint>>& edges)
-{
-  if (edges.empty()) return {};
-
-  std::vector<uint> parent(N, 0);
-  std::iota(parent.begin(), parent.end(), 0);
-  std::vector<bool> present(N, false);
-
-  const auto find_root = [&](uint x) {
-    while (parent[x] != x) {
-      parent[x] = parent[parent[x]];
-      x = parent[x];
-    }
-    return x;
-  };
-
-  for (const auto& e : edges) {
-    const auto a = e.first;
-    const auto b = e.second;
-    if (a >= N || b >= N) continue;
-    present[a] = true;
-    present[b] = true;
-
-    auto ra = find_root(a);
-    auto rb = find_root(b);
-    if (ra != rb) parent[rb] = ra;
-  }
-
-  std::unordered_map<uint, std::vector<uint>> groups;
-  for (uint i = 0; i < N; ++i) {
-    if (!present[i]) continue;
-    groups[find_root(i)].push_back(i);
-  }
-
-  std::vector<std::vector<uint>> clusters;
-  clusters.reserve(groups.size());
-  for (auto& [_, g] : groups) {
-    std::sort(g.begin(), g.end());
-    clusters.push_back(g);
-  }
-
-  std::sort(clusters.begin(), clusters.end(),
-            [&](const std::vector<uint>& lhs, const std::vector<uint>& rhs) {
-              const auto lhs_id = lhs.empty() ? N : lhs.front();
-              const auto rhs_id = rhs.empty() ? N : rhs.front();
-              return lhs_id < rhs_id;
-            });
-
-  return clusters;
-}
-
-}  // namespace
-
 
 bool Planner::get_new_config(HNode* H, LNode* L)
 {
-  pibt_influence_edges.clear();
-
   const auto who = L->who();
   const auto where = L->where();
 
@@ -107,10 +46,6 @@ bool Planner::get_new_config(HNode* H, LNode* L)
     auto a = A[k];
     if (a->v_next == nullptr && !funcPIBT(a)) return false;  // planning failure
   }
-
-  H->pibt_links.insert(H->pibt_links.end(), pibt_influence_edges.begin(),
-                       pibt_influence_edges.end());
-  H->pibt_cluster = build_pibt_clusters(N, H->pibt_links);
 
   return true;
 }
@@ -159,7 +94,6 @@ bool Planner::funcPIBT(Agent* ai)
     // priority inheritance
     if (ak != nullptr && ak != ai && ak->v_next == nullptr) {
       if (!funcPIBT(ak)) {
-        pibt_influence_edges.emplace_back(i, ak->id);
         continue;
       }
     }

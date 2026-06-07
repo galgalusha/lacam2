@@ -8,7 +8,6 @@
 #include "graph.hpp"
 #include "instance.hpp"
 #include "utils.hpp"
-#include "cbsh2_stuff.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -53,35 +52,26 @@ struct HNode {
   // costs
   uint g;        // g-value (might be updated)
   const uint h;  // h-value
-  uint h_cbs;    // CBS-based heuristic value
   uint f;        // g + h (might be updated)
 
   // for low-level search
   std::vector<float> priorities;
   std::vector<uint> order;
-  std::vector<uint> constraint_order;
   std::queue<std::shared_ptr<LNode>> search_tree;
   uint ll_search;
   bool max_llalready_decayed;
   float max_ll;
-  std::vector<std::vector<uint>> pibt_cluster;
-  std::vector<std::pair<uint, uint>> pibt_links;
 
   HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
         const uint _h);
   ~HNode();
   void initialize_order(DistTable& D);
-  void initialize_constraint_order();
 };
 using HNodes = std::vector<HNode*>;
 
 struct Planner {
-  static bool wdg_flag;
   static int max_ll;
   static float max_ll_decay;
-  static bool pibt_clustering;
-  static std::array<uint64_t, 10> pibt_agents_bucket_counts;
-  static std::array<uint64_t, 10> pibt_cluster_bucket_counts;
   const Instance* ins;
   const Deadline* deadline;
   std::mt19937* MT;
@@ -100,13 +90,10 @@ struct Planner {
   // used in PIBT
   std::vector<std::array<Vertex*, 5> > C_next;  // next locations, used in PIBT
   std::vector<float> tie_breakers;              // random values, used in PIBT
-  std::vector<std::pair<uint, uint>> pibt_influence_edges;  // (parent, child)
   Agents A;
   Agents occupied_now;                          // for quick collision checking
   Agents occupied_next;                         // for quick collision checking
   std::chrono::steady_clock::time_point last_debug_print;
-  std::ofstream cbsh_values_file;
-  std::unordered_map<size_t, uint> cbsh_cache;
 
   Planner(const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
           const int _verbose = 0,
@@ -121,13 +108,7 @@ struct Planner {
   uint get_edge_cost(const Config& C1, const Config& C2);
   uint get_edge_cost(HNode* H_from, HNode* H_to);
   uint get_h_value(const Config& C);
-  uint cbs_heuristic(const Config& C);
-  void set_wdg_to_parents(HNode* H);
   void periodic_node_debug(HNode* H, uint loop_count);
-  void print_solution_pibt_clusters(const HNode* H_goal) const;
-  void load_cbsh_values();
-  uint get_or_compute_cbs_heuristic(const Config& C);
-  void update_pibt_bucket_counters(const HNode* H);
   bool get_new_config(HNode* H, LNode* L);
   bool funcPIBT(Agent* ai);
 

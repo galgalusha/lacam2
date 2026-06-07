@@ -1,12 +1,7 @@
 #include <argparse/argparse.hpp>
 #include <lacam2.hpp>
 #include <algorithm>
-// #include <CBSH2/map_loader.h>
-#include "/home/galko/.local/include/CBSH2/map_loader.h"
-#include "/home/galko/.local/include/CBSH2/agents_loader.h"
-#include <cbsh2_stuff.hpp>
 
-// Define global variable for WDG heuristic
 
 int main(int argc, char* argv[])
 {
@@ -43,20 +38,12 @@ int main(int argc, char* argv[])
   program.add_argument("-r", "--restart_rate")
       .help("restart rate")
       .default_value(std::string("0.001"));
-  program.add_argument("-wdg", "--with_wdg_flag")
-      .help("Enable WDG heuristic calculation")
-      .default_value(false)
-      .implicit_value(true);
     program.add_argument("-max_ll")
       .help("max allowed low-level search; -1 disables cutoff")
       .default_value(std::string("-1"));
       program.add_argument("-max_ll_decay")
         .help("decay factor for ancestor max_ll when a node exceeds its budget")
         .default_value(std::string("1.0"));
-      program.add_argument("-pibt_clustering")
-        .help("Enable PIBT clustering")
-        .default_value(false)
-        .implicit_value(true);
 
   try {
     program.parse_known_args(argc, argv);
@@ -89,19 +76,10 @@ int main(int argc, char* argv[])
       static_cast<Objective>(std::stoi(program.get<std::string>("objective")));
   const auto restart_rate = std::stof(program.get<std::string>("restart_rate"));
   const auto max_ll_decay = std::clamp(std::stof(program.get<std::string>("max_ll_decay")), 0.0f, 1.0f);
-  Planner::wdg_flag = program.get<bool>("with_wdg_flag");
   Planner::max_ll = std::stoi(program.get<std::string>("max_ll"));
   Planner::max_ll_decay = max_ll_decay;
-  Planner::pibt_clustering = program.get<bool>("pibt_clustering");
   if (!ins.is_valid(1)) return 1;
 
-
-  if (Planner::wdg_flag) {
-    cbs_map = new MapLoader(map_name, 0, 0, 0);
-    cbs_map->printMap();
-    cbs_agents = new AgentsLoader();
-    load_cbs_agents(ins);
-  }
 
   // solve
   auto additional_info = std::string("");

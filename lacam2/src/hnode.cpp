@@ -13,11 +13,9 @@ HNode::HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
       neighbor(),
       g(_g),
       h(_h),
-      h_cbs(0),
       f(g + h),
       priorities(C.size()),
       order(C.size(), 0),
-      constraint_order(C.size(), 0),
       search_tree(std::queue<std::shared_ptr<LNode>>()),
       ll_search(0),
       max_llalready_decayed(false),
@@ -33,7 +31,6 @@ HNode::HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
   if (parent != nullptr) parent->neighbor.insert(this);
 
   initialize_order(D);
-  initialize_constraint_order();
 }
 
 HNode::~HNode()
@@ -64,65 +61,3 @@ void HNode::initialize_order(DistTable& D)
     return priorities[i] > priorities[j];
   });
 }
-
-void HNode::initialize_constraint_order()
-{
-  if (!Planner::pibt_clustering) {
-        constraint_order = order;
-        return;
-  }
-  const auto N = C.size();
-
-  // Binary cluster priority: any agent in a cluster gets higher priority.
-  auto in_cluster = std::vector<uint8_t>(N, 0);
-  if (parent != nullptr && !parent->pibt_cluster.empty()) {
-    for (const auto& cluster : parent->pibt_cluster) {
-      for (const auto agent_id : cluster) {
-        if (agent_id >= N) continue;
-        in_cluster[agent_id] = 1;
-      }
-    }
-  }
-
-  // Primary key: in-cluster (1) vs not-in-cluster (0).
-  // Tie-breaker: existing PIBT launch order in `order`.
-  constraint_order = order;
-  std::stable_sort(constraint_order.begin(), constraint_order.end(),
-                   [&](uint i, uint j) {
-                       return in_cluster[i] > in_cluster[j];
-                   });
-}
-
-/* old 
-
-void HNode::initialize_constraint_order()
-{
-  if (!Planner::pibt_clustering) {
-        constraint_order = order;
-        return;
-  }
-  const auto N = C.size();
-
-  // Cluster order is primary key; original priority is secondary key.
-  auto cluster_rank = std::vector<uint>(N, N);
-  if (parent != nullptr && !parent->pibt_cluster.empty()) {
-    for (const auto& cluster : parent->pibt_cluster) {
-      for (size_t idx = 0; idx < cluster.size(); ++idx) {
-        const auto agent_id = cluster[idx];
-        if (agent_id >= N) continue;
-        const auto rank_in_cluster = static_cast<uint>(idx);
-        if (cluster_rank[agent_id] > rank_in_cluster) {
-          cluster_rank[agent_id] = rank_in_cluster;
-        }
-      }
-    }
-  }
-
-  // Primary key: cluster rank. Tie-breaker: existing PIBT launch order.
-  constraint_order = order;
-  std::stable_sort(constraint_order.begin(), constraint_order.end(),
-                   [&](uint i, uint j) {
-                     return cluster_rank[i] < cluster_rank[j];
-                   });
-}
-*/
