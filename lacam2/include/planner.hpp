@@ -44,6 +44,7 @@ struct LNode {
 struct HNode {
   static uint HNODE_CNT;  // count #(high-level node)
   const Config C;
+  int depth;
 
   // tree
   HNode* parent;

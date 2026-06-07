@@ -156,8 +156,6 @@ Solution Planner::solve(std::string& additional_info)
       auto new_f = new_g + new_h;
       if (H_goal != nullptr && new_f >= H_goal->f)
         continue;
-      if (H_goal != nullptr && new_f >= H_goal->f)
-        continue;
       const auto H_new = new HNode(C_new, D, H, new_g, new_h);
       EXPLORED[H_new->C] = H_new;
       OPEN.push(H_new);
@@ -199,14 +197,6 @@ Solution Planner::solve(std::string& additional_info)
   return solution;
 }
 
-uint get_depth(HNode* H) {
-  uint depth = 0;
-  for (auto p = H->parent; p != nullptr; p = p->parent) {
-    depth += 1;
-  }
-  return depth;  
-}
-
 void Planner::rewrite(HNode* H_from, HNode* H_to, HNode* H_goal,
                       std::stack<HNode*>& OPEN)
 {
@@ -222,10 +212,11 @@ void Planner::rewrite(HNode* H_from, HNode* H_to, HNode* H_goal,
       auto g_val = n_from->g + get_edge_cost(n_from->C, n_to->C);
       if (g_val < n_to->g) {
         if (n_to == H_goal)
-          solver_info(1, "depth(H): ", get_depth(H_from), ", depth(G): ",get_depth(H_goal), ", cost update: ", n_to->g, " -> ", g_val);
+          solver_info(1, "depth(H): ", H_from->depth, ", depth(G): ",H_goal->depth, ", cost update: ", n_to->g, " -> ", g_val);
         n_to->g = g_val;
         n_to->f = n_to->g + n_to->h;
         n_to->parent = n_from;
+        n_to->depth = n_from->depth + 1;
         // n_to->incoming_pibt_clusters = n_from->pibt_clusters;
         Q.push(n_to);
         if (H_goal != nullptr && n_to->f < H_goal->f) OPEN.push(n_to);
@@ -274,7 +265,7 @@ void Planner::periodic_node_debug(HNode* H, uint loop_count)
 
   const auto config_hash = ConfigHasher{}(H->C);
   std::cout 
-            << "depth=" << get_depth(H) 
+            << "depth=" << H->depth
             << " H=" << config_hash
             << " ll=" << H->ll_search
             << " P1=" << ConfigHasher{}(H->parent->C)

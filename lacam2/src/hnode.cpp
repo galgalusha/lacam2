@@ -21,6 +21,12 @@ HNode::HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
       max_llalready_decayed(false),
       max_ll(Planner::max_ll)
 {
+  if (parent != nullptr) {
+    depth = parent->depth + 1;
+  } else {
+    depth = 0;
+  }
+  
   ++HNODE_CNT;
 
   auto root = std::make_shared<LNode>();
