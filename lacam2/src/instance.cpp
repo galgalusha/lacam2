@@ -1,5 +1,7 @@
 #include "../include/instance.hpp"
 
+#include <stdexcept>
+
 Instance::Instance(const std::string& map_filename,
                    const std::vector<uint>& start_indexes,
                    const std::vector<uint>& goal_indexes)
@@ -90,6 +92,82 @@ Instance::Instance(const std::string& map_filename, std::mt19937* MT,
     if (goals.size() == N) break;
     ++j;
   }
+}
+
+Instance Instance::multiply(int n) const
+{
+  if (n <= 0) throw std::invalid_argument("multiply expects n >= 1");
+  if (starts.size() != goals.size()) {
+    throw std::runtime_error("invalid instance: starts/goals size mismatch");
+  }
+
+  const uint base_w = G.width;
+  const uint base_h = G.height;
+  const uint tiled_w = static_cast<uint>(n) * base_w + static_cast<uint>(n - 1);
+  const uint agent_count = starts.size();
+
+  // rebuild the base occupancy grid from Graph::U
+  std::vector<std::string> tiled_grid(base_h, std::string(tiled_w, '@'));
+  for (uint y = 0; y < base_h; ++y) {
+    for (uint x = 0; x < base_w; ++x) {
+      if (G.U[base_w * y + x] != nullptr) tiled_grid[y][x] = '.';
+    }
+  }
+
+  // copy the base map into each sub-grid and keep separator columns as walls
+  for (int tile = 1; tile < n; ++tile) {
+    const uint offset_x = static_cast<uint>(tile) * (base_w + 1);
+    for (uint y = 0; y < base_h; ++y) {
+      for (uint x = 0; x < base_w; ++x) {
+        if (G.U[base_w * y + x] != nullptr) tiled_grid[y][offset_x + x] = '.';
+      }
+    }
+  }
+
+  std::vector<uint> start_indexes;
+  std::vector<uint> goal_indexes;
+  start_indexes.reserve(agent_count * static_cast<uint>(n));
+  goal_indexes.reserve(agent_count * static_cast<uint>(n));
+
+  for (int tile = 0; tile < n; ++tile) {
+    const uint offset_x = static_cast<uint>(tile) * (base_w + 1);
+    for (uint i = 0; i < agent_count; ++i) {
+      const uint s_index = starts[i]->index;
+      const uint g_index = goals[i]->index;
+
+      const uint s_x = s_index % base_w;
+      const uint s_y = s_index / base_w;
+      const uint g_x = g_index % base_w;
+      const uint g_y = g_index / base_w;
+
+      start_indexes.push_back(tiled_w * s_y + (offset_x + s_x));
+      goal_indexes.push_back(tiled_w * g_y + (offset_x + g_x));
+    }
+  }
+
+  return Instance(tiled_grid, start_indexes, goal_indexes);
+}
+
+void Instance::render(std::ostream& os) const
+{
+  std::vector<std::string> canvas(G.height, std::string(G.width, '#'));
+
+  for (uint y = 0; y < G.height; ++y) {
+    for (uint x = 0; x < G.width; ++x) {
+      if (G.U[G.width * y + x] != nullptr) canvas[y][x] = '.';
+    }
+  }
+
+  for (uint agent_id = 0; agent_id < starts.size(); ++agent_id) {
+    auto v = starts[agent_id];
+    if (v == nullptr) continue;
+    const uint idx = v->index;
+    const uint x = idx % G.width;
+    const uint y = idx / G.width;
+    canvas[y][x] = static_cast<char>('0' + (agent_id % 10));
+  }
+
+  for (const auto& row : canvas) os << row << '\n';
 }
 
 bool Instance::is_valid(const int verbose) const

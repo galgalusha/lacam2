@@ -29,6 +29,13 @@ struct Instance {
            const uint _N = 1);
   ~Instance() {}
 
+  // create a new instance by tiling this grid n times horizontally
+  // with one wall column between adjacent copies
+  Instance multiply(int n) const;
+
+  // print ASCII map: '.' free, '#' wall, and starts as agent_id % 10
+  void render(std::ostream& os = std::cout) const;
+
   // simple feasibility check of instance
   bool is_valid(const int verbose = 0) const;
 };

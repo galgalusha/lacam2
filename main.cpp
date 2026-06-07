@@ -76,9 +76,15 @@ int main(int argc, char* argv[])
   const auto map_name = program.get<std::string>("map");
   const auto output_name = program.get<std::string>("output");
   const auto log_short = program.get<bool>("log_short");
-  const auto N = std::stoi(program.get<std::string>("num"));
-  const auto ins = scen_name.size() > 0 ? Instance(scen_name, map_name, N)
-                                        : Instance(map_name, &MT, N);
+  const auto N1 = std::stoi(program.get<std::string>("num"));
+  const auto ins1 = scen_name.size() > 0 ? Instance(scen_name, map_name, N1)
+                                        : Instance(map_name, &MT, N1);
+
+  const auto ins = ins1.multiply(1);
+  const auto N = N1 * 1;
+
+
+
   const auto objective =
       static_cast<Objective>(std::stoi(program.get<std::string>("objective")));
   const auto restart_rate = std::stof(program.get<std::string>("restart_rate"));

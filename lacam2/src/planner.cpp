@@ -232,7 +232,7 @@ Solution Planner::solve(std::string& additional_info)
       continue;
     }
 
-    if (H_goal != nullptr && loop_cnt % 20000 == 0) {
+    if (H_goal != nullptr && loop_cnt % 5000 == 0) {
       OPEN.push(H_init);
       continue;
     }
