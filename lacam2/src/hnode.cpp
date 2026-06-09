@@ -18,7 +18,7 @@ HNode::HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
       order(C.size(), 0),
       search_tree(std::queue<std::shared_ptr<LNode>>()),
       ll_search(0),
-      max_llalready_decayed(false),
+      max_ll_already_decayed(false),
       max_ll(Planner::max_ll)
 {
   if (parent != nullptr) {
@@ -26,7 +26,7 @@ HNode::HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
   } else {
     depth = 0;
   }
-  
+
   ++HNODE_CNT;
 
   auto root = std::make_shared<LNode>();

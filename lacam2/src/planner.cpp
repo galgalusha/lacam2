@@ -1,4 +1,5 @@
 #include "../include/planner.hpp"
+#include "../include/pibt.hpp"
 #include <chrono>
 #include <algorithm>
 
@@ -51,11 +52,8 @@ Planner::Planner(const Instance* _ins, const Deadline* _deadline,
       V_size(ins->G.size()),
       D(DistTable(ins)),
       loop_cnt(0),
-      C_next(N),
-      tie_breakers(V_size, 0),
-      A(N, nullptr),
-      occupied_now(V_size, nullptr),
-      occupied_next(V_size, nullptr),
+      depth_visit_counts(1, 0),
+      pibt(std::make_unique<PIBT>(ins, D, MT)),
       last_debug_print(std::chrono::steady_clock::now())
 {
 }
@@ -66,9 +64,6 @@ Planner::~Planner() {}
 Solution Planner::solve(std::string& additional_info)
 {
   solver_info(1, "start search");
-
-  // setup agents
-  for (auto i = 0; i < N; ++i) A[i] = new Agent(i);
 
   // setup search
   auto OPEN = std::stack<HNode*>();
@@ -88,6 +83,10 @@ Solution Planner::solve(std::string& additional_info)
 
     // do not pop here!
     auto H = OPEN.top();  // high-level node
+    if (static_cast<size_t>(H->depth) >= depth_visit_counts.size()) {
+      depth_visit_counts.resize(H->depth + 1, 0);
+    }
+    depth_visit_counts[H->depth] += 1;
     periodic_node_debug(H, loop_cnt);
 
     // low-level search end
@@ -111,15 +110,33 @@ Solution Planner::solve(std::string& additional_info)
     }
 
     if (H->max_ll > -1 && static_cast<float>(H->ll_search) > H->max_ll) {
-      if (H->parent != nullptr && !H->parent->max_llalready_decayed) {
-        H->parent->max_llalready_decayed = true;
+      if (H->parent != nullptr && !H->parent->max_ll_already_decayed) {
+        H->parent->max_ll_already_decayed = true;
         H->parent->max_ll = std::max(H->max_ll * Planner::max_ll_decay, 2.0f);
       }
       OPEN.pop();
       continue;
     }
 
-    if (H_goal != nullptr && loop_cnt % 5000 == 0) {
+    if (H_goal != nullptr && loop_cnt % 20000 == 0) {
+      std::cout << "restart depth_visit_counts:";
+      for (size_t start = 0; start < depth_visit_counts.size();) {
+        const auto value = depth_visit_counts[start];
+        size_t end = start + 1;
+        while (end < depth_visit_counts.size() && depth_visit_counts[end] == value) {
+          ++end;
+        }
+
+        std::cout << " d" << start;
+        if (end - start > 1) {
+          std::cout << "_" << (end - 1);
+        }
+        std::cout << "=" << value;
+
+        start = end;
+      }
+      std::cout << std::endl;
+      std::fill(depth_visit_counts.begin(), depth_visit_counts.end(), 0);
       OPEN.push(H_init);
       continue;
     }
@@ -132,11 +149,8 @@ Solution Planner::solve(std::string& additional_info)
     expand_lowlevel_tree(H, L);
 
     // create successors at the high-level search
-    const auto res = get_new_config(H, L.get());
+    const auto res = pibt->get_new_config(H, L.get(), C_new);
     if (!res) continue;
-
-    // create new configuration
-    for (auto a : A) C_new[a->id] = a->v_next;
 
     // check explored list
     const auto iter = EXPLORED.find(C_new);
@@ -191,7 +205,6 @@ Solution Planner::solve(std::string& additional_info)
   additional_info += "num_node_gen=" + std::to_string(EXPLORED.size()) + "\n";
 
   // memory management
-  for (auto a : A) delete a;
   for (auto itr : EXPLORED) delete itr.second;
 
   return solution;

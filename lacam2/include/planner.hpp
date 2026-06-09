@@ -60,7 +60,7 @@ struct HNode {
   std::vector<uint> order;
   std::queue<std::shared_ptr<LNode>> search_tree;
   uint ll_search;
-  bool max_llalready_decayed;
+  bool max_ll_already_decayed;
   float max_ll;
 
   HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
@@ -69,6 +69,8 @@ struct HNode {
   void initialize_order(DistTable& D);
 };
 using HNodes = std::vector<HNode*>;
+
+class PIBT;
 
 struct Planner {
   static int max_ll;
@@ -87,13 +89,8 @@ struct Planner {
   const uint V_size;  // number o vertices
   DistTable D;
   uint loop_cnt;      // auxiliary
-
-  // used in PIBT
-  std::vector<std::array<Vertex*, 5> > C_next;  // next locations, used in PIBT
-  std::vector<float> tie_breakers;              // random values, used in PIBT
-  Agents A;
-  Agents occupied_now;                          // for quick collision checking
-  Agents occupied_next;                         // for quick collision checking
+  std::vector<uint64_t> depth_visit_counts;
+  std::unique_ptr<PIBT> pibt;
   std::chrono::steady_clock::time_point last_debug_print;
 
   Planner(const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
@@ -110,14 +107,6 @@ struct Planner {
   uint get_edge_cost(HNode* H_from, HNode* H_to);
   uint get_h_value(const Config& C);
   void periodic_node_debug(HNode* H, uint loop_count);
-  bool get_new_config(HNode* H, LNode* L);
-  bool funcPIBT(Agent* ai);
-
-  // swap operation
-  Agent* swap_possible_and_required(Agent* ai);
-  bool is_swap_required(const uint pusher, const uint puller,
-                        Vertex* v_pusher_origin, Vertex* v_puller_origin);
-  bool is_swap_possible(Vertex* v_pusher_origin, Vertex* v_puller_origin);
 
   // utilities
   template <typename... Body>

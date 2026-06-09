@@ -1,8 +1,30 @@
-// PIBT-related methods of Planner (extracted from planner.cpp)
-#include "../include/planner.hpp"
+// PIBT-related logic extracted from Planner.
+#include "../include/pibt.hpp"
+
+#include <algorithm>
 
 
-bool Planner::get_new_config(HNode* H, LNode* L)
+PIBT::PIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT)
+    : ins(_ins),
+      D(_D),
+      MT(_MT),
+      N(ins->N),
+      V_size(ins->G.size()),
+      C_next(N),
+      tie_breakers(V_size, 0),
+      A(N, nullptr),
+      occupied_now(V_size, nullptr),
+      occupied_next(V_size, nullptr)
+{
+  for (auto i = 0; i < N; ++i) A[i] = new Agent(i);
+}
+
+PIBT::~PIBT()
+{
+  for (auto a : A) delete a;
+}
+
+bool PIBT::get_new_config(HNode* H, LNode* L, Config& C_new)
 {
   const auto who = L->who();
   const auto where = L->where();
@@ -47,10 +69,12 @@ bool Planner::get_new_config(HNode* H, LNode* L)
     if (a->v_next == nullptr && !funcPIBT(a)) return false;  // planning failure
   }
 
+  for (auto a : A) C_new[a->id] = a->v_next;
+
   return true;
 }
 
-bool Planner::funcPIBT(Agent* ai)
+bool PIBT::funcPIBT(Agent* ai)
 {
   const auto i = ai->id;
   const auto K = ai->v_now->neighbor.size();
@@ -114,7 +138,7 @@ bool Planner::funcPIBT(Agent* ai)
   return false;
 }
 
-Agent* Planner::swap_possible_and_required(Agent* ai)
+Agent* PIBT::swap_possible_and_required(Agent* ai)
 {
   const auto i = ai->id;
   // ai wanna stay at v_now -> no need to swap
@@ -142,8 +166,8 @@ Agent* Planner::swap_possible_and_required(Agent* ai)
 }
 
 // simulate whether the swap is required
-bool Planner::is_swap_required(const uint pusher, const uint puller,
-                               Vertex* v_pusher_origin, Vertex* v_puller_origin)
+bool PIBT::is_swap_required(const uint pusher, const uint puller,
+                            Vertex* v_pusher_origin, Vertex* v_puller_origin)
 {
   auto v_pusher = v_pusher_origin;
   auto v_puller = v_puller_origin;
@@ -173,7 +197,7 @@ bool Planner::is_swap_required(const uint pusher, const uint puller,
 }
 
 // simulate whether the swap is possible
-bool Planner::is_swap_possible(Vertex* v_pusher_origin, Vertex* v_puller_origin)
+bool PIBT::is_swap_possible(Vertex* v_pusher_origin, Vertex* v_puller_origin)
 {
   auto v_pusher = v_pusher_origin;
   auto v_puller = v_puller_origin;
