@@ -103,8 +103,6 @@ struct Planner {
   void expand_lowlevel_tree(HNode* H, const std::shared_ptr<LNode>& L);
   void rewrite(HNode* H_from, HNode* T, HNode* H_goal,
                std::stack<HNode*>& OPEN);
-  uint get_edge_cost(const Config& C1, const Config& C2);
-  uint get_edge_cost(HNode* H_from, HNode* H_to);
   uint get_h_value(const Config& C);
   void periodic_node_debug(HNode* H, uint loop_count);
 

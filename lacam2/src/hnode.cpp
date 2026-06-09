@@ -33,9 +33,6 @@ HNode::HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
   search_tree.push(root);
   ll_search += 1;
 
-  // update neighbor
-  if (parent != nullptr) parent->neighbor.insert(this);
-
   initialize_order(D);
 }
 

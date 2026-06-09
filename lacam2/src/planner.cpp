@@ -77,6 +77,10 @@ Solution Planner::solve(std::string& additional_info)
   auto C_new = Config(N, nullptr);  // for new configuration
   HNode* H_goal = nullptr;          // to store goal node
 
+  int rollout = pibt->rollout(H_init);
+  std::cout << "H_init rollout: " << rollout << std::endl;
+
+
   // DFS
   while (!OPEN.empty() && !is_expired(deadline)) {
     loop_cnt += 1;
@@ -119,24 +123,24 @@ Solution Planner::solve(std::string& additional_info)
     }
 
     if (H_goal != nullptr && loop_cnt % 20000 == 0) {
-      std::cout << "restart depth_visit_counts:";
-      for (size_t start = 0; start < depth_visit_counts.size();) {
-        const auto value = depth_visit_counts[start];
-        size_t end = start + 1;
-        while (end < depth_visit_counts.size() && depth_visit_counts[end] == value) {
-          ++end;
-        }
+      // std::cout << "restart depth_visit_counts:";
+      // for (size_t start = 0; start < depth_visit_counts.size();) {
+      //   const auto value = depth_visit_counts[start];
+      //   size_t end = start + 1;
+      //   while (end < depth_visit_counts.size() && depth_visit_counts[end] == value) {
+      //     ++end;
+      //   }
 
-        std::cout << " d" << start;
-        if (end - start > 1) {
-          std::cout << "_" << (end - 1);
-        }
-        std::cout << "=" << value;
+      //   std::cout << " d" << start;
+      //   if (end - start > 1) {
+      //     std::cout << "_" << (end - 1);
+      //   }
+      //   std::cout << "=" << value;
 
-        start = end;
-      }
-      std::cout << std::endl;
-      std::fill(depth_visit_counts.begin(), depth_visit_counts.end(), 0);
+      //   start = end;
+      // }
+      // std::cout << std::endl;
+      // std::fill(depth_visit_counts.begin(), depth_visit_counts.end(), 0);
       OPEN.push(H_init);
       continue;
     }
@@ -165,12 +169,13 @@ Solution Planner::solve(std::string& additional_info)
       if (H_goal == nullptr || H_insert->f < H_goal->f) OPEN.push(H_insert);
     } else {
       // insert new search node
-      auto new_g = H->g + get_edge_cost(H->C, C_new);
+      auto new_g = H->g + pibt->get_edge_cost(H->C, C_new);
       auto new_h = get_h_value(C_new);
       auto new_f = new_g + new_h;
       if (H_goal != nullptr && new_f >= H_goal->f)
         continue;
       const auto H_new = new HNode(C_new, D, H, new_g, new_h);
+      H->neighbor.insert(H_new);
       EXPLORED[H_new->C] = H_new;
       OPEN.push(H_new);
     }
@@ -222,7 +227,7 @@ void Planner::rewrite(HNode* H_from, HNode* H_to, HNode* H_goal,
     auto n_from = Q.front();
     Q.pop();
     for (auto n_to : n_from->neighbor) {
-      auto g_val = n_from->g + get_edge_cost(n_from->C, n_to->C);
+      auto g_val = n_from->g + pibt->get_edge_cost(n_from->C, n_to->C);
       if (g_val < n_to->g) {
         if (n_to == H_goal)
           solver_info(1, "depth(H): ", H_from->depth, ", depth(G): ",H_goal->depth, ", cost update: ", n_to->g, " -> ", g_val);
@@ -236,27 +241,6 @@ void Planner::rewrite(HNode* H_from, HNode* H_to, HNode* H_goal,
       }
     }
   }
-}
-
-uint Planner::get_edge_cost(const Config& C1, const Config& C2)
-{
-  if (objective == OBJ_SUM_OF_LOSS) {
-    uint cost = 0;
-    for (uint i = 0; i < N; ++i) {
-      if (C1[i] != ins->goals[i] || C2[i] != ins->goals[i]) {
-        cost += 1;
-      }
-    }
-    return cost;
-  }
-
-  // default: makespan
-  return 1;
-}
-
-uint Planner::get_edge_cost(HNode* H_from, HNode* H_to)
-{
-  return get_edge_cost(H_from->C, H_to->C);
 }
 
 uint Planner::get_h_value(const Config& C)

@@ -2,6 +2,7 @@
 #include "../include/pibt.hpp"
 
 #include <algorithm>
+#include <unordered_set>
 
 
 PIBT::PIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT)
@@ -24,8 +25,21 @@ PIBT::~PIBT()
   for (auto a : A) delete a;
 }
 
+uint PIBT::get_edge_cost(const Config& C1, const Config& C2) const
+{
+  uint cost = 0;
+  for (uint i = 0; i < N; ++i) {
+    if (C1[i] != ins->goals[i] || C2[i] != ins->goals[i]) {
+      cost += 1;
+    }
+  }
+  return cost;
+}
+
 bool PIBT::get_new_config(HNode* H, LNode* L, Config& C_new)
 {
+  if (H == nullptr) return false;
+
   const auto who = L->who();
   const auto where = L->where();
 
@@ -72,6 +86,50 @@ bool PIBT::get_new_config(HNode* H, LNode* L, Config& C_new)
   for (auto a : A) C_new[a->id] = a->v_next;
 
   return true;
+}
+
+int PIBT::rollout(HNode* H)
+{
+  if (H == nullptr) return -1;
+  if (is_same_config(H->C, ins->goals)) return 0;
+
+  LNode unconstrained;
+  Config C_new(N, nullptr);
+  std::unordered_set<uint> visited;
+  ConfigHasher hasher;
+  visited.insert(hasher(H->C));
+
+  int total_cost = 0;
+  auto current = H;
+  std::vector<HNode*> rollout_nodes;
+
+  auto cleanup = [&]() {
+    for (auto node : rollout_nodes) delete node;
+  };
+
+  while (true) {
+    if (!get_new_config(current, &unconstrained, C_new)) {
+      cleanup();
+      return -1;
+    }
+
+    total_cost += static_cast<int>(get_edge_cost(current->C, C_new));
+
+    if (is_same_config(C_new, ins->goals)) {
+      cleanup();
+      return total_cost;
+    }
+
+    const auto h = hasher(C_new);
+    if (!visited.insert(h).second) {
+      cleanup();
+      return -1;
+    }
+
+    auto next = new HNode(C_new, D, current, 0, 0);
+    rollout_nodes.push_back(next);
+    current = next;
+  }
 }
 
 bool PIBT::funcPIBT(Agent* ai)
