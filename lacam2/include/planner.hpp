@@ -120,9 +120,9 @@ struct Planner {
 };
 
 struct WPlanner : public Planner {
-  struct BucketedSuccessor {
+  struct Successor {
     HNode* node;
-    uint bucket;
+    uint depth;
     uint temp_cost;
   };
 
@@ -134,8 +134,9 @@ struct WPlanner : public Planner {
   {
   }
 
-  std::vector<BucketedSuccessor> get_successors(HNode* H, uint& best_temp_cost,
-                                                uint64_t& num_node_gen,
-                                                const uint num_expansions);
+  std::vector<Successor> get_successors(HNode* H, uint& best_temp_cost,
+                                        uint64_t& num_node_gen,
+                                        const uint num_expansions,
+                                        const uint how_many);
   Solution solve(std::string& additional_info);
 };
