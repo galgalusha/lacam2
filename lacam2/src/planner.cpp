@@ -77,9 +77,6 @@ Solution Planner::solve(std::string& additional_info)
   auto C_new = Config(N, nullptr);  // for new configuration
   HNode* H_goal = nullptr;          // to store goal node
 
-  int rollout = pibt->rollout(H_init);
-  std::cout << "H_init rollout: " << rollout << std::endl;
-
 
   // DFS
   while (!OPEN.empty() && !is_expired(deadline)) {
@@ -122,7 +119,7 @@ Solution Planner::solve(std::string& additional_info)
       continue;
     }
 
-    if (H_goal != nullptr && loop_cnt % 20000 == 0) {
+    // if (H_goal != nullptr && loop_cnt % 20000 == 0) {
       // std::cout << "restart depth_visit_counts:";
       // for (size_t start = 0; start < depth_visit_counts.size();) {
       //   const auto value = depth_visit_counts[start];
@@ -141,9 +138,9 @@ Solution Planner::solve(std::string& additional_info)
       // }
       // std::cout << std::endl;
       // std::fill(depth_visit_counts.begin(), depth_visit_counts.end(), 0);
-      OPEN.push(H_init);
-      continue;
-    }
+    //   OPEN.push(H_init);
+    //   continue;
+    // }
 
     // create successors at the low-level search
     auto L = H->search_tree.front();

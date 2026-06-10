@@ -117,3 +117,15 @@ struct Planner {
     info(level, verbose, (body)...);
   }
 };
+
+struct WPlanner : public Planner {
+  WPlanner(const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
+           const int _verbose = 0,
+           const Objective _objective = OBJ_NONE,
+           const float _restart_rate = 0.001)
+      : Planner(_ins, _deadline, _MT, _verbose, _objective, _restart_rate)
+  {
+  }
+
+  Solution solve(std::string& additional_info);
+};

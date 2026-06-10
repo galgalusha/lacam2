@@ -38,6 +38,10 @@ int main(int argc, char* argv[])
   program.add_argument("-r", "--restart_rate")
       .help("restart rate")
       .default_value(std::string("0.001"));
+  program.add_argument("-w", "--wplanner")
+      .help("use WPlanner rollout test mode")
+      .default_value(false)
+      .implicit_value(true);
     program.add_argument("-max_ll")
       .help("max allowed low-level search; -1 disables cutoff")
       .default_value(std::string("-1"));
@@ -75,6 +79,7 @@ int main(int argc, char* argv[])
   const auto objective =
       static_cast<Objective>(std::stoi(program.get<std::string>("objective")));
   const auto restart_rate = std::stof(program.get<std::string>("restart_rate"));
+  const auto use_wplanner = program.get<bool>("wplanner");
   const auto max_ll_decay = std::clamp(std::stof(program.get<std::string>("max_ll_decay")), 0.0f, 1.0f);
   Planner::max_ll = std::stoi(program.get<std::string>("max_ll"));
   Planner::max_ll_decay = max_ll_decay;
@@ -84,8 +89,11 @@ int main(int argc, char* argv[])
   // solve
   auto additional_info = std::string("");
   const auto deadline = Deadline(time_limit_sec * 1000);
-  const auto solution = solve(ins, additional_info, verbose - 1, &deadline, &MT,
-                              objective, restart_rate);
+  const auto solution = use_wplanner
+                            ? solve_w(ins, additional_info, verbose - 1,
+                                      &deadline, &MT, objective, restart_rate)
+                            : solve(ins, additional_info, verbose - 1, &deadline,
+                                    &MT, objective, restart_rate);
   const auto comp_time_ms = deadline.elapsed_ms();
 
   // failure
