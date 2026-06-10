@@ -6,12 +6,18 @@
 
 class PIBT {
  public:
+  struct RolloutResult {
+    bool success;
+    uint cost;
+    uint makespan;
+  };
+
   PIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT);
   ~PIBT();
 
   uint get_edge_cost(const Config& C1, const Config& C2) const;
   bool get_new_config(HNode* H, LNode* L, Config& C_new);
-  int rollout(HNode* H);
+  RolloutResult rollout(HNode* H);
   const Agents& agents() const { return A; }
 
  private:

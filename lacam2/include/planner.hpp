@@ -13,6 +13,7 @@
 #include <fstream>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 
 
 // objective function
@@ -119,6 +120,12 @@ struct Planner {
 };
 
 struct WPlanner : public Planner {
+  struct BucketedSuccessor {
+    HNode* node;
+    uint bucket;
+    uint temp_cost;
+  };
+
   WPlanner(const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
            const int _verbose = 0,
            const Objective _objective = OBJ_NONE,
@@ -127,5 +134,8 @@ struct WPlanner : public Planner {
   {
   }
 
+  std::vector<BucketedSuccessor> get_successors(HNode* H, uint& best_temp_cost,
+                                                uint64_t& num_node_gen,
+                                                const uint num_expansions);
   Solution solve(std::string& additional_info);
 };

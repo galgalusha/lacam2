@@ -88,10 +88,10 @@ bool PIBT::get_new_config(HNode* H, LNode* L, Config& C_new)
   return true;
 }
 
-int PIBT::rollout(HNode* H)
+PIBT::RolloutResult PIBT::rollout(HNode* H)
 {
-  if (H == nullptr) return -1;
-  if (is_same_config(H->C, ins->goals)) return 0;
+  if (H == nullptr) return {false, 0, 0};
+  if (is_same_config(H->C, ins->goals)) return {true, 0, 0};
 
   LNode unconstrained;
   Config C_new(N, nullptr);
@@ -99,7 +99,8 @@ int PIBT::rollout(HNode* H)
   ConfigHasher hasher;
   visited.insert(hasher(H->C));
 
-  int total_cost = 0;
+  uint total_cost = 0;
+  uint rollout_depth = 0;
   auto current = H;
   std::vector<HNode*> rollout_nodes;
 
@@ -110,20 +111,21 @@ int PIBT::rollout(HNode* H)
   while (true) {
     if (!get_new_config(current, &unconstrained, C_new)) {
       cleanup();
-      return -1;
+      return {false, 0, 0};
     }
 
-    total_cost += static_cast<int>(get_edge_cost(current->C, C_new));
+    total_cost += get_edge_cost(current->C, C_new);
+    rollout_depth += 1;
 
     if (is_same_config(C_new, ins->goals)) {
       cleanup();
-      return total_cost;
+      return {true, total_cost, rollout_depth};
     }
 
     const auto h = hasher(C_new);
     if (!visited.insert(h).second) {
       cleanup();
-      return -1;
+      return {false, 0, 0};
     }
 
     auto next = new HNode(C_new, D, current, 0, 0);
