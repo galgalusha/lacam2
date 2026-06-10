@@ -53,7 +53,7 @@ struct HNode {
 
   // costs
   uint g;        // g-value (might be updated)
-  const uint h;  // h-value
+  uint h;        // h-value (might be updated)
   uint f;        // g + h (might be updated)
 
   // for low-level search

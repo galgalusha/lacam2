@@ -2,12 +2,13 @@
 #include "../include/pibt.hpp"
 
 #include <algorithm>
-#include <stack>
+#include <queue>
 #include <unordered_map>
 #include <unordered_set>
 
 
-const int BUCKET_SIZE = 5;
+const int BUCKET_SIZE = 2;
+const uint GET_ITERATIONS = 2000;
 
 std::vector<WPlanner::BucketedSuccessor> WPlanner::get_successors(
   HNode* H, uint& best_temp_cost, uint64_t& num_node_gen,
@@ -35,9 +36,7 @@ std::vector<WPlanner::BucketedSuccessor> WPlanner::get_successors(
     if (!res) continue;
 
     auto new_g = H->g + pibt->get_edge_cost(H->C, C_new);
-    auto new_h = get_h_value(C_new);
-    auto H_new = new HNode(C_new, D, H, new_g, new_h);
-    num_node_gen += 1;
+    auto H_new = new HNode(C_new, D, H, new_g, 0);
 
     const auto rollout_res = pibt->rollout(H_new);
     if (!rollout_res.success) {
@@ -45,7 +44,12 @@ std::vector<WPlanner::BucketedSuccessor> WPlanner::get_successors(
       continue;
     }
 
+    H_new->h = rollout_res.cost;
+    H_new->f = H_new->g + H_new->h;
+    num_node_gen += 1;
+
     if (is_same_config(H_new->C, ins->goals)) {
+      std::cout << "goal found" << std::endl;
       const uint goal_temp_cost = H_new->g;
       const uint goal_bucket = H_new->depth / BUCKET_SIZE;
       if (goal_temp_cost < best_temp_cost) {
@@ -98,7 +102,11 @@ Solution WPlanner::solve(std::string& additional_info)
 {
   solver_info(1, "start WPlanner search");
 
-  auto frontier = std::stack<HNode*>();
+  auto cmp = [](const HNode* lhs, const HNode* rhs) {
+    if (lhs->f != rhs->f) return lhs->f > rhs->f;
+    return lhs->depth > rhs->depth;
+  };
+  auto frontier = std::priority_queue<HNode*, std::vector<HNode*>, decltype(cmp)>(cmp);
   auto best_seen_g = std::unordered_map<Config, uint, ConfigHasher>();
   std::vector<Config> solution;
   auto H_init = new HNode(ins->starts, D, nullptr, 0, 0);
@@ -112,10 +120,8 @@ Solution WPlanner::solve(std::string& additional_info)
   uint best_temp_cost = UINT_MAX;
   uint64_t num_node_gen = 1;
 
-  const uint gen_iterations = 100;
-
   while (!frontier.empty() && !is_expired(deadline)) {
-    auto H = frontier.top();
+    auto* H = frontier.top();
     frontier.pop();
 
     // Branch-and-bound pruning: edge costs are non-negative.
@@ -123,21 +129,45 @@ Solution WPlanner::solve(std::string& additional_info)
       continue;
     }
 
-    if (is_same_config(H->C, ins->goals)) {
-      if (H_goal == nullptr || H->g < H_goal->g) {
-        H_goal = H;
+    auto get_iterations = GET_ITERATIONS / (sqrt(H->depth + 1));
+    auto next_nodes =
+        get_successors(H, best_temp_cost, num_node_gen, get_iterations);
+
+    HNode* best_goal_successor = nullptr;
+    for (const auto& successor : next_nodes) {
+      auto* H_next = successor.node;
+      if (!is_same_config(H_next->C, ins->goals)) continue;
+      if (best_goal_successor == nullptr || H_next->g < best_goal_successor->g) {
+        best_goal_successor = H_next;
       }
-      if (H->g < best_goal_cost) {
-        best_goal_cost = H->g;
+    }
+
+    if (best_goal_successor != nullptr) {
+      for (const auto& successor : next_nodes) {
+        auto* H_next = successor.node;
+        if (H_next != best_goal_successor) {
+          delete H_next;
+        }
       }
+
+      all_nodes.push_back(best_goal_successor);
+      if (H_goal == nullptr || best_goal_successor->g < H_goal->g) {
+        H_goal = best_goal_successor;
+      }
+      if (best_goal_successor->g < best_goal_cost) {
+        best_goal_cost = best_goal_successor->g;
+      }
+
+      std::cout << "WPlanner goal successor: best_goal_cost="
+                << (best_goal_cost == UINT_MAX ? -1 : static_cast<int>(best_goal_cost))
+                << " best_temp_cost="
+                << (best_temp_cost == UINT_MAX ? -1 : static_cast<int>(best_temp_cost))
+                << " depth=" << best_goal_successor->depth
+                << " f=" << best_goal_successor->f << std::endl;
       continue;
     }
 
-    auto next_nodes =
-        get_successors(H, best_temp_cost, num_node_gen, gen_iterations);
-    std::cout << "--------------------" << std::endl;
-    for (auto it = next_nodes.rbegin(); it != next_nodes.rend(); ++it) {
-      const auto& successor = *it;
+    for (const auto& successor : next_nodes) {
       auto* H_next = successor.node;
       if (best_goal_cost != UINT_MAX && H_next->g >= best_goal_cost) {
         delete H_next;
@@ -158,6 +188,7 @@ Solution WPlanner::solve(std::string& additional_info)
             << " best_temp_cost="
             << (best_temp_cost == UINT_MAX ? -1 : static_cast<int>(best_temp_cost))
                   << " depth=" << H_next->depth
+                  << " f=" << H_next->f
                   << " makespan_bucket=" << successor.bucket * BUCKET_SIZE
                   << " temp_cost=" << successor.temp_cost
                   << std::endl;
