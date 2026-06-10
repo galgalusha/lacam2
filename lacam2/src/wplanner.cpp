@@ -7,8 +7,8 @@
 #include <unordered_set>
 
 
-const int BUCKET_SIZE = 2;
-const uint GET_ITERATIONS = 2000;
+const int BUCKET_SIZE = 1;
+const uint GET_ITERATIONS = 4000;
 
 std::vector<WPlanner::BucketedSuccessor> WPlanner::get_successors(
   HNode* H, uint& best_temp_cost, uint64_t& num_node_gen,
@@ -44,8 +44,10 @@ std::vector<WPlanner::BucketedSuccessor> WPlanner::get_successors(
       continue;
     }
 
+
     H_new->h = rollout_res.cost;
     H_new->f = H_new->g + H_new->h;
+
     num_node_gen += 1;
 
     if (is_same_config(H_new->C, ins->goals)) {
