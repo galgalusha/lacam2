@@ -37,8 +37,9 @@ struct LNode {
   const uint depth;
   LNode(std::shared_ptr<LNode> parent = nullptr, uint i = 0,
         Vertex* v = nullptr);  // who and where
-  std::vector<uint> who() const;
-  Vertices where() const;
+  virtual std::vector<uint> who() const;
+  virtual Vertices where() const;
+  virtual ~LNode() = default;
 };
 
 // high-level node

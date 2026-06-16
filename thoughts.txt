@@ -1,5 +1,10 @@
+Reached SoC=2614 with depth bucket beam.
+It is slow.
 
-Create a class called Rollout in new cpp/chh files.
-This class will have a method rollout that accepts an HNode and Instance and what it does is trying to reach the goal state by generating subsequent HNodes from the given one using get_new_config
+Not sure depth is the best diffrentiator.
+Maybe can calculate something that squize the config.
 
+More successors shows better results.
+Try returning more.
 
+Use threads for the multiple rollouts.

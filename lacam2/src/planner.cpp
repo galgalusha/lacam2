@@ -119,28 +119,28 @@ Solution Planner::solve(std::string& additional_info)
       continue;
     }
 
-    // if (H_goal != nullptr && loop_cnt % 20000 == 0) {
-      // std::cout << "restart depth_visit_counts:";
-      // for (size_t start = 0; start < depth_visit_counts.size();) {
-      //   const auto value = depth_visit_counts[start];
-      //   size_t end = start + 1;
-      //   while (end < depth_visit_counts.size() && depth_visit_counts[end] == value) {
-      //     ++end;
-      //   }
+    if (H_goal != nullptr && loop_cnt % 20000 == 0) {
+      std::cout << "restart depth_visit_counts:";
+      for (size_t start = 0; start < depth_visit_counts.size();) {
+        const auto value = depth_visit_counts[start];
+        size_t end = start + 1;
+        while (end < depth_visit_counts.size() && depth_visit_counts[end] == value) {
+          ++end;
+        }
 
-      //   std::cout << " d" << start;
-      //   if (end - start > 1) {
-      //     std::cout << "_" << (end - 1);
-      //   }
-      //   std::cout << "=" << value;
+        std::cout << " d" << start;
+        if (end - start > 1) {
+          std::cout << "_" << (end - 1);
+        }
+        std::cout << "=" << value;
 
-      //   start = end;
-      // }
-      // std::cout << std::endl;
-      // std::fill(depth_visit_counts.begin(), depth_visit_counts.end(), 0);
-    //   OPEN.push(H_init);
-    //   continue;
-    // }
+        start = end;
+      }
+      std::cout << std::endl;
+      std::fill(depth_visit_counts.begin(), depth_visit_counts.end(), 0);
+      OPEN.push(H_init);
+      continue;
+    }
 
     // create successors at the low-level search
     auto L = H->search_tree.front();
