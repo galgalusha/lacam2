@@ -5,6 +5,8 @@
 #include "../include/pibt.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <numeric>
 #include <unordered_set>
 
@@ -75,6 +77,7 @@ ODPlanner::ODPlanner(const Instance* _ins, const Deadline* _deadline,
       N(_ins->N),
       D(_ins),
       pibt(std::make_unique<PIBT>(_ins, D, _MT)),
+//      pibt(std::make_unique<PIBT>(_ins, D, nullptr)), // no more random
       loop_cnt(0)
 {
 }
@@ -133,15 +136,27 @@ void ODPlanner::expand(ODNode* root, ODNode* node, std::vector<ODNode*>& succs)
     if (!pibt->get_new_config(&tmp_h, &constraints, completed)) continue;
 
     HNode tmp(completed, D, nullptr, 0, 0);
-    // PIBT::RolloutResult best_rollout;
-    // best_rollout.success = false;
-    // for (int _ = 0; _ < 10; _++) {
-    //     PIBT::RolloutResult rollout = pibt->rollout(&tmp);
-    //     if (rollout.success && (!best_rollout.success || rollout.cost < best_rollout.cost)) {
-    //         best_rollout = rollout;
-    //     }
-    // }
-    PIBT::RolloutResult rollout = pibt->rollout(&tmp);
+    std::vector<PIBT::RolloutResult> rollouts;
+    for (int _ = 0; _ < 10; _++) {
+        PIBT::RolloutResult rollout = pibt->rollout(&tmp);
+        if (rollout.success) rollouts.push_back(rollout);
+    }
+
+    if (rollouts.size() < 5) {
+        continue;
+    }
+
+    double mean_cost = 0.0;
+    for (const auto& r : rollouts) mean_cost += r.cost;
+    mean_cost /= rollouts.size();
+    double best_diff = std::numeric_limits<double>::max();
+    PIBT::RolloutResult avg_rollout;
+    for (const auto& r : rollouts) {
+        double diff = std::abs(static_cast<double>(r.cost) - mean_cost);
+        if (diff < best_diff) { best_diff = diff; avg_rollout = r; }
+    }
+
+    PIBT::RolloutResult rollout = avg_rollout; //  pibt->rollout(&tmp);
     if (!rollout.success) continue;
 
     int cost_to_complete_full_step = pibt->get_edge_cost(root->C, completed);
@@ -251,9 +266,8 @@ ODNode* ODPlanner::get_next_best_c(ODNode* root, uint max_iter)
       best_f = current->f;
       best_f_node = current;
       std::cout << "ODPlanner:"
-                << " best_f=" << current->f + root->g 
+                << " best_f=" << current->f << ", g=" << current->g << ", h=" << current->h  
                 << " root g=" << root->g 
-                << " tmp  g=" << current->g 
                 << std::endl;
     }
 
@@ -295,7 +309,7 @@ Solution ODPlanner::solve(std::string& additional_info)
 
     // auto orig_g = node->g;
     // node->g = 0;
-    ODNode* best_next = get_next_best_c(node, 500);
+    ODNode* best_next = get_next_best_c(node, 200);
     // node->g = orig_g;
 
     if (best_next == nullptr) {
@@ -311,12 +325,12 @@ Solution ODPlanner::solve(std::string& additional_info)
     best_next->parent = node;
     best_next->next_C = Config(N, nullptr);
     best_next->initialize_order(D, N);
-    
-    // if (best_next->f == 2683) {
-    //     std::cout << "FOUND 2683" 
+
+    // if (best_next->f == 2753) {
+    //     std::cout << "FOUND 2753" 
     //               << ", Rollout size: " << best_next->rollout.size()
     //               << std::endl;
-    //     for (int i = 0; i < 100; i ++) {
+    //     for (int i = 0; i < 5; i ++) {
     //         auto h = heuristic(best_next->C);
     //         std::cout << "h = " << h << std::endl;
     //     }
