@@ -53,11 +53,6 @@ struct ODNode {
   // The next configuration being built up agent-by-agent.
   Config next_C;
 
-  // For incomplete nodes: the fully-completed config produced by
-  // get_new_config using next_C as hard constraints + PIBT for the rest.
-  // Empty for complete nodes (use C instead).
-  Config completed_C;
-
   // Ordering of agents still to be assigned in this round.
   // For a complete node this always has size N.
   std::vector<uint> ordering;
@@ -67,6 +62,7 @@ struct ODNode {
   uint h;
   uint f;
   uint depth;
+  std::vector<Config> rollout;
 
   // Pointer to the nearest ancestor that was a complete node.
   ODNode* parent;
@@ -101,7 +97,7 @@ public:
   DistTable D;
   std::unique_ptr<PIBT> pibt;
   uint loop_cnt;
-  uint best_f;
+  uint best_f = 9999999;
 
   ODPlanner(const Instance* _ins, const Deadline* _deadline,
             std::mt19937* _MT, const int _verbose = 0);
@@ -114,8 +110,17 @@ private:
   int heuristic(const Config& C);
 
   // Generate successor ODNodes of the given node and append them to `succs`.
-  void expand(ODNode* node, std::vector<ODNode*>& succs);
+  void expand(ODNode* root, ODNode* node, std::vector<ODNode*>& succs);
+
+  bool is_conflict(const uint agent,
+                   std::vector<std::seed_seq::result_type>& remaining,
+                   ODNode* node, Vertex* v_next);
 
   // Build the solution path by following parent pointers from a goal node.
-  Solution build_solution(ODNode* goal_node) const;
+  Solution build_solution(ODNode* node);
+
+  // Run up to `max_iter` A* iterations starting from `hl_start`.
+  // Allocates nodes into `all_nodes` (caller owns them).
+  // Returns the best (lowest-f) node found, never nullptr if heuristic succeeds.
+  ODNode* get_next_best_c(ODNode* root, uint max_iter);
 };

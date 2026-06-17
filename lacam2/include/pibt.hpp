@@ -10,6 +10,7 @@ class PIBT {
     bool success;
     uint cost;
     uint makespan;
+    std::vector<Config> configs;  // sequence of configs produced during rollout
   };
 
   PIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT);

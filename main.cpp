@@ -114,6 +114,9 @@ int main(int argc, char* argv[])
   // check feasibility
   if (!is_feasible_solution(ins, solution, verbose)) {
     info(0, verbose, "invalid solution");
+  } else {
+    info(0, verbose, "Solution is valid. Len: ", solution.size());
+
   }
 
   // post processing
