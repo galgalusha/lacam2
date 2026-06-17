@@ -92,6 +92,33 @@ int ODPlanner::heuristic(const Config& C)
   return static_cast<int>(result.cost);
 }
 
+
+PIBT::RolloutResult get_rollout(Config& C, DistTable& D, PIBT* pibt) {
+    HNode tmp(C, D, nullptr, 0, 0);
+    std::vector<PIBT::RolloutResult> rollouts;
+    for (int _ = 0; _ < 10; _++) {
+        PIBT::RolloutResult rollout = pibt->rollout(&tmp);
+        if (rollout.success) rollouts.push_back(rollout);
+    }
+
+    if (rollouts.size() < 5) {
+        PIBT::RolloutResult failed;
+        failed.success = false;
+        return failed;
+    }
+
+    double mean_cost = 0.0;
+    for (const auto& r : rollouts) mean_cost += r.cost;
+    mean_cost /= rollouts.size();
+    double best_diff = std::numeric_limits<double>::max();
+    PIBT::RolloutResult avg_rollout;
+    for (const auto& r : rollouts) {
+        double diff = std::abs(static_cast<double>(r.cost) - mean_cost);
+        if (diff < best_diff) { best_diff = diff; avg_rollout = r; }
+    }
+    return avg_rollout;
+}
+
 // ---------------------------------------------------------------------------
 // expand
 // ---------------------------------------------------------------------------
@@ -135,28 +162,7 @@ void ODPlanner::expand(ODNode* root, ODNode* node, std::vector<ODNode*>& succs)
     Config completed(N, nullptr);
     if (!pibt->get_new_config(&tmp_h, &constraints, completed)) continue;
 
-    HNode tmp(completed, D, nullptr, 0, 0);
-    std::vector<PIBT::RolloutResult> rollouts;
-    for (int _ = 0; _ < 10; _++) {
-        PIBT::RolloutResult rollout = pibt->rollout(&tmp);
-        if (rollout.success) rollouts.push_back(rollout);
-    }
-
-    if (rollouts.size() < 5) {
-        continue;
-    }
-
-    double mean_cost = 0.0;
-    for (const auto& r : rollouts) mean_cost += r.cost;
-    mean_cost /= rollouts.size();
-    double best_diff = std::numeric_limits<double>::max();
-    PIBT::RolloutResult avg_rollout;
-    for (const auto& r : rollouts) {
-        double diff = std::abs(static_cast<double>(r.cost) - mean_cost);
-        if (diff < best_diff) { best_diff = diff; avg_rollout = r; }
-    }
-
-    PIBT::RolloutResult rollout = avg_rollout; //  pibt->rollout(&tmp);
+    PIBT::RolloutResult rollout = get_rollout(completed, D, pibt.get());
     if (!rollout.success) continue;
 
     int cost_to_complete_full_step = pibt->get_edge_cost(root->C, completed);
