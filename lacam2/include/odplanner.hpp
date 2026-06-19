@@ -48,7 +48,7 @@ struct ODNode {
 
   // Current complete configuration (meaningful for complete nodes; for temp
   // nodes it is the parent complete configuration kept for reference).
-  const Config C;
+  Config C;
 
   // The next configuration being built up agent-by-agent.
   Config next_C;

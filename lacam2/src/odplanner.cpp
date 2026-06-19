@@ -17,6 +17,7 @@
 
 float WEIGHT = 1;
 uint ODNode::ODNODE_CNT = 0;
+int ROLLOUT_NUM = 20;
 
 ODNode::ODNode(const Config& _C, const Config& _next_C,
                const std::vector<uint>& _ordering, uint _g, uint _h,
@@ -96,7 +97,7 @@ int ODPlanner::heuristic(const Config& C)
 PIBT::RolloutResult get_rollout(Config& C, DistTable& D, PIBT* pibt) {
     HNode tmp(C, D, nullptr, 0, 0);
     std::vector<PIBT::RolloutResult> rollouts;
-    for (int _ = 0; _ < 10; _++) {
+    for (int _ = 0; _ < ROLLOUT_NUM; _++) {
         PIBT::RolloutResult rollout = pibt->rollout(&tmp);
         if (rollout.success) rollouts.push_back(rollout);
     }
@@ -169,8 +170,8 @@ void ODPlanner::expand(ODNode* root, ODNode* node, std::vector<ODNode*>& succs)
     int new_h = rollout.cost + cost_to_complete_full_step - new_g;
 
 
-    new_g = root->g;
-    new_h = rollout.cost + cost_to_complete_full_step;
+    // new_g = root->g;
+    // new_h = rollout.cost + cost_to_complete_full_step;
 
     auto* succ = new ODNode(completed, new_next_C, remaining,
                             new_g, static_cast<uint>(new_h),
@@ -277,7 +278,7 @@ ODNode* ODPlanner::get_next_best_c(ODNode* root, uint max_iter)
                 << std::endl;
     }
 
-    if (inner_cnt % 500 == 0) {
+    if (inner_cnt % 100 == 0) {
       std::cout << "ODPlanner:"
                 << " inner_cnt=" << inner_cnt
                 << " OPEN=" << OPEN.size()
@@ -308,14 +309,18 @@ Solution ODPlanner::solve(std::string& additional_info)
   Config hl_start = ins->starts;
   ODNode* root = new ODNode(ins->starts, Config(N, nullptr), {}, 0, 0, nullptr);
   root->initialize_order(D, N);
+  root->f = 999999;
   
   ODNode* node = root;
+  ODNode* best = root;
+  int next_C_idx_to_pick_from_best = 0;
+  
 
   for (int hl = 0; hl < 50 && !is_expired(deadline); ++hl) {
 
     // auto orig_g = node->g;
     // node->g = 0;
-    ODNode* best_next = get_next_best_c(node, 200);
+    ODNode* best_next = get_next_best_c(node, 200 + hl * 100);
     // node->g = orig_g;
 
     if (best_next == nullptr) {
@@ -323,27 +328,35 @@ Solution ODPlanner::solve(std::string& additional_info)
         break;
     }
 
+//  int new_h = rollout.cost + cost_to_complete_full_step - new_g;
 
     auto edge_cost = pibt->get_edge_cost(node->C, best_next->C);
+    best_next->h += best_next->g - edge_cost; // edge_cost;
     best_next->g = node->g + edge_cost;
-    best_next->h -= edge_cost;
     best_next->f = best_next->h + best_next->g;
     best_next->parent = node;
     best_next->next_C = Config(N, nullptr);
     best_next->initialize_order(D, N);
+    best_next->depth = 0;
 
-    // if (best_next->f == 2753) {
-    //     std::cout << "FOUND 2753" 
-    //               << ", Rollout size: " << best_next->rollout.size()
-    //               << std::endl;
-    //     for (int i = 0; i < 5; i ++) {
-    //         auto h = heuristic(best_next->C);
-    //         std::cout << "h = " << h << std::endl;
-    //     }
-    //     return build_solution(best_next);
+    // if (best_next->f < best->f) {
+    //     best = best_next;
+    //     next_C_idx_to_pick_from_best = 0;
     // }
 
+    if (best_next->f > node->f && node->rollout.size() > 0) {
+            std::cout << "Didn't find better next. Setting next to be next in best rollout after node->C" << std::endl;
+            std::cout << "best_f=" << node->f << ", current_f=" << best_next->f << std::endl;
+            best_next->C = node->rollout[0];
+            auto edge_cost = pibt->get_edge_cost(node->C, best_next->C);
+            best_next->h = node->h - edge_cost;
+            best_next->g = node->g + edge_cost;
+            best_next->f = best_next->h + best_next->g;
+            best_next->rollout = std::vector<Config>(node->rollout.begin() + 1, node->rollout.end());
+    }
+
     node = best_next;
+    ROLLOUT_NUM = 20 / (hl + 1);
 
     std::cout << "ODPlanner: hl=" << hl
               << " advancing to next high-level iteration"

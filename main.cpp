@@ -1,6 +1,7 @@
 #include <argparse/argparse.hpp>
 #include <lacam2.hpp>
 #include <odplanner.hpp>
+#include <random_planner.hpp>
 #include <algorithm>
 
 
@@ -47,6 +48,10 @@ int main(int argc, char* argv[])
       .help("use ODPlanner (Operator Decomposition A*)")
       .default_value(false)
       .implicit_value(true);
+  program.add_argument("-rand_planner", "--rand_planner")
+      .help("use RandomPlanner (random PIBT rollouts from initial state)")
+      .default_value(false)
+      .implicit_value(true);
     program.add_argument("-max_ll")
       .help("max allowed low-level search; -1 disables cutoff")
       .default_value(std::string("-1"));
@@ -86,6 +91,7 @@ int main(int argc, char* argv[])
   const auto restart_rate = std::stof(program.get<std::string>("restart_rate"));
   const auto use_wplanner = program.get<bool>("wplanner");
   const auto use_odplanner = program.get<bool>("odplanner");
+  const auto use_rand_planner = program.get<bool>("rand_planner");
   const auto max_ll_decay = std::clamp(std::stof(program.get<std::string>("max_ll_decay")), 0.0f, 1.0f);
   Planner::max_ll = std::stoi(program.get<std::string>("max_ll"));
   Planner::max_ll_decay = max_ll_decay;
@@ -96,7 +102,10 @@ int main(int argc, char* argv[])
   auto additional_info = std::string("");
   const auto deadline = Deadline(time_limit_sec * 1000);
   Solution solution;
-  if (use_odplanner) {
+  if (use_rand_planner) {
+    RandomPlanner rand_planner(&ins, &deadline, &MT, verbose);
+    solution = rand_planner.solve();
+  } else if (use_odplanner) {
     ODPlanner od_planner(&ins, &deadline, &MT, verbose - 1);
     solution = od_planner.solve(additional_info);
   } else if (use_wplanner) {

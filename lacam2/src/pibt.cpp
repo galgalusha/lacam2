@@ -116,6 +116,10 @@ PIBT::RolloutResult PIBT::rollout(HNode* H)
     }
 
     total_cost += get_edge_cost(current->C, C_new);
+    if (total_cost > 2500) {
+      cleanup();
+      return {false, 0, 0, {}};
+    }
     rollout_depth += 1;
     rollout_configs.push_back(C_new);
 
