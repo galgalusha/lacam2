@@ -147,6 +147,7 @@ struct WPlanner : public Planner {
                                         const bool save_rollouts = false,
                                         const PIBTFactory& pibt_factory = nullptr);
   NeighborScorePolicy create_policy(int num_agents);
+  NeighborScorePolicy create_policy(const Config& start_config, int num_agents);
   void test_policy(int agent_id);
   Solution solve(std::string& additional_info);
 };

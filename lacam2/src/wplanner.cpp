@@ -189,7 +189,11 @@ std::vector<WPlanner::Successor> WPlanner::get_successors(
 }
 
 NeighborScorePolicy WPlanner::create_policy(int num_agents) {
-  auto H_init = new HNode(ins->starts, D, nullptr, 0, 0);
+  return create_policy(ins->starts, num_agents);
+}
+
+NeighborScorePolicy WPlanner::create_policy(const Config& start_config, int num_agents) {
+  auto H_init = new HNode(start_config, D, nullptr, 0, 0);
   uint64_t node_counter = 0;
   uint best_cost = UINT_MAX;
   const uint n_expansions = 5000;
@@ -282,17 +286,19 @@ void WPlanner::test_policy(int TEST_AGENT_ID)
 
 Solution WPlanner::solve(std::string& additional_info)
 {
+  const uint refresh_policy_depth = 5;
+
   auto policy = std::make_shared<NeighborScorePolicy>(create_policy(ins->N));
   PIBTFactory policy_pibt_factory = [&](std::mt19937* rng) -> std::unique_ptr<PIBTBase> {
     return std::make_unique<PolicyPIBT>(ins, D, policy);
   };
 
   auto cmp = [](const HNode* lhs, const HNode* rhs) {
-    // float f_lhs = lhs->g + lhs->h * 0.95;
-    // float f_rhs = rhs->g + rhs->h * 0.95;
-    // if (f_lhs != f_rhs) return f_lhs > f_rhs;
-    // return lhs->depth > rhs->depth;
-    if (lhs->f != rhs->f) return lhs->f > rhs->f;
+    auto l = lhs->g + lhs->h * 1.4;
+    auto r = rhs->g + rhs->h * 1.4;
+    if (l != r) return l > r;
+
+    //if (lhs->f != rhs->f) return lhs->f > rhs->f;
     return lhs->depth > rhs->depth;
   };
   auto frontier = std::priority_queue<HNode*, std::vector<HNode*>, decltype(cmp)>(cmp);
@@ -311,6 +317,14 @@ Solution WPlanner::solve(std::string& additional_info)
   auto last_print_time = std::chrono::steady_clock::now();
   uint last_printed_best_temp = UINT_MAX;
 
+  // Track best Config (lowest g) seen at each depth
+  std::unordered_map<uint, std::pair<Config, uint>> best_config_at_depth;
+  // Track which depths have been first expanded
+  std::unordered_set<uint> expanded_depths;
+
+  // Record initial node
+  best_config_at_depth[0] = {H_init->C, H_init->g};
+
   while (!frontier.empty() && !is_expired(deadline)) {
     auto* H = frontier.top();
     frontier.pop();
@@ -318,6 +332,23 @@ Solution WPlanner::solve(std::string& additional_info)
     // Branch-and-bound pruning: edge costs are non-negative.
     if (best_goal_cost != UINT_MAX && H->g >= best_goal_cost) {
       continue;
+    }
+
+    // Check if this depth is being expanded for the first time
+    const uint cur_depth = static_cast<uint>(H->depth);
+    if (expanded_depths.find(cur_depth) == expanded_depths.end()) {
+      expanded_depths.insert(cur_depth);
+      if (cur_depth % refresh_policy_depth == 0 && cur_depth >= refresh_policy_depth * 2) {
+        const uint ref_depth = cur_depth - refresh_policy_depth;
+        auto it = best_config_at_depth.find(ref_depth);
+        if (it != best_config_at_depth.end()) {
+          std::cout << "WPlanner: refreshing policy at depth=" << cur_depth
+                    << " using best config from depth=" << ref_depth << std::endl;
+          *policy = create_policy(it->second.first, ins->N);
+        } else {
+          std::cout << "WPlanner: could not refresh policy at depth=" << cur_depth << std::endl;
+        }
+      }
     }
 
     auto get_iterations = GET_ITERATIONS / (sqrt(H->depth + 1));
@@ -372,6 +403,13 @@ Solution WPlanner::solve(std::string& additional_info)
         continue;
       }
       best_seen_g[H_next->C] = H_next->g;
+
+      // Record best config for this depth
+      const uint next_depth = static_cast<uint>(H_next->depth);
+      auto depth_it = best_config_at_depth.find(next_depth);
+      if (depth_it == best_config_at_depth.end() || H_next->g < depth_it->second.second) {
+        best_config_at_depth[next_depth] = {H_next->C, H_next->g};
+      }
 
       frontier.push(H_next);
       all_nodes.push_back(H_next);
