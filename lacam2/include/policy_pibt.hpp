@@ -2,14 +2,16 @@
 
 #include "pibt_base.hpp"
 #include "planner.hpp"
+#include "policy.hpp"
 #include "rollout_result.hpp"
 
 #include <array>
+#include <memory>
 
-class PIBT : public PIBTBase {
+class PolicyPIBT : public PIBTBase {
  public:
-  PIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT);
-  ~PIBT() override;
+  PolicyPIBT(const Instance* _ins, DistTable& _D, std::shared_ptr<Policy> _policy);
+  ~PolicyPIBT() override;
 
   uint get_edge_cost(const Config& C1, const Config& C2) const override;
   bool get_new_config(HNode* H, LNode* L, Config& C_new) override;
@@ -19,20 +21,18 @@ class PIBT : public PIBTBase {
  private:
   const Instance* ins;
   DistTable& D;
-  std::mt19937* MT;
+  std::shared_ptr<Policy> policy;
   const uint N;
   const uint V_size;
 
-  std::vector<std::array<Vertex*, 5> > C_next;  // next locations, used in PIBT
-  std::vector<float> tie_breakers;              // random values, used in PIBT
+  std::vector<std::array<Vertex*, 5>> C_next;
   Agents A;
-  Agents occupied_now;   // for quick collision checking
-  Agents occupied_next;  // for quick collision checking
+  Agents occupied_now;
+  Agents occupied_next;
 
-  bool funcPIBT(Agent* ai);
+  bool funcPIBT(Agent* ai, const Config& C_current);
 
-  // swap operation
-  Agent* swap_possible_and_required(Agent* ai);
+  Agent* swap_possible_and_required(Agent* ai, const Config& C_current);
   bool is_swap_required(const uint pusher, const uint puller,
                         Vertex* v_pusher_origin, Vertex* v_puller_origin);
   bool is_swap_possible(Vertex* v_pusher_origin, Vertex* v_puller_origin);

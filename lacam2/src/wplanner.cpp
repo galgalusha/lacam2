@@ -1,5 +1,6 @@
 #include "../include/planner.hpp"
 #include "../include/pibt.hpp"
+#include "../include/rollout_result.hpp"
 
 #include <algorithm>
 #include <future>
@@ -53,7 +54,7 @@ std::vector<WPlanner::Successor> WPlanner::get_successors(
     struct BatchItem {
       uint worker_id;
       HNode* node;
-      PIBT::RolloutResult rollout_res;
+      RolloutResult rollout_res;
       bool success;
       bool is_goal;
       uint temp_cost;
@@ -94,7 +95,7 @@ std::vector<WPlanner::Successor> WPlanner::get_successors(
       continue;
     }
 
-    std::vector<std::future<PIBT::RolloutResult>> futures;
+    std::vector<std::future<RolloutResult>> futures;
     futures.reserve(batch_items.size());
     for (const auto& item : batch_items) {
       const uint worker_id = item.worker_id;

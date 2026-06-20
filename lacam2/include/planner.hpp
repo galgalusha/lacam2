@@ -7,6 +7,8 @@
 #include "dist_table.hpp"
 #include "graph.hpp"
 #include "instance.hpp"
+#include "pibt_base.hpp"
+#include "policy.hpp"
 #include "utils.hpp"
 
 #include <chrono>
@@ -72,8 +74,6 @@ struct HNode {
 };
 using HNodes = std::vector<HNode*>;
 
-class PIBT;
-
 struct Planner {
   static int max_ll;
   static float max_ll_decay;
@@ -92,14 +92,15 @@ struct Planner {
   DistTable D;
   uint loop_cnt;      // auxiliary
   std::vector<uint64_t> depth_visit_counts;
-  std::unique_ptr<PIBT> pibt;
+  std::unique_ptr<PIBTBase> pibt;
   std::chrono::steady_clock::time_point last_debug_print;
 
   Planner(const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
           const int _verbose = 0,
           // other parameters
           const Objective _objective = OBJ_NONE,
-          const float _restart_rate = 0.001);
+          const float _restart_rate = 0.001,
+          std::shared_ptr<Policy> _policy = nullptr);
   ~Planner();
   Solution solve(std::string& additional_info);
   void expand_lowlevel_tree(HNode* H, const std::shared_ptr<LNode>& L);
