@@ -9,7 +9,7 @@
 #include <unordered_set>
 
 
-const uint GET_ITERATIONS = 2000;
+const uint GET_ITERATIONS = 800;
 const uint NUM_OF_SUCCESSORS = 80;
 const uint NUM_OF_THREADS = 6;
 
@@ -185,8 +185,12 @@ Solution WPlanner::solve(std::string& additional_info)
   solver_info(1, "start WPlanner search");
 
   auto cmp = [](const HNode* lhs, const HNode* rhs) {
-    if (lhs->f != rhs->f) return lhs->f > rhs->f;
+    float f_lhs = lhs->g + lhs->h * 0.95;
+    float f_rhs = rhs->g + rhs->h * 0.95;
+    if (f_lhs != f_rhs) return f_lhs > f_rhs;
     return lhs->depth > rhs->depth;
+    // if (lhs->f != rhs->f) return lhs->f > rhs->f;
+    // return lhs->depth > rhs->depth;
   };
   auto frontier = std::priority_queue<HNode*, std::vector<HNode*>, decltype(cmp)>(cmp);
   auto best_seen_g = std::unordered_map<Config, uint, ConfigHasher>();
