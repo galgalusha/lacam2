@@ -1,5 +1,6 @@
 #include "../include/planner.hpp"
 #include "../include/pibt.hpp"
+#include "../include/policy_pibt.hpp"
 #include "../include/rollout_result.hpp"
 
 #include <algorithm>
@@ -17,7 +18,8 @@ const uint NUM_OF_THREADS = 6;
 
 std::vector<WPlanner::Successor> WPlanner::get_successors(
   HNode* H, uint& best_temp_cost, uint64_t& num_node_gen,
-    const uint num_expansions, const uint num_of_successors)
+    const uint num_expansions, const uint num_of_successors,
+    const bool save_rollouts, const PIBTFactory& pibt_factory)
 {
   auto successors = std::vector<Successor>();
   if (H == nullptr) return successors;
@@ -43,10 +45,14 @@ std::vector<WPlanner::Successor> WPlanner::get_successors(
     }
   }
 
-  std::vector<std::unique_ptr<PIBT>> pibts;
+  std::vector<std::unique_ptr<PIBTBase>> pibts;
   pibts.reserve(NUM_OF_THREADS);
   for (uint i = 0; i < NUM_OF_THREADS; ++i) {
-    pibts.push_back(std::make_unique<PIBT>(ins, D, &rollout_rngs[i]));
+    if (pibt_factory) {
+      pibts.push_back(pibt_factory(&rollout_rngs[i]));
+    } else {
+      pibts.push_back(std::make_unique<PIBT>(ins, D, &rollout_rngs[i]));
+    }
   }
 
   uint expansions_done = 0;
@@ -154,14 +160,16 @@ std::vector<WPlanner::Successor> WPlanner::get_successors(
 
       successors.push_back({best_goal_item->node,
                             static_cast<uint>(best_goal_item->node->depth),
-                            goal_temp_cost});
+                            goal_temp_cost,
+                            save_rollouts ? best_goal_item->rollout_res.configs : std::vector<Config>{}});
       return successors;
     }
 
     for (const auto& item : batch_items) {
       if (!item.success) continue;
       Successor candidate{
-          item.node, static_cast<uint>(item.node->depth), item.temp_cost};
+          item.node, static_cast<uint>(item.node->depth), item.temp_cost,
+          save_rollouts ? item.rollout_res.configs : std::vector<Config>{}};
       best_successors.insert(candidate);
     }
   }
@@ -180,18 +188,112 @@ std::vector<WPlanner::Successor> WPlanner::get_successors(
   return successors;
 }
 
+NeighborScorePolicy WPlanner::create_policy(int num_agents) {
+  auto H_init = new HNode(ins->starts, D, nullptr, 0, 0);
+  uint64_t node_counter = 0;
+  uint best_cost = UINT_MAX;
+  const uint n_expansions = 5000;
+  const uint n_rollouts = 100;
+  std::cout << "generating " << n_expansions << " rollouts for policy" << std::endl;
+  auto best_rollouts = get_successors(H_init, best_cost, node_counter, n_expansions, n_rollouts, true);
+  std::cout << "Done generating " << n_expansions << " rollouts for policy" << std::endl;
+
+  std::vector<AgentPolicy> agent_policies(num_agents);
+
+  for (const auto& successor : best_rollouts) {
+    const auto& rollout = successor.rollout;
+    for (size_t step = 1; step < rollout.size(); ++step) {
+      const Config& prev = rollout[step - 1];
+      const Config& curr = rollout[step];
+      for (int agent = 0; agent < num_agents; ++agent) {
+        Vertex* from = prev[agent];
+        Vertex* to = curr[agent];
+        if (from != to) {
+          agent_policies[agent].record_move(from, to);
+        }
+      }
+    }
+  }
+
+  delete H_init;
+  return NeighborScorePolicy(std::move(agent_policies), MT);
+}
+
+void WPlanner::test_policy(int TEST_AGENT_ID)
+{
+  auto policy = create_policy(ins->N);
+
+  const uint W = ins->G.width;
+  const uint H = ins->G.height;
+  Vertex* start = ins->starts[TEST_AGENT_ID];
+  Vertex* goal  = ins->goals[TEST_AGENT_ID];
+
+  const Config& C = ins->starts;
+
+  std::vector<std::string> grid(H, std::string(W, '#'));
+
+  for (auto* v : ins->G.V) {
+    uint x = v->index % W;
+    uint y = v->index / W;
+    grid[y][x] = '.';
+  }
+
+  for (auto* v : ins->G.V) {
+    uint x = v->index % W;
+    uint y = v->index / W;
+
+    if (v == start) { grid[y][x] = 'S'; continue; }
+    if (v == goal)  { grid[y][x] = 'G'; continue; }
+
+    if (v->neighbor.empty()) continue;
+
+    Vertices neighbors(v->neighbor.begin(), v->neighbor.end());
+    neighbors.push_back(v);
+
+    Config C_tmp = C;
+    C_tmp[TEST_AGENT_ID] = v;
+
+    auto scores = policy.get_neighbor_scores(C_tmp, TEST_AGENT_ID, neighbors);
+
+    Vertex* best = nullptr;
+    float best_score = 1.0f;
+    for (auto* nb : v->neighbor) {
+      float s = scores.count(nb) ? scores.at(nb) : 0.0f;
+      if (s < best_score) { best_score = s; best = nb; }
+    }
+
+    if (best == nullptr) continue;
+
+    uint bx = best->index % W;
+    uint by = best->index / W;
+    char dir = '.';
+    if      (bx < x) dir = 'L';
+    else if (bx > x) dir = 'R';
+    else if (by < y) dir = 'U';
+    else if (by > y) dir = 'D';
+
+    grid[y][x] = dir;
+  }
+
+  std::cout << "=== Policy map for agent " << TEST_AGENT_ID << " ===" << std::endl;
+  for (const auto& row : grid) std::cout << row << "\n";
+  std::cout << "==================" << std::endl;
+}
 
 Solution WPlanner::solve(std::string& additional_info)
 {
-  solver_info(1, "start WPlanner search");
+  auto policy = std::make_shared<NeighborScorePolicy>(create_policy(ins->N));
+  PIBTFactory policy_pibt_factory = [&](std::mt19937* rng) -> std::unique_ptr<PIBTBase> {
+    return std::make_unique<PolicyPIBT>(ins, D, policy);
+  };
 
   auto cmp = [](const HNode* lhs, const HNode* rhs) {
-    float f_lhs = lhs->g + lhs->h * 0.95;
-    float f_rhs = rhs->g + rhs->h * 0.95;
-    if (f_lhs != f_rhs) return f_lhs > f_rhs;
-    return lhs->depth > rhs->depth;
-    // if (lhs->f != rhs->f) return lhs->f > rhs->f;
+    // float f_lhs = lhs->g + lhs->h * 0.95;
+    // float f_rhs = rhs->g + rhs->h * 0.95;
+    // if (f_lhs != f_rhs) return f_lhs > f_rhs;
     // return lhs->depth > rhs->depth;
+    if (lhs->f != rhs->f) return lhs->f > rhs->f;
+    return lhs->depth > rhs->depth;
   };
   auto frontier = std::priority_queue<HNode*, std::vector<HNode*>, decltype(cmp)>(cmp);
   auto best_seen_g = std::unordered_map<Config, uint, ConfigHasher>();
@@ -206,6 +308,8 @@ Solution WPlanner::solve(std::string& additional_info)
   uint best_goal_cost = UINT_MAX;
   uint best_temp_cost = UINT_MAX;
   uint64_t num_node_gen = 1;
+  auto last_print_time = std::chrono::steady_clock::now();
+  uint last_printed_best_temp = UINT_MAX;
 
   while (!frontier.empty() && !is_expired(deadline)) {
     auto* H = frontier.top();
@@ -220,7 +324,7 @@ Solution WPlanner::solve(std::string& additional_info)
     auto num_of_successors = NUM_OF_SUCCESSORS / (sqrt(H->depth + 1));
     auto next_nodes =
       get_successors(H, best_temp_cost, num_node_gen, get_iterations,
-               NUM_OF_SUCCESSORS);
+               NUM_OF_SUCCESSORS, false, policy_pibt_factory);
 
     HNode* best_goal_successor = nullptr;
     for (const auto& successor : next_nodes) {
@@ -269,9 +373,15 @@ Solution WPlanner::solve(std::string& additional_info)
       }
       best_seen_g[H_next->C] = H_next->g;
 
-      {
-        frontier.push(H_next);
-        all_nodes.push_back(H_next);
+      frontier.push(H_next);
+      all_nodes.push_back(H_next);
+
+      auto now = std::chrono::steady_clock::now();
+      bool temp_updated = best_temp_cost != last_printed_best_temp;
+      bool timeout_print = std::chrono::duration_cast<std::chrono::seconds>(now - last_print_time).count() >= 2;
+      if (temp_updated || timeout_print) {
+        last_print_time = now;
+        last_printed_best_temp = best_temp_cost;
         std::cout << "WPlanner successor: best_goal_cost="
             << (best_goal_cost == UINT_MAX ? -1 : static_cast<int>(best_goal_cost))
             << " best_temp_cost="

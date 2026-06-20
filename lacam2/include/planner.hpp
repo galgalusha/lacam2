@@ -13,6 +13,7 @@
 
 #include <chrono>
 #include <fstream>
+#include <functional>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -126,6 +127,7 @@ struct WPlanner : public Planner {
     HNode* node;
     uint depth;
     uint temp_cost;
+    std::vector<Config> rollout;
   };
 
   WPlanner(const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
@@ -136,9 +138,15 @@ struct WPlanner : public Planner {
   {
   }
 
+  using PIBTFactory = std::function<std::unique_ptr<PIBTBase>(std::mt19937*)>;
+
   std::vector<Successor> get_successors(HNode* H, uint& best_temp_cost,
                                         uint64_t& num_node_gen,
                                         const uint num_expansions,
-                                        const uint how_many);
+                                        const uint how_many,
+                                        const bool save_rollouts = false,
+                                        const PIBTFactory& pibt_factory = nullptr);
+  NeighborScorePolicy create_policy(int num_agents);
+  void test_policy(int agent_id);
   Solution solve(std::string& additional_info);
 };

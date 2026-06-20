@@ -136,39 +136,19 @@ bool PolicyPIBT::funcPIBT(Agent* ai, const Config& C_current)
   const auto i = ai->id;
   const auto K = ai->v_now->neighbor.size();
 
-  // collect candidates
+  // collect neighbors (including self-stay)
   for (auto k = 0; k < K; ++k) C_next[i][k] = ai->v_now->neighbor[k];
   C_next[i][K] = ai->v_now;
 
-  // sort by distance only (no random tie-breaker)
+  // get tie-breakers in [-0.9, 0] for each neighbor
+  const Vertices neighbors(C_next[i].begin(), C_next[i].begin() + K + 1);
+  auto tie_breakers = policy->get_neighbor_scores(C_current, i, neighbors);
+
+  // sort by D + tie_breaker (lower = preferred)
   std::sort(C_next[i].begin(), C_next[i].begin() + K + 1,
             [&](Vertex* const v, Vertex* const u) {
-              return D.get(i, v) < D.get(i, u);
+              return D.get(i, v) + tie_breakers[v] < D.get(i, u) + tie_breakers[u];
             });
-
-  // resolve ties using policy: for each group of equal-distance vertices,
-  // put the policy-preferred one first within that group.
-  {
-    auto begin = C_next[i].begin();
-    auto end = C_next[i].begin() + K + 1;
-    auto it = begin;
-    while (it != end) {
-      uint dist_val = D.get(i, *it);
-      auto group_end = it;
-      while (group_end != end && D.get(i, *group_end) == dist_val) ++group_end;
-
-      if (group_end - it > 1) {
-        Vertices candidates(it, group_end);
-        Vertex* preferred = policy->get_preferred_neighbor(C_current, i, candidates);
-        if (preferred != nullptr) {
-          // move preferred to front of the group
-          auto pos = std::find(it, group_end, preferred);
-          if (pos != it) std::iter_swap(it, pos);
-        }
-      }
-      it = group_end;
-    }
-  }
 
   Agent* swap_agent = swap_possible_and_required(ai, C_current);
   if (swap_agent != nullptr)
