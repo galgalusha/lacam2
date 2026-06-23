@@ -196,7 +196,7 @@ NeighborScorePolicy WPlanner::create_policy(const Config& start_config, int num_
   auto H_init = new HNode(start_config, D, nullptr, 0, 0);
   uint64_t node_counter = 0;
   uint best_cost = UINT_MAX;
-  const uint n_expansions = 3000;
+  const uint n_expansions = 5000;
   const uint n_rollouts = 100;
   std::cout << "generating " << n_expansions << " rollouts for policy" << std::endl;
   auto best_rollouts = get_successors(H_init, best_cost, node_counter, n_expansions, n_rollouts, true);
