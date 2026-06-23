@@ -11,7 +11,7 @@
 #include <unordered_set>
 
 
-const uint GET_ITERATIONS = 1000;
+const uint GET_ITERATIONS = 800;
 const uint NUM_OF_SUCCESSORS = 80;
 const uint NUM_OF_THREADS = 6;
 
@@ -83,10 +83,10 @@ std::vector<WPlanner::Successor> WPlanner::get_successors(
       expansions_done += 1;
 
       auto L = H->search_tree.front();
-      H->search_tree.pop();
-      H->ll_search += 1;
+      // H->search_tree.pop();
+      // H->ll_search += 1;
 
-      expand_lowlevel_tree(H, L);
+      // expand_lowlevel_tree(H, L);
 
       const auto res = this->pibt->get_new_config(H, L.get(), C_new);
       if (!res) continue;
