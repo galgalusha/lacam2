@@ -11,7 +11,7 @@
 #include <unordered_set>
 
 
-const uint GET_ITERATIONS = 800;
+const uint GET_ITERATIONS = 1000;
 const uint NUM_OF_SUCCESSORS = 80;
 const uint NUM_OF_THREADS = 6;
 
@@ -88,10 +88,10 @@ std::vector<WPlanner::Successor> WPlanner::get_successors(
 
       expand_lowlevel_tree(H, L);
 
-      const auto res = pibts[worker_id]->get_new_config(H, L.get(), C_new);
+      const auto res = this->pibt->get_new_config(H, L.get(), C_new);
       if (!res) continue;
 
-      auto new_g = H->g + pibts[worker_id]->get_edge_cost(H->C, C_new);
+      auto new_g = H->g + this->pibt->get_edge_cost(H->C, C_new);
       auto H_new = new HNode(C_new, D, H, new_g, 0);
       batch_items.push_back(
           {worker_id, H_new, {false, 0, 0}, false, false, UINT_MAX});
@@ -196,11 +196,11 @@ NeighborScorePolicy WPlanner::create_policy(const Config& start_config, int num_
   auto H_init = new HNode(start_config, D, nullptr, 0, 0);
   uint64_t node_counter = 0;
   uint best_cost = UINT_MAX;
-  const uint n_expansions = 5000;
+  const uint n_expansions = 3000;
   const uint n_rollouts = 100;
   std::cout << "generating " << n_expansions << " rollouts for policy" << std::endl;
   auto best_rollouts = get_successors(H_init, best_cost, node_counter, n_expansions, n_rollouts, true);
-  std::cout << "Done generating " << n_expansions << " rollouts for policy" << std::endl;
+  std::cout << "Done generating " << n_expansions << " rollouts for policy. Best cost found: " << best_cost << std::endl;
 
   std::vector<AgentPolicy> agent_policies(num_agents);
 
@@ -286,7 +286,7 @@ void WPlanner::test_policy(int TEST_AGENT_ID)
 
 Solution WPlanner::solve(std::string& additional_info)
 {
-  const uint refresh_policy_depth = 5;
+  const uint refresh_policy_depth = 600;
 
   auto policy = std::make_shared<NeighborScorePolicy>(create_policy(ins->N));
   PIBTFactory policy_pibt_factory = [&](std::mt19937* rng) -> std::unique_ptr<PIBTBase> {
@@ -294,8 +294,8 @@ Solution WPlanner::solve(std::string& additional_info)
   };
 
   auto cmp = [](const HNode* lhs, const HNode* rhs) {
-    auto l = lhs->g + lhs->h * 1.4;
-    auto r = rhs->g + rhs->h * 1.4;
+    auto l = lhs->g + lhs->h * 1.05;
+    auto r = rhs->g + rhs->h * 1.05;
     if (l != r) return l > r;
 
     //if (lhs->f != rhs->f) return lhs->f > rhs->f;
@@ -339,12 +339,17 @@ Solution WPlanner::solve(std::string& additional_info)
     if (expanded_depths.find(cur_depth) == expanded_depths.end()) {
       expanded_depths.insert(cur_depth);
       if (cur_depth % refresh_policy_depth == 0 && cur_depth >= refresh_policy_depth * 2) {
-        const uint ref_depth = cur_depth - refresh_policy_depth;
+        const uint ref_depth = cur_depth / 2;
         auto it = best_config_at_depth.find(ref_depth);
         if (it != best_config_at_depth.end()) {
           std::cout << "WPlanner: refreshing policy at depth=" << cur_depth
                     << " using best config from depth=" << ref_depth << std::endl;
-          *policy = create_policy(it->second.first, ins->N);
+            policy = std::make_shared<NeighborScorePolicy>(create_policy(ins->N));
+            policy_pibt_factory = [&](std::mt19937* rng) -> std::unique_ptr<PIBTBase> {
+              return std::make_unique<PolicyPIBT>(ins, D, policy);
+            };
+
+
         } else {
           std::cout << "WPlanner: could not refresh policy at depth=" << cur_depth << std::endl;
         }
