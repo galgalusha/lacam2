@@ -79,7 +79,6 @@ std::vector<WPlanner::Successor> WPlanner::get_successors(
     for (uint worker_id = 0;
          worker_id < batch_size && !H->search_tree.empty() && !is_expired(deadline);
          ++worker_id) {
-      loop_cnt += 1;
       expansions_done += 1;
 
       auto L = H->search_tree.front();
@@ -141,7 +140,7 @@ std::vector<WPlanner::Successor> WPlanner::get_successors(
     }
 
     if (best_goal_item != nullptr) {
-      std::cout << "goal found" << std::endl;
+      // std::cout << "goal found" << std::endl;
       const uint goal_temp_cost = best_goal_item->node->g;
       if (goal_temp_cost < best_temp_cost) {
         best_temp_cost = goal_temp_cost;
@@ -186,6 +185,36 @@ std::vector<WPlanner::Successor> WPlanner::get_successors(
   }
 
   return successors;
+}
+
+HNode* WPlanner::get_node_at_depth(const Successor& successor, uint depth) 
+{
+  HNode* node = successor.node;
+
+  // Walk up the parent chain if the desired depth is at or before the node.
+  if (depth <= static_cast<uint>(node->depth)) {
+    while (node != nullptr && static_cast<uint>(node->depth) != depth) {
+      node = node->parent;
+    }
+    return node;
+  }
+
+  // The desired depth is beyond the successor node; build from rollout.
+  // rollout[i] corresponds to depth = successor.node->depth + 1 + i.
+  const uint base_depth = static_cast<uint>(successor.node->depth);
+  const uint steps_needed = depth - base_depth;
+  if (steps_needed > successor.rollout.size()) {
+    return nullptr;  // rollout is not long enough
+  }
+
+  HNode* current = successor.node;
+  for (uint i = 0; i < steps_needed; ++i) {
+    const Config& next_config = successor.rollout[i];
+    uint new_g = current->g + this->pibt->get_edge_cost(current->C, next_config);
+    auto* next_node = new HNode(next_config, D, current, new_g, 0);
+    current = next_node;
+  }
+  return current;
 }
 
 NeighborScorePolicy WPlanner::create_policy(int num_agents) {
@@ -284,9 +313,24 @@ void WPlanner::test_policy(int TEST_AGENT_ID)
   std::cout << "==================" << std::endl;
 }
 
+Solution build_solution(WPlanner::Successor successor)
+{
+  // Collect prefix: walk back from node to root.
+  std::vector<HNode*> path;
+  for (HNode* n = successor.node; n != nullptr; n = n->parent) path.push_back(n);
+  std::reverse(path.begin(), path.end());
+  Solution sol;
+  for (HNode* n : path) {
+    sol.push_back(n->C);
+  }
+  std::cout << "Solution prefix size: " << sol.size() << std::endl;
+  for (auto& cfg : successor.rollout) sol.push_back(cfg);
+  return sol;
+}
+
 Solution WPlanner::solve(std::string& additional_info)
 {
-  const uint refresh_policy_depth = 600;
+  const uint refresh_policy_depth = 50000;
 
   auto policy = std::make_shared<NeighborScorePolicy>(create_policy(ins->N));
   PIBTFactory policy_pibt_factory = [&](std::mt19937* rng) -> std::unique_ptr<PIBTBase> {
@@ -294,8 +338,8 @@ Solution WPlanner::solve(std::string& additional_info)
   };
 
   auto cmp = [](const HNode* lhs, const HNode* rhs) {
-    auto l = lhs->g + lhs->h * 1.05;
-    auto r = rhs->g + rhs->h * 1.05;
+    auto l = lhs->g + lhs->h * 1.01;
+    auto r = rhs->g + rhs->h * 1.01;
     if (l != r) return l > r;
 
     //if (lhs->f != rhs->f) return lhs->f > rhs->f;
@@ -305,103 +349,65 @@ Solution WPlanner::solve(std::string& additional_info)
   auto best_seen_g = std::unordered_map<Config, uint, ConfigHasher>();
   std::vector<Config> solution;
   auto H_init = new HNode(ins->starts, D, nullptr, 0, 0);
-  HNode* H_goal = nullptr;
   std::vector<HNode*> all_nodes;
   all_nodes.push_back(H_init);
   frontier.push(H_init);
   best_seen_g[H_init->C] = H_init->g;
 
-  uint best_goal_cost = UINT_MAX;
-  uint best_temp_cost = UINT_MAX;
+  WPlanner::Successor best_successor{nullptr, 0, 0, {}};
   uint64_t num_node_gen = 1;
   auto last_print_time = std::chrono::steady_clock::now();
-  uint last_printed_best_temp = UINT_MAX;
+  uint last_printed_best_f = UINT_MAX;
 
-  // Track best Config (lowest g) seen at each depth
-  std::unordered_map<uint, std::pair<Config, uint>> best_config_at_depth;
+  // Track best HNode (lowest g) seen at each depth
+  std::unordered_map<uint, HNode*> best_config_at_depth;
   // Track which depths have been first expanded
   std::unordered_set<uint> expanded_depths;
+  uint iterations_since_cost_update = 0;
+  uint policy_refresh_counter = 0;
 
   // Record initial node
-  best_config_at_depth[0] = {H_init->C, H_init->g};
+  best_config_at_depth[0] = H_init;
 
   while (!frontier.empty() && !is_expired(deadline)) {
     auto* H = frontier.top();
     frontier.pop();
 
-    // Branch-and-bound pruning: edge costs are non-negative.
-    if (best_goal_cost != UINT_MAX && H->g >= best_goal_cost) {
-      continue;
-    }
+    iterations_since_cost_update++;
+    loop_cnt++;
 
-    // Check if this depth is being expanded for the first time
-    const uint cur_depth = static_cast<uint>(H->depth);
-    if (expanded_depths.find(cur_depth) == expanded_depths.end()) {
-      expanded_depths.insert(cur_depth);
-      if (cur_depth % refresh_policy_depth == 0 && cur_depth >= refresh_policy_depth * 2) {
-        const uint ref_depth = cur_depth / 2;
-        auto it = best_config_at_depth.find(ref_depth);
-        if (it != best_config_at_depth.end()) {
-          std::cout << "WPlanner: refreshing policy at depth=" << cur_depth
-                    << " using best config from depth=" << ref_depth << std::endl;
-            policy = std::make_shared<NeighborScorePolicy>(create_policy(ins->N));
-            policy_pibt_factory = [&](std::mt19937* rng) -> std::unique_ptr<PIBTBase> {
-              return std::make_unique<PolicyPIBT>(ins, D, policy);
-            };
+  // if (iterations_since_cost_update % 100 == 0 && best_successor.node != nullptr) {
+  //     policy_refresh_counter++;
+  //     const uint ref_depth = 1 + policy_refresh_counter * 2;
+  //     HNode* new_start = this->get_node_at_depth(best_successor, ref_depth);        
+  //     std::cout << "WPlanner: new_start is null=" << (!new_start) << std::endl;
+  //     std::cout << "WPlanner: best_successor->node is null=" << (!(best_successor.node)) << std::endl;
 
-
-        } else {
-          std::cout << "WPlanner: could not refresh policy at depth=" << cur_depth << std::endl;
-        }
-      }
-    }
+  //     std::cout << "WPlanner: refreshing policy "
+  //               << " from depth=" << ref_depth << std::endl;
+  //     policy = std::make_shared<NeighborScorePolicy>(create_policy(new_start->C, ins->N));
+  //     policy_pibt_factory = [&](std::mt19937* rng) -> std::unique_ptr<PIBTBase> {
+  //       return std::make_unique<PolicyPIBT>(ins, D, policy);
+  //     };
+  //     if (new_start != nullptr) {
+  //       while (frontier.size()) frontier.pop();
+  //       frontier.push(new_start);
+  //       best_seen_g.clear();
+  //       continue;
+  //     } else {
+  //       std::cout << "WPlanner: skipping frontier reset, new_start is null" << std::endl;
+  //     }
+  //   }
 
     auto get_iterations = GET_ITERATIONS / (sqrt(H->depth + 1));
     auto num_of_successors = NUM_OF_SUCCESSORS / (sqrt(H->depth + 1));
-    auto next_nodes =
-      get_successors(H, best_temp_cost, num_node_gen, get_iterations,
-               NUM_OF_SUCCESSORS, false, policy_pibt_factory);
+    uint tmp_best_successor_cost = UINT_MAX;
+    auto successors =
+      get_successors(H, tmp_best_successor_cost, num_node_gen, get_iterations,
+               NUM_OF_SUCCESSORS, true, policy_pibt_factory);
 
-    HNode* best_goal_successor = nullptr;
-    for (const auto& successor : next_nodes) {
+    for (const auto& successor : successors) {
       auto* H_next = successor.node;
-      if (!is_same_config(H_next->C, ins->goals)) continue;
-      if (best_goal_successor == nullptr || H_next->g < best_goal_successor->g) {
-        best_goal_successor = H_next;
-      }
-    }
-
-    if (best_goal_successor != nullptr) {
-      for (const auto& successor : next_nodes) {
-        auto* H_next = successor.node;
-        if (H_next != best_goal_successor) {
-          delete H_next;
-        }
-      }
-
-      all_nodes.push_back(best_goal_successor);
-      if (H_goal == nullptr || best_goal_successor->g < H_goal->g) {
-        H_goal = best_goal_successor;
-      }
-      if (best_goal_successor->g < best_goal_cost) {
-        best_goal_cost = best_goal_successor->g;
-      }
-
-      std::cout << "WPlanner goal successor: best_goal_cost="
-                << (best_goal_cost == UINT_MAX ? -1 : static_cast<int>(best_goal_cost))
-                << " best_temp_cost="
-                << (best_temp_cost == UINT_MAX ? -1 : static_cast<int>(best_temp_cost))
-                << " depth=" << best_goal_successor->depth
-                << " f=" << best_goal_successor->f << std::endl;
-      continue;
-    }
-
-    for (const auto& successor : next_nodes) {
-      auto* H_next = successor.node;
-      if (best_goal_cost != UINT_MAX && H_next->g >= best_goal_cost) {
-        delete H_next;
-        continue;
-      }
       const auto seen_it = best_seen_g.find(H_next->C);
       if (seen_it != best_seen_g.end() && seen_it->second <= H_next->g) {
         delete H_next;
@@ -409,66 +415,44 @@ Solution WPlanner::solve(std::string& additional_info)
       }
       best_seen_g[H_next->C] = H_next->g;
 
-      // Record best config for this depth
-      const uint next_depth = static_cast<uint>(H_next->depth);
-      auto depth_it = best_config_at_depth.find(next_depth);
-      if (depth_it == best_config_at_depth.end() || H_next->g < depth_it->second.second) {
-        best_config_at_depth[next_depth] = {H_next->C, H_next->g};
+      if (best_successor.node == nullptr || H_next->f < best_successor.node->f) {
+        best_successor = successor;
       }
 
       frontier.push(H_next);
       all_nodes.push_back(H_next);
-
-      auto now = std::chrono::steady_clock::now();
-      bool temp_updated = best_temp_cost != last_printed_best_temp;
-      bool timeout_print = std::chrono::duration_cast<std::chrono::seconds>(now - last_print_time).count() >= 2;
-      if (temp_updated || timeout_print) {
-        last_print_time = now;
-        last_printed_best_temp = best_temp_cost;
-        std::cout << "WPlanner successor: best_goal_cost="
-            << (best_goal_cost == UINT_MAX ? -1 : static_cast<int>(best_goal_cost))
-            << " best_temp_cost="
-            << (best_temp_cost == UINT_MAX ? -1 : static_cast<int>(best_temp_cost))
-                  << " depth=" << H_next->depth
-                  << " f=" << H_next->f
-                  << " successor_depth=" << successor.depth
-                  << " temp_cost=" << successor.temp_cost
-                  << std::endl;
-      }
     }
+
+    auto now = std::chrono::steady_clock::now();
+    bool temp_updated = best_successor.node->f != last_printed_best_f;
+    bool timeout_print = std::chrono::duration_cast<std::chrono::seconds>(now - last_print_time).count() >= 2;
+    if (temp_updated || timeout_print) {
+      last_print_time = now;
+      last_printed_best_f = best_successor.node->f;
+      std::cout << "WPlanner successor: best_goal_cost="
+          << best_successor.node->f
+          << " depth=" << H->depth
+          << " f=" << H->f
+          << " loops=" << loop_cnt
+          << " loops since last update=" << iterations_since_cost_update
+          << std::endl;      
+    }
+    if (temp_updated) iterations_since_cost_update = 0;
   }
 
-  if (H_goal != nullptr) {
-    auto H = H_goal;
-    while (H != nullptr) {
-      solution.push_back(H->C);
-      H = H->parent;
-    }
-    std::reverse(solution.begin(), solution.end());
+  if (best_successor.node) {  
+    solution = build_solution(best_successor);
   }
 
-  if (H_goal != nullptr) {
-    solver_info(1, "found solution, depth: ", H_goal->depth, ", g: ", H_goal->g);
-  } else if (is_expired(deadline)) {
+  if (is_expired(deadline)) {
     solver_info(1, "timeout");
   } else {
     solver_info(1, "search exhausted");
   }
 
-  additional_info += "planner=WPlanner\n";
-  additional_info += "objective=" + std::to_string(objective) + "\n";
-  additional_info += "loop_cnt=" + std::to_string(loop_cnt) + "\n";
-  additional_info += "num_node_gen=" + std::to_string(num_node_gen) + "\n";
-  additional_info +=
-      "best_cost=" +
-      std::to_string(best_goal_cost == UINT_MAX ? -1 : (int)best_goal_cost) +
-      "\n";
-    additional_info +=
-      "best_temp_cost=" +
-      std::to_string(best_temp_cost == UINT_MAX ? -1 : (int)best_temp_cost) +
-      "\n";
-
   for (auto node : all_nodes) delete node;
 
   return solution;
 }
+
+

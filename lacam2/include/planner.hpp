@@ -150,4 +150,10 @@ struct WPlanner : public Planner {
   NeighborScorePolicy create_policy(const Config& start_config, int num_agents);
   void test_policy(int agent_id);
   Solution solve(std::string& additional_info);
+
+  // Returns the HNode at the given depth reachable from this successor.
+  // Walks up parents if depth <= successor.node->depth, or builds HNodes
+  // from the rollout if depth > successor.node->depth.
+  // Any newly created nodes are appended to `created_nodes` (caller owns them).
+  HNode* get_node_at_depth(const Successor& successor, uint depth);
 };
