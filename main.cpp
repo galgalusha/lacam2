@@ -172,8 +172,9 @@ int main(int argc, char* argv[])
   const auto deadline = Deadline(time_limit_sec * 1000);
   Solution solution;
   if (use_cplanner) {
-    auto window = 3;
-    ClusteredPlanner cplanner(&ins, &deadline, &MT, verbose, window);
+    auto window = 4;
+    auto rollouts = 5000;
+    ClusteredPlanner cplanner(&ins, &deadline, &MT, verbose, rollouts, window);
     solution = cplanner.solve();
   } else if (use_rand_planner) {
     RandomPlanner rand_planner(&ins, &deadline, &MT, verbose);
