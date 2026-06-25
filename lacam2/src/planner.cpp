@@ -123,7 +123,7 @@ Solution Planner::solve(std::string& additional_info)
       continue;
     }
 
-    if (H_goal != nullptr && loop_cnt % 1000 == 0) {
+    if (H_goal != nullptr && loop_cnt % 5000 == 0) {
       // std::cout << "restart depth_visit_counts:";
       // for (size_t start = 0; start < depth_visit_counts.size();) {
       //   const auto value = depth_visit_counts[start];
