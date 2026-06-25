@@ -71,8 +71,6 @@ static void test_clusters()
 
 int main(int argc, char* argv[])
 {
-  test_clusters();
-  return 0;
   // arguments parser
   argparse::ArgumentParser program("lacam2", "0.1.0");
   program.add_argument("-m", "--map").help("map file").required();
@@ -174,7 +172,7 @@ int main(int argc, char* argv[])
   const auto deadline = Deadline(time_limit_sec * 1000);
   Solution solution;
   if (use_cplanner) {
-    ClusteredPlanner cplanner(&ins, &deadline, &MT, verbose, objective, restart_rate);
+    ClusteredPlanner cplanner(&ins, &deadline, &MT, verbose);
     solution = cplanner.solve();
   } else if (use_rand_planner) {
     RandomPlanner rand_planner(&ins, &deadline, &MT, verbose);
