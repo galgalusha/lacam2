@@ -2,11 +2,77 @@
 #include <lacam2.hpp>
 #include <odplanner.hpp>
 #include <random_planner.hpp>
+#include <clustered_planner.hpp>
 #include <algorithm>
+#include <cassert>
+#include <cluster_pibt.hpp>
+
+static void test_clusters()
+{
+  // Use a real ClusterPIBT instance (time_window=2, 6 agents).
+  // Map/instance are only needed to satisfy the constructor; the actual
+  // cluster logic only depends on recorded interactions and N.
+  std::mt19937 MT(0);
+  const Instance ins("./assets/random-11-5.map", &MT, 6);
+  DistTable D(&ins);
+  ClusterPIBT cpibt(&ins, D, &MT, /*time_window=*/2);
+
+  // Record interactions at explicit timesteps:
+  //   window 0 (t=0..1): (1,3)@0, (2,3)@1  → cluster {1,2,3}
+  //   window 1 (t=2..3): (2,4)@2, (1,5)@3  → clusters {2,4} and {1,5}
+  cpibt.record_interaction(1, 3, 0);
+  cpibt.record_interaction(2, 3, 1);
+  cpibt.record_interaction(2, 4, 2);
+  cpibt.record_interaction(1, 5, 3);
+
+  cpibt.compute_clusters();
+
+  auto print_clusters = [](const std::vector<std::vector<uint>>& clusters) {
+    for (const auto& c : clusters) {
+      std::cout << "  {";
+      for (auto it = c.begin(); it != c.end(); ++it) {
+        if (it != c.begin()) std::cout << ", ";
+        std::cout << *it;
+      }
+      std::cout << "}\n";
+    }
+  };
+
+  // Window 0: expect cluster {1,2,3}
+  {
+    const auto& clusters = cpibt.get_clusters(0);  // t=0 → window 0
+    bool found_123 = false;
+    for (const auto& c : clusters)
+      if (c == std::vector<uint>{1,2,3}) found_123 = true;
+    assert(found_123 && "window 0: cluster {1,2,3} not found");
+    std::cout << "window 0 clusters (" << clusters.size() << "):\n";
+    print_clusters(clusters);
+  }
+
+  // Window 1: expect clusters {2,4} and {1,5}
+  {
+    const auto& clusters = cpibt.get_clusters(2);  // t=2 → window 1
+    bool found_24 = false, found_15 = false;
+    for (const auto& c : clusters) {
+      if (c == std::vector<uint>{2,4}) found_24 = true;
+      if (c == std::vector<uint>{1,5}) found_15 = true;
+    }
+    assert(found_24 && "window 1: cluster {2,4} not found");
+    assert(found_15 && "window 1: cluster {1,5} not found");
+    std::cout << "window 1 clusters (" << clusters.size() << "):\n";
+    print_clusters(clusters);
+  }
+
+  std::cout << "test_clusters PASSED\n";
+}
+
+
 
 
 int main(int argc, char* argv[])
 {
+  test_clusters();
+  return 0;
   // arguments parser
   argparse::ArgumentParser program("lacam2", "0.1.0");
   program.add_argument("-m", "--map").help("map file").required();
@@ -52,6 +118,10 @@ int main(int argc, char* argv[])
       .help("use RandomPlanner (random PIBT rollouts from initial state)")
       .default_value(false)
       .implicit_value(true);
+  program.add_argument("-cplanner", "--cplanner")
+      .help("use ClusteredPlanner (runs 5000 ClusterPIBT rollouts and prints clusters)")
+      .default_value(false)
+      .implicit_value(true);
     program.add_argument("-max_ll")
       .help("max allowed low-level search; -1 disables cutoff")
       .default_value(std::string("-1"));
@@ -92,6 +162,7 @@ int main(int argc, char* argv[])
   const auto use_wplanner = program.get<bool>("wplanner");
   const auto use_odplanner = program.get<bool>("odplanner");
   const auto use_rand_planner = program.get<bool>("rand_planner");
+  const auto use_cplanner = program.get<bool>("cplanner");
   const auto max_ll_decay = std::clamp(std::stof(program.get<std::string>("max_ll_decay")), 0.0f, 1.0f);
   Planner::max_ll = std::stoi(program.get<std::string>("max_ll"));
   Planner::max_ll_decay = max_ll_decay;
@@ -102,7 +173,10 @@ int main(int argc, char* argv[])
   auto additional_info = std::string("");
   const auto deadline = Deadline(time_limit_sec * 1000);
   Solution solution;
-  if (use_rand_planner) {
+  if (use_cplanner) {
+    ClusteredPlanner cplanner(&ins, &deadline, &MT, verbose, objective, restart_rate);
+    solution = cplanner.solve();
+  } else if (use_rand_planner) {
     RandomPlanner rand_planner(&ins, &deadline, &MT, verbose);
     solution = rand_planner.solve();
   } else if (use_odplanner) {
