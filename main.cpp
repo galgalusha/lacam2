@@ -5,17 +5,17 @@
 #include <clustered_planner.hpp>
 #include <algorithm>
 #include <cassert>
-#include <cluster_pibt.hpp>
+#include <cluster_detection_pibt.hpp>
 
 static void test_clusters()
 {
-  // Use a real ClusterPIBT instance (time_window=2, 6 agents).
+  // Use a real ClusterDetectionPIBT instance (time_window=2, 6 agents).
   // Map/instance are only needed to satisfy the constructor; the actual
   // cluster logic only depends on recorded interactions and N.
   std::mt19937 MT(0);
   const Instance ins("./assets/random-11-5.map", &MT, 6);
   DistTable D(&ins);
-  ClusterPIBT cpibt(&ins, D, &MT, /*time_window=*/2);
+  ClusterDetectionPIBT cpibt(&ins, D, &MT, /*time_window=*/2);
 
   // Record interactions at explicit timesteps:
   //   window 0 (t=0..1): (1,3)@0, (2,3)@1  → cluster {1,2,3}
@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
       .default_value(false)
       .implicit_value(true);
   program.add_argument("-cplanner", "--cplanner")
-      .help("use ClusteredPlanner (runs 5000 ClusterPIBT rollouts and prints clusters)")
+      .help("use ClusteredPlanner (runs 5000 ClusterDetectionPIBT rollouts and prints clusters)")
       .default_value(false)
       .implicit_value(true);
     program.add_argument("-max_ll")

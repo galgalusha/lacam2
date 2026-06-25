@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cluster_pibt.hpp"
+#include "cluster_detection_pibt.hpp"
 #include "dist_table.hpp"
 #include "instance.hpp"
 #include "planner.hpp"

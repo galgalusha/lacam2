@@ -17,7 +17,7 @@ ClusteredPlanner::ClusteredPlanner(const Instance* _ins,
 
 Solution ClusteredPlanner::solve()
 {
-  ClusterPIBT cpibt(ins, D, MT, 3);
+  ClusterDetectionPIBT cpibt(ins, D, MT, 3);
 
   // Build initial HNode from starts
   HNode root(ins->starts, D, nullptr, 0, 0);

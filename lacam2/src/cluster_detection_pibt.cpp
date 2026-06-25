@@ -1,5 +1,5 @@
 // ClusterDetectionPIBT — copy of PIBT logic for cluster-based variant.
-#include "../include/cluster_pibt.hpp"
+#include "../include/cluster_detection_pibt.hpp"
 
 #include <algorithm>
 #include <numeric>
