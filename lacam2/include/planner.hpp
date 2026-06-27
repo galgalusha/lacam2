@@ -130,6 +130,8 @@ struct WPlanner : public Planner {
     std::vector<Config> rollout;
   };
 
+  std::unordered_set<uint> seen_states;
+
   WPlanner(const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
            const int _verbose = 0,
            const Objective _objective = OBJ_NONE,

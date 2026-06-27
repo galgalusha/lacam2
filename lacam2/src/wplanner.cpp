@@ -118,6 +118,14 @@ std::vector<WPlanner::Successor> WPlanner::get_successors(
       }
 
       auto* H_new = batch_items[i].node;
+
+      const uint config_hash = ConfigHasher{}(H_new->C);
+      if (seen_states.count(config_hash)) {
+        delete H_new;
+        continue;
+      }
+      seen_states.insert(config_hash);
+
       H_new->h = batch_items[i].rollout_res.cost;
       H_new->f = H_new->g + H_new->h;
 
@@ -249,6 +257,7 @@ NeighborScorePolicy WPlanner::create_policy(const Config& start_config, int num_
   }
 
   delete H_init;
+  seen_states.clear();
   return NeighborScorePolicy(std::move(agent_policies), MT);
 }
 
@@ -330,6 +339,7 @@ Solution build_solution(WPlanner::Successor successor)
 
 Solution WPlanner::solve(std::string& additional_info)
 {
+  std::cout << "starting experiment" << std::endl;
   const uint refresh_policy_depth = 50000;
 
   auto policy = std::make_shared<NeighborScorePolicy>(create_policy(ins->N));
@@ -376,35 +386,54 @@ Solution WPlanner::solve(std::string& additional_info)
     iterations_since_cost_update++;
     loop_cnt++;
 
-  // if (iterations_since_cost_update % 100 == 0 && best_successor.node != nullptr) {
+  // if (iterations_since_cost_update % 10 == 0 && best_successor.node != nullptr && policy_refresh_counter == 0) {
   //     policy_refresh_counter++;
-  //     const uint ref_depth = 1 + policy_refresh_counter * 2;
+  //     const uint ref_depth = 10;
+  //     std::cout << "WPlanner: Going to create new policy" << std::endl;
+  //     HNode* new_policy_start = this->get_node_at_depth(best_successor, ref_depth);        
   //     HNode* new_start = this->get_node_at_depth(best_successor, ref_depth);        
   //     std::cout << "WPlanner: new_start is null=" << (!new_start) << std::endl;
   //     std::cout << "WPlanner: best_successor->node is null=" << (!(best_successor.node)) << std::endl;
 
   //     std::cout << "WPlanner: refreshing policy "
   //               << " from depth=" << ref_depth << std::endl;
-  //     policy = std::make_shared<NeighborScorePolicy>(create_policy(new_start->C, ins->N));
-  //     policy_pibt_factory = [&](std::mt19937* rng) -> std::unique_ptr<PIBTBase> {
-  //       return std::make_unique<PolicyPIBT>(ins, D, policy);
-  //     };
   //     if (new_start != nullptr) {
+  //       policy = std::make_shared<NeighborScorePolicy>(create_policy(new_policy_start->C, ins->N));
+  //       seen_states.clear();
+  //       policy_pibt_factory = [&](std::mt19937* rng) -> std::unique_ptr<PIBTBase> {
+  //         return std::make_unique<PolicyPIBT>(ins, D, policy);
+  //       };
   //       while (frontier.size()) frontier.pop();
   //       frontier.push(new_start);
   //       best_seen_g.clear();
+  //       best_successor = {nullptr, 0, 0, {}};
+  //       iterations_since_cost_update = 0;
   //       continue;
   //     } else {
   //       std::cout << "WPlanner: skipping frontier reset, new_start is null" << std::endl;
   //     }
   //   }
 
-    auto get_iterations = GET_ITERATIONS / (sqrt(H->depth + 1));
-    auto num_of_successors = NUM_OF_SUCCESSORS / (sqrt(H->depth + 1));
+    auto get_iterations = GET_ITERATIONS; //  / (sqrt(H->depth + 1));
+    auto num_of_successors = NUM_OF_SUCCESSORS; // (sqrt(H->depth + 1));
     uint tmp_best_successor_cost = UINT_MAX;
     auto successors =
       get_successors(H, tmp_best_successor_cost, num_node_gen, get_iterations,
-               NUM_OF_SUCCESSORS, true, policy_pibt_factory);
+               num_of_successors, true, policy_pibt_factory);
+
+    // std::cout << "Got " << successors.size() 
+    //           << " new successors out of " << num_of_successors
+    //           << " (" << (successors.size() * 100) / num_of_successors << "%)"
+    //           << std::endl;
+
+    if (policy->deterministic_count+policy->random_count > 0) {
+      std::cout << "Policy: Random " << policy->random_count*100/(policy->deterministic_count+policy->random_count)
+                << "%" << std::endl;
+    }
+      
+    policy->deterministic_count = 0;
+    policy->random_count = 0;
+
 
     for (const auto& successor : successors) {
       auto* H_next = successor.node;
