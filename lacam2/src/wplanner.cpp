@@ -424,9 +424,9 @@ Solution WPlanner::solve(std::string& additional_info)
     }
 
     auto now = std::chrono::steady_clock::now();
-    bool temp_updated = best_successor.node->f != last_printed_best_f;
+    bool temp_updated = best_successor.node != nullptr && best_successor.node->f != last_printed_best_f;
     bool timeout_print = std::chrono::duration_cast<std::chrono::seconds>(now - last_print_time).count() >= 2;
-    if (temp_updated || timeout_print) {
+    if (best_successor.node != nullptr && (temp_updated || timeout_print)) {
       last_print_time = now;
       last_printed_best_f = best_successor.node->f;
       std::cout << "WPlanner successor: best_goal_cost="

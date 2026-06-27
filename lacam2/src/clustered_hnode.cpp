@@ -1,17 +1,89 @@
 #include "../include/clustered_hnode.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <numeric>
 #include <unordered_set>
 
 ClusteredHNode::ClusteredHNode(const Config& C, DistTable& D, HNode* parent,
                                uint g, uint h)
-    : HNode(C, D, parent, g, h)
+    : HNode(C, D, parent, g, h),
+//      visit_budget(static_cast<int>(500.0 / std::sqrt(static_cast<double>(depth) + 1.0))),
+//      visit_budget(static_cast<int>(10000.0 / (depth + 1.0))),
+      visit_budget(static_cast<int>(1000000)),
+      visits_remaining(visit_budget)
 {
   // HNode constructor pushed a root LNode into HNode::search_tree.
   // We do not use that tree; cluster_trees is used instead.
   // Drain the base search_tree to keep it empty.
   while (!search_tree.empty()) search_tree.pop();
+}
+
+std::vector<std::shared_ptr<LNode>> ClusteredHNode::pop_top_k_clusters(int k)
+{
+  // Build a rank lookup: order[rank] = agent  =>  rank_of[agent] = rank.
+  std::vector<uint> rank_of(order.size());
+  for (uint rank = 0; rank < order.size(); ++rank)
+    rank_of[order[rank]] = rank;
+
+  // Collect (rank, cluster_index) for every non-exhausted cluster tree.
+  std::vector<std::pair<uint, size_t>> ranked;
+  for (size_t ci = 0; ci < cluster_trees.size(); ++ci) {
+    const ClusterTree& ct = cluster_trees[ci];
+    if (ct.tree.empty()) continue;
+    const uint depth_idx = ct.tree.front()->depth;
+    if (depth_idx >= ct.order.size()) continue;
+    const uint agent = ct.order[depth_idx];
+    const uint rank = (agent < rank_of.size()) ? rank_of[agent] : UINT_MAX;
+    ranked.emplace_back(rank, ci);
+  }
+
+  if (ranked.empty()) return {};
+
+  // Sort ascending by rank (lower rank = higher priority) and take top k.
+  std::sort(ranked.begin(), ranked.end());
+  const int take = std::min(k, static_cast<int>(ranked.size()));
+
+  std::vector<std::shared_ptr<LNode>> result;
+  result.reserve(take);
+  for (int i = 0; i < take; ++i) {
+    ClusterTree& ct = cluster_trees[ranked[i].second];
+    auto L = ct.tree.front();
+    ct.tree.pop();
+    expand_cluster_tree(ct, L);
+    result.push_back(std::move(L));
+  }
+  return result;
+}
+
+std::shared_ptr<LNode> ClusteredHNode::pop_priority_lnode()
+{
+  // Build a rank lookup: order[rank] = agent  =>  rank_of[agent] = rank.
+  std::vector<uint> rank_of(order.size());
+  for (uint rank = 0; rank < order.size(); ++rank)
+    rank_of[order[rank]] = rank;
+
+  // Find the non-empty cluster tree whose front LNode will constrain the
+  // agent with the lowest rank (= highest priority).
+  int best_idx = -1;
+  uint best_rank = UINT_MAX;
+  for (size_t ci = 0; ci < cluster_trees.size(); ++ci) {
+    const ClusterTree& ct = cluster_trees[ci];
+    if (ct.tree.empty()) continue;
+    const uint depth_idx = ct.tree.front()->depth;
+    if (depth_idx >= ct.order.size()) continue;  // tree is fully constrained
+    const uint agent = ct.order[depth_idx];
+    const uint rank = (agent < rank_of.size()) ? rank_of[agent] : UINT_MAX;
+    if (rank < best_rank) { best_rank = rank; best_idx = static_cast<int>(ci); }
+  }
+
+  if (best_idx < 0) return nullptr;  // all trees exhausted
+
+  ClusterTree& ct = cluster_trees[best_idx];
+  auto L = ct.tree.front();
+  ct.tree.pop();
+  expand_cluster_tree(ct, L);
+  return L;
 }
 
 void ClusteredHNode::init_cluster_trees(const std::vector<Cluster>& clusters)

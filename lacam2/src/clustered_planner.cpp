@@ -1,10 +1,44 @@
 #include "../include/clustered_planner.hpp"
 
 #include <algorithm>
+#include <array>
 #include <iomanip>
 #include <iostream>
 #include <stack>
 #include <unordered_map>
+
+// Composite LNode: presents the union of constraints from several LNodes
+// (one per cluster pop) to PIBT as a single flat who()/where() list.
+struct CompositeLNode : LNode {
+  std::vector<uint>    _who_vec;
+  std::vector<Vertex*> _where_vec;
+
+  explicit CompositeLNode(std::vector<std::shared_ptr<LNode>> parts)
+      : LNode()
+  {
+    for (const auto& L : parts) {
+      auto ws  = L->who();
+      auto whs = L->where();
+      _who_vec.insert(_who_vec.end(), ws.begin(), ws.end());
+      _where_vec.insert(_where_vec.end(), whs.begin(), whs.end());
+    }
+  }
+
+  std::vector<uint>    who()   const override { return _who_vec; }
+  std::vector<Vertex*> where() const override { return _where_vec; }
+};
+
+// Sample k in {1,2,3,4} with weights 8:4:2:1 (probabilities 8/15:4/15:2/15:1/15).
+static int sample_num_pops(std::mt19937& rng)
+{
+  // cumulative weights: 8, 12, 14, 15
+  static const std::array<int,4> thresholds = {8, 12, 14, 15};
+  std::uniform_int_distribution<int> dist(0, 14);
+  const int v = dist(rng);
+  for (int k = 0; k < 4; ++k)
+    if (v < thresholds[k]) return k + 1;
+  return 1;  // unreachable
+}
 
 ClusteredPlanner::ClusteredPlanner(const Instance* _ins,
                                    const Deadline* _deadline,
@@ -133,9 +167,9 @@ Solution ClusteredPlanner::solve()
   }
 
   // ------------------------------------------------------------------ //
-  // Phase 2 – High-level DFS with cluster-aware PIBT.
+  // Phase 2 – High-level DFS with PIBT (round-robin over cluster trees).
   // ------------------------------------------------------------------ //
-  ClusterAwarePIBT pibt(ins, D, MT);
+  PIBT pibt(ins, D, MT);
 
   using EXPLORED_MAP =
       std::unordered_map<Config, ClusteredHNode*, ConfigHasher>;
@@ -158,7 +192,14 @@ Solution ClusteredPlanner::solve()
     if (H_goal != nullptr && H->f >= H_goal->f) {
       OPEN.pop();
       continue;
-    }    
+    }
+
+    // check visit budget
+    if (H->visits_remaining <= 0) {
+      OPEN.pop();
+      continue;
+    }
+    --H->visits_remaining;
 
     if (H_goal != nullptr && loop_cnt % 5000 == 0) {
       OPEN.push(H_init);
@@ -167,55 +208,30 @@ Solution ClusteredPlanner::solve()
 
     // Initialize cluster trees for this node if not yet done.
     auto clusters = get_clusters_at(cpibt, H->depth);
-    // TEST: override with a single cluster containing all agents
-    // std::vector<uint> all_agents(N);
-    // std::iota(all_agents.begin(), all_agents.end(), 0);
-    // clusters = {Cluster{all_agents}};
-
-
     H->init_cluster_trees(clusters);
 
-    // If every cluster tree is exhausted, backtrack.
-    if (H->all_trees_exhausted()) {
+    // Sample k from {1,2,3,4} (weights 8:4:2:1) and pop from the k cluster
+    // trees whose front agents have the highest global priority.
+    const int k = (MT != nullptr) ? sample_num_pops(*MT) : 1;
+    auto parts = H->pop_top_k_clusters(k);
+    if (parts.empty()) {
+      // All cluster trees exhausted — backtrack.
       OPEN.pop();
       continue;
     }
+    auto composite = std::make_shared<CompositeLNode>(std::move(parts));
+    std::shared_ptr<LNode> L = composite;
 
-    // ------------------------------------------------------------- //
-    // Build C_next by running ClusterAwarePIBT over each cluster.
-    // Alternate iteration order per depth to avoid Cluster 0 dominance.
-    // ------------------------------------------------------------- //
+    // Run PIBT with the LNode's constraints to obtain the next config.
     Config C_next(N, nullptr);
-    pibt.start_new_session();
+    if (!pibt.get_new_config(H, L.get(), C_next)) continue;
 
-    // if (H->depth % 2 != 0) {
-    //   std::reverse(clusters.begin(), clusters.end());
-    // }
-
-    bool pibt_ok = true;
-    for (int ci = 0; ci < static_cast<int>(clusters.size()); ++ci) {
-      auto constraints =
-          H->get_constraints(static_cast<int>(window_of(H->depth)), ci);
-      if (!pibt.get_next_config(H, clusters[ci].agents, constraints, &C_next)) {
-        pibt_ok = false;
-        break;
-      }
-    }
-
-    if (!pibt_ok) {
-//        std::cout << "PIBT failed" << std::endl;
-        continue;
-    }
-
-    // All agents must have been assigned a next position.
+    // All agents must have been assigned.
     bool all_set = true;
     for (uint i = 0; i < N; ++i) {
       if (C_next[i] == nullptr) { all_set = false; break; }
     }
-    if (!all_set) {
-        std::cout << "not all_set" << std::endl;
-        continue;
-    }
+    if (!all_set) continue;
 
     // ------------------------------------------------------------- //
     // Handle the successor.

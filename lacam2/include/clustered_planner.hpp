@@ -1,10 +1,10 @@
 #pragma once
 
-#include "cluster_aware_pibt.hpp"
 #include "cluster_detection_pibt.hpp"
 #include "clustered_hnode.hpp"
 #include "dist_table.hpp"
 #include "instance.hpp"
+#include "pibt.hpp"
 #include "planner.hpp"
 #include "post_processing.hpp"
 #include "utils.hpp"

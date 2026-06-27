@@ -14,6 +14,7 @@ DistTable::DistTable(const Instance* ins)
 
 void DistTable::setup(const Instance* ins)
 {
+  agent_mutexes = std::vector<std::mutex>(ins->N);
   for (size_t i = 0; i < ins->N; ++i) {
     OPEN.push_back(std::queue<Vertex*>());
     auto n = ins->goals[i];
@@ -25,6 +26,8 @@ void DistTable::setup(const Instance* ins)
 uint DistTable::get(uint i, uint v_id)
 {
   if (table[i][v_id] < V_size) return table[i][v_id];
+
+  std::lock_guard<std::mutex> lock(agent_mutexes[i]);
 
   /*
    * BFS with lazy evaluation

@@ -28,12 +28,28 @@ struct ClusteredHNode : public HNode {
   // One entry per cluster, in the same order as the cluster vector.
   std::vector<ClusterTree> cluster_trees;
 
+  // Visit budget: maximum number of times the high-level loop may process
+  // this node.  Computed as floor(1000 / sqrt(depth + 1)) at construction.
+  int visit_budget;
+  int visits_remaining;
+
   ClusteredHNode(const Config& C, DistTable& D, HNode* parent,
                  uint g, uint h);
 
   // Initialize cluster_trees from the cluster partition for this depth.
-  // Must be called once before get_constraints.  No-op if already called.
+  // Must be called once.  No-op if already called.
   void init_cluster_trees(const std::vector<Cluster>& clusters);
+
+  // Pop one LNode from the cluster tree whose next agent has the highest
+  // global priority.  Expands the tree so future pops keep exploring.
+  // Returns nullptr when every cluster tree is exhausted.
+  std::shared_ptr<LNode> pop_priority_lnode();
+
+  // Pop one LNode each from the k cluster trees whose front agents have the
+  // highest global priority (at most min(k, available_clusters) trees).
+  // Each selected tree is expanded after popping.  Returns an empty vector
+  // when every cluster tree is exhausted.
+  std::vector<std::shared_ptr<LNode>> pop_top_k_clusters(int k);
 
   // Pop one LNode from cluster cluster_idx's tree, expand it, and return its
   // constraints.  Returns an empty Constraints if the tree is exhausted.

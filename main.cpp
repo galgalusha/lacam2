@@ -3,6 +3,7 @@
 #include <odplanner.hpp>
 #include <random_planner.hpp>
 #include <clustered_planner.hpp>
+#include <clustered_hnode.hpp>
 #include <algorithm>
 #include <cassert>
 #include <cluster_detection_pibt.hpp>
@@ -66,6 +67,53 @@ static void test_clusters()
   std::cout << "test_clusters PASSED\n";
 }
 
+static void test_init_cluster_trees_order()
+{
+  std::mt19937 MT(0);
+  const Instance ins("./assets/random-11-5.map", &MT, 4);
+  DistTable D(&ins);
+
+  // Build a root ClusteredHNode (constructor sets order via initialize_order;
+  // we overwrite it afterwards).
+  Config C = ins.starts;
+  ClusteredHNode node(C, D, nullptr, 0, 0);
+
+  // Overwrite order: agent 3 highest priority, then 1, then 2, then 0.
+  node.order = {3, 1, 2, 0};
+
+  // One cluster with all 4 agents so that pop_priority_lnode traverses all
+  // depths (depth 1→4) and we see every agent's _who in the returned LNodes.
+  std::vector<Cluster> clusters(1);
+  clusters[0].agents = {0, 1, 2, 3};
+
+  node.init_cluster_trees(clusters);
+
+  // Verify the cluster order was built from node.order: expect [3,1,2,0].
+  const auto& ct_order = node.cluster_trees[0].order;
+  assert(ct_order == (std::vector<uint>{3, 1, 2, 0}) &&
+         "cluster order should be (3,1,2,0)");
+
+  // Pop all LNodes and collect _who for depth >= 1 nodes (depth-0 roots have
+  // no meaningful _who).  Unique values in order of first appearance must
+  // match node.order = {3,1,2,0}: the priority-based selection ensures the
+  // highest-priority agent's subtree is always exhausted before the next.
+  std::vector<uint> seen_order;
+  std::unordered_set<uint> seen_set;
+  while (true) {
+    auto L = node.pop_priority_lnode();
+    if (!L) break;
+    if (L->depth >= 1) {
+      if (seen_set.insert(L->_who).second)
+        seen_order.push_back(L->_who);
+    }
+  }
+
+  assert(seen_order == (std::vector<uint>{3, 1, 2, 0}) &&
+         "pop order should match node.order: (3,1,2,0)");
+
+  std::cout << "test_init_cluster_trees_order PASSED\n";
+}
+
 
 
 
@@ -126,6 +174,10 @@ int main(int argc, char* argv[])
       program.add_argument("-max_ll_decay")
         .help("decay factor for ancestor max_ll when a node exceeds its budget")
         .default_value(std::string("1.0"));
+  program.add_argument("--test")
+      .help("run unit tests and exit")
+      .default_value(false)
+      .implicit_value(true);
 
   try {
     program.parse_known_args(argc, argv);
@@ -133,6 +185,12 @@ int main(int argc, char* argv[])
     std::cerr << err.what() << std::endl;
     std::cerr << program;
     std::exit(1);
+  }
+
+  if (program.get<bool>("test")) {
+    test_clusters();
+    test_init_cluster_trees_order();
+    return 0;
   }
 
   // setup instance
@@ -173,7 +231,7 @@ int main(int argc, char* argv[])
   Solution solution;
   if (use_cplanner) {
     auto window = 4;
-    auto rollouts = 5000;
+    auto rollouts = 1000;
     ClusteredPlanner cplanner(&ins, &deadline, &MT, verbose, rollouts, window);
     solution = cplanner.solve();
   } else if (use_rand_planner) {
