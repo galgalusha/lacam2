@@ -26,8 +26,18 @@ Normalized Y = dy / Magnitude
 
 # Intent Feature
 
-We think that an agent's decision should not be based just on other agents' current positions because it doesn’t tell us where these agents are heading. We want to view the agents as a set of compasses on a map where each compass shows the intent of the agent, meaning, how is it willing to tie break PIBT (e.g., how much should it prefer RIGHT over DOWN).
-The policy will yield an intent for every state. Every time the policy yields a new intent, the transition from the previous intent to the new intent will be mathematically smoothed using an exponential moving average (LERP) over an INTENT_SMOOTHING factor. This means the policy is an intent accelerator rather than an intent dictator. This is required because when an agent takes into account other agents' temporal intents, it is only meaningful if those intents remain somewhat stable for the near future.
+We think that an agent's decision should not be based just on other agents' current positions 
+because it doesn’t tell us where these agents are heading. 
+We want to view the agents as a set of compasses on a map where each compass 
+shows the intent of the agent, meaning, how is it willing to tie break PIBT 
+(e.g., how much should it prefer RIGHT over DOWN).
+The policy will yield an intent for every state. 
+Every time the policy yields a new intent, the transition from the previous 
+intent to the new intent will be mathematically smoothed using an exponential 
+moving average (LERP) over an INTENT_SMOOTHING factor. 
+This means the policy is an intent accelerator rather than an intent dictator. 
+This is required because when an agent takes into account other agents' temporal intents, 
+it is only meaningful if those intents remain somewhat stable for the near future.
 
 #The MLP Inputs (State Representation)
 

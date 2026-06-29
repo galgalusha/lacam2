@@ -1,47 +1,181 @@
 #include "gui.hpp"
+#include "intent_policy.hpp"
 
 #include <SFML/Graphics.hpp>
 
 #include <array>
 #include <cmath>
+#include <cstdio>
+#include <fstream>
+#include <regex>
+#include <sstream>
+#include <string>
+#include <vector>
 
-// Fixed palette – colours are reused cyclically
+// ---------------------------------------------------------------------------
+// Palette
+// ---------------------------------------------------------------------------
 static const std::array<sf::Color, 20> PALETTE = {
-    sf::Color(230, 25,  75),   // red
-    sf::Color(60,  180, 75),   // green
-    sf::Color(255, 225, 25),   // yellow
-    sf::Color(0,   130, 200),  // blue
-    sf::Color(245, 130, 48),   // orange
-    sf::Color(145, 30,  180),  // purple
-    sf::Color(70,  240, 240),  // cyan
-    sf::Color(240, 50,  230),  // magenta
-    sf::Color(210, 245, 60),   // lime
-    sf::Color(250, 190, 212),  // pink
-    sf::Color(0,   128, 128),  // teal
-    sf::Color(220, 190, 255),  // lavender
-    sf::Color(170, 110, 40),   // brown
-    sf::Color(255, 250, 200),  // beige
-    sf::Color(128, 0,   0),    // maroon
-    sf::Color(170, 255, 195),  // mint
-    sf::Color(128, 128, 0),    // olive
-    sf::Color(255, 215, 180),  // apricot
-    sf::Color(0,   0,   128),  // navy
-    sf::Color(128, 128, 128),  // grey
+    sf::Color(230, 25,  75),
+    sf::Color(60,  180, 75),
+    sf::Color(255, 225, 25),
+    sf::Color(0,   130, 200),
+    sf::Color(245, 130, 48),
+    sf::Color(145, 30,  180),
+    sf::Color(70,  240, 240),
+    sf::Color(240, 50,  230),
+    sf::Color(210, 245, 60),
+    sf::Color(250, 190, 212),
+    sf::Color(0,   128, 128),
+    sf::Color(220, 190, 255),
+    sf::Color(170, 110, 40),
+    sf::Color(255, 250, 200),
+    sf::Color(128, 0,   0),
+    sf::Color(170, 255, 195),
+    sf::Color(128, 128, 0),
+    sf::Color(255, 215, 180),
+    sf::Color(0,   0,   128),
+    sf::Color(128, 128, 128),
 };
 
+// ---------------------------------------------------------------------------
+// Load a plan file:  t:(x0,y0),(x1,y1),...
+// ---------------------------------------------------------------------------
+static Solution load_plan(const std::string& path, const Instance& ins)
+{
+    const uint W = ins.G.width;
+    std::ifstream f(path);
+    if (!f.is_open()) return {};
+
+    Solution sol;
+    std::string line;
+    const std::regex coord_re(R"(\((\d+),(\d+)\))");
+
+    while (std::getline(f, line)) {
+        auto colon = line.find(':');
+        if (colon == std::string::npos) continue;
+        std::string tail = line.substr(colon + 1);
+
+        Config cfg;
+        auto it  = std::sregex_iterator(tail.begin(), tail.end(), coord_re);
+        for (; it != std::sregex_iterator(); ++it) {
+            int x = std::stoi((*it)[1]);
+            int y = std::stoi((*it)[2]);
+            uint idx = static_cast<uint>(y * W + x);
+            if (idx >= ins.G.U.size() || ins.G.U[idx] == nullptr) return {};
+            cfg.push_back(ins.G.U[idx]);
+        }
+        if (cfg.empty()) continue;
+        if (!sol.empty() && cfg.size() != sol[0].size()) return {};
+        sol.push_back(cfg);
+    }
+    return sol;
+}
+
+// ---------------------------------------------------------------------------
+// Open file dialog via zenity
+// ---------------------------------------------------------------------------
+static std::string open_file_dialog()
+{
+    FILE* p = popen(
+        "zenity --file-selection --title='Load Plan' "
+        "--file-filter='Plan files (*.txt) | *.txt' "
+        "--file-filter='All files | *' 2>/dev/null",
+        "r");
+    if (!p) return "";
+    char buf[4096] = {};
+    if (fgets(buf, sizeof(buf), p)) {
+        std::string s(buf);
+        if (!s.empty() && s.back() == '\n') s.pop_back();
+        pclose(p);
+        return s;
+    }
+    pclose(p);
+    return "";
+}
+
+// ---------------------------------------------------------------------------
+// Button helper
+// ---------------------------------------------------------------------------
+struct Button {
+    sf::RectangleShape shape;
+    sf::Text           label;
+    bool               enabled = true;
+
+    Button() = default;
+    Button(float x, float y, float w, float h,
+           const std::string& text, const sf::Font& font)
+    {
+        shape.setSize({w, h});
+        shape.setPosition(x, y);
+        shape.setOutlineColor(sf::Color(180, 180, 180));
+        shape.setOutlineThickness(1.f);
+
+        label.setFont(font);
+        label.setString(text);
+        label.setCharacterSize(14);
+        label.setFillColor(sf::Color::White);
+        sf::FloatRect tb = label.getLocalBounds();
+        label.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+        label.setPosition(x + w / 2.f, y + h / 2.f);
+    }
+
+    bool contains(sf::Vector2f p) const {
+        return enabled && shape.getGlobalBounds().contains(p);
+    }
+
+    void updateColors(sf::Vector2f mouse) {
+        if (!enabled) {
+            shape.setFillColor(sf::Color(55, 55, 55));
+            label.setFillColor(sf::Color(110, 110, 110));
+        } else if (contains(mouse)) {
+            shape.setFillColor(sf::Color(100, 160, 210));
+            label.setFillColor(sf::Color::White);
+        } else {
+            shape.setFillColor(sf::Color(70, 130, 180));
+            label.setFillColor(sf::Color::White);
+        }
+    }
+
+    void draw(sf::RenderWindow& w) { w.draw(shape); w.draw(label); }
+};
+
+// ---------------------------------------------------------------------------
+// Wrap a long string into multiple lines at max_chars width
+// ---------------------------------------------------------------------------
+static std::vector<std::string> wrap(const std::string& s, size_t max_chars)
+{
+    std::vector<std::string> lines;
+    std::istringstream ss(s);
+    std::string line;
+    while (std::getline(ss, line)) {
+        while (line.size() > max_chars) {
+            lines.push_back(line.substr(0, max_chars));
+            line = line.substr(max_chars);
+        }
+        lines.push_back(line);
+    }
+    return lines;
+}
+
+// ---------------------------------------------------------------------------
+// run_gui
+// ---------------------------------------------------------------------------
 void run_gui(const Instance& ins)
 {
     const auto& G = ins.G;
-    const uint W = G.width;
-    const uint H = G.height;
+    const uint W  = G.width;
+    const uint H  = G.height;
 
-    // ---- layout constants ----
-    const int CELL       = 20;    // pixels per grid cell
-    const int MARGIN     = 40;    // pixels around the grid
-    const int BOTTOM_BAR = 50;    // space for button at the bottom
+    // ---- layout ----
+    const int CELL      = 20;
+    const int MARGIN    = 20;
+    const int PANEL_W   = 310;   // wide enough for feature text
+    const int PANEL_PAD = 10;
 
-    const int win_w = static_cast<int>(W) * CELL + 2 * MARGIN;
-    const int win_h = static_cast<int>(H) * CELL + 2 * MARGIN + BOTTOM_BAR;
+    const int map_px = static_cast<int>(W) * CELL;
+    const int win_w  = map_px + 2 * MARGIN + PANEL_W;
+    const int win_h  = static_cast<int>(H) * CELL + 2 * MARGIN;
 
     sf::RenderWindow window(
         sf::VideoMode(static_cast<unsigned>(win_w),
@@ -50,122 +184,370 @@ void run_gui(const Instance& ins)
         sf::Style::Close | sf::Style::Titlebar);
     window.setFramerateLimit(60);
 
-    // ---- font for button label ----
+    // ---- font ----
     sf::Font font;
     const bool font_ok = font.loadFromFile(
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
+    sf::Font mono;
+    const bool mono_ok = mono.loadFromFile(
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf");
 
-    // ---- pre-build static vertex arrays ----
-    sf::VertexArray floor_va(sf::Quads);
-    sf::VertexArray wall_va(sf::Quads);
+    // ---- panel ----
+    const float panel_x = static_cast<float>(map_px + 2 * MARGIN);
+    sf::RectangleShape panel_bg(
+        sf::Vector2f(static_cast<float>(PANEL_W), static_cast<float>(win_h)));
+    panel_bg.setPosition(panel_x, 0.f);
+    panel_bg.setFillColor(sf::Color(32, 32, 32));
 
-    const sf::Color FLOOR_COL(240, 240, 235);
-    const sf::Color WALL_COL (60,  60,  60);
+    // ---- buttons ----
+    const float BW = PANEL_W - 2 * PANEL_PAD;
+    const float BH = 30.f;
+    const float bx = panel_x + PANEL_PAD;
+    Button btn_load, btn_step, btn_exit;
+    if (font_ok) {
+        float by = PANEL_PAD + 22.f;
+        btn_load = Button(bx, by, BW, BH, "Load Plan", font); by += BH + 8.f;
+        btn_step = Button(bx, by, BW, BH, "Step",      font);
+        btn_exit = Button(bx, win_h - PANEL_PAD - BH, BW, BH, "Exit", font);
+    }
 
+    // ---- panel title ----
+    sf::Text panel_title;
+    if (font_ok) {
+        panel_title.setFont(font);
+        panel_title.setString("Controls");
+        panel_title.setCharacterSize(13);
+        panel_title.setStyle(sf::Text::Bold);
+        panel_title.setFillColor(sf::Color(200, 200, 200));
+        panel_title.setPosition(panel_x + PANEL_PAD, PANEL_PAD);
+    }
+
+    // ---- info + step texts (small status area below buttons) ----
+    sf::Text info_text, step_text;
+    const float info_y = PANEL_PAD + 22.f + 2 * (BH + 8.f) + 8.f;
+    if (font_ok) {
+        info_text.setFont(font);
+        info_text.setCharacterSize(11);
+        info_text.setFillColor(sf::Color(180, 220, 180));
+        info_text.setPosition(panel_x + PANEL_PAD, info_y);
+
+        step_text.setFont(font);
+        step_text.setCharacterSize(11);
+        step_text.setFillColor(sf::Color(200, 200, 200));
+        step_text.setPosition(panel_x + PANEL_PAD, info_y + 30.f);
+    }
+
+    // ---- agent-detail area (scrollable monospace text) ----
+    // Sits below the status area, above the Exit button
+    const float detail_y    = info_y + 60.f;
+    const float detail_h    = win_h - PANEL_PAD - BH - 8.f - detail_y;
+    const float DETAIL_LINE = 13.f;  // pixels per text line
+    const int   DETAIL_CHARS = (PANEL_W - 2 * PANEL_PAD) / 7;  // ~char width at size 11
+
+    // Clip rect for the detail area
+    sf::RectangleShape detail_bg(sf::Vector2f(BW, detail_h));
+    detail_bg.setPosition(panel_x + PANEL_PAD, detail_y);
+    detail_bg.setFillColor(sf::Color(24, 24, 24));
+
+    // ---- grid tiles ----
+    sf::VertexArray floor_va(sf::Quads), wall_va(sf::Quads);
     for (uint y = 0; y < H; ++y) {
         for (uint x = 0; x < W; ++x) {
             uint idx = y * W + x;
-            bool passable = (G.U[idx] != nullptr);
-            auto& va  = passable ? floor_va : wall_va;
-            sf::Color col = passable ? FLOOR_COL : WALL_COL;
-
+            bool pass = (G.U[idx] != nullptr);
+            auto& va = pass ? floor_va : wall_va;
+            sf::Color col = pass ? sf::Color(0, 0, 0) : sf::Color(255, 255, 255);
             float px = static_cast<float>(MARGIN + x * CELL);
             float py = static_cast<float>(MARGIN + y * CELL);
-
-            va.append(sf::Vertex(sf::Vector2f(px,        py       ), col));
-            va.append(sf::Vertex(sf::Vector2f(px + CELL, py       ), col));
-            va.append(sf::Vertex(sf::Vector2f(px + CELL, py + CELL), col));
-            va.append(sf::Vertex(sf::Vector2f(px,        py + CELL), col));
+            va.append(sf::Vertex({px,        py       }, col));
+            va.append(sf::Vertex({px + CELL, py       }, col));
+            va.append(sf::Vertex({px + CELL, py + CELL}, col));
+            va.append(sf::Vertex({px,        py + CELL}, col));
         }
     }
 
-    // ---- Exit button ----
-    const float BTN_W = 80.f, BTN_H = 30.f;
-    const float btn_x = (win_w - BTN_W) / 2.f;
-    const float btn_y = win_h - BOTTOM_BAR + (BOTTOM_BAR - BTN_H) / 2.f;
-
-    sf::RectangleShape btn_shape(sf::Vector2f(BTN_W, BTN_H));
-    btn_shape.setFillColor(sf::Color(70, 130, 180));
-    btn_shape.setOutlineColor(sf::Color::White);
-    btn_shape.setOutlineThickness(1.f);
-    btn_shape.setPosition(btn_x, btn_y);
-
-    sf::Text btn_label;
-    if (font_ok) {
-        btn_label.setFont(font);
-        btn_label.setString("Exit");
-        btn_label.setCharacterSize(16);
-        btn_label.setFillColor(sf::Color::White);
-        sf::FloatRect tb = btn_label.getLocalBounds();
-        btn_label.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
-        btn_label.setPosition(btn_x + BTN_W / 2.f, btn_y + BTN_H / 2.f);
-    }
-
-    // ---- shape templates ----
+    // ---- agent / goal shapes ----
     const float AGENT_R   = CELL * 0.38f;
     const float GOAL_HALF = CELL * 0.22f;
-
-    sf::CircleShape circle(AGENT_R);
-    circle.setOrigin(AGENT_R, AGENT_R);
-
-    sf::RectangleShape goal_rect(sf::Vector2f(GOAL_HALF * 2.f, GOAL_HALF * 2.f));
+    sf::CircleShape    circle(AGENT_R);    circle.setOrigin(AGENT_R, AGENT_R);
+    sf::RectangleShape goal_rect({GOAL_HALF * 2.f, GOAL_HALF * 2.f});
     goal_rect.setOrigin(GOAL_HALF, GOAL_HALF);
 
+    // Selection ring (around agent)
+    sf::CircleShape sel_ring(AGENT_R + 3.f);
+    sel_ring.setOrigin(AGENT_R + 3.f, AGENT_R + 3.f);
+    sel_ring.setFillColor(sf::Color::Transparent);
+    sel_ring.setOutlineColor(sf::Color::Yellow);
+    sel_ring.setOutlineThickness(2.f);
+
+    // Goal highlight ring (around selected agent's goal)
+    const float GOAL_HL = GOAL_HALF + 4.f;
+    sf::RectangleShape goal_hl({GOAL_HL * 2.f, GOAL_HL * 2.f});
+    goal_hl.setOrigin(GOAL_HL, GOAL_HL);
+    goal_hl.setFillColor(sf::Color::Transparent);
+    goal_hl.setOutlineColor(sf::Color::Yellow);
+    goal_hl.setOutlineThickness(2.f);
+
+    // ---- policy controller ----
+    PolicyController policy(ins);
+
+    // ---- plan / selection state ----
+    Solution plan;
+    int      plan_step     = -1;
+    int      selected_agent = -1;   // -1 = none
+    int      detail_scroll  = 0;    // line offset
+
+    std::vector<std::string> detail_lines;  // pre-wrapped feature text
+
+    auto current_config = [&]() -> const Config& {
+        if (plan.empty() || plan_step < 0) return ins.starts;
+        return plan[static_cast<size_t>(plan_step)];
+    };
+
+    // rebuild_detail: re-wrap feature text for the selected agent.
+    // keep_scroll: don't reset scroll position (e.g. when only stepping).
+    auto rebuild_detail = [&](bool keep_scroll = false) {
+        if (!keep_scroll) detail_scroll = 0;
+        detail_lines.clear();
+        if (selected_agent < 0 ||
+            selected_agent >= static_cast<int>(ins.N)) {
+            detail_lines.push_back("Click an agent to");
+            detail_lines.push_back("inspect its features.");
+            return;
+        }
+        const uint i    = static_cast<uint>(selected_agent);
+        const Vertex* v = current_config()[i];
+        int cx = static_cast<int>(v->index % W);
+        int cy = static_cast<int>(v->index / W);
+        const AgentFeatures& af = policy.context()[i];
+        detail_lines = wrap(af.summary(i, cx, cy),
+                            static_cast<size_t>(DETAIL_CHARS));
+    };
+
+    auto refresh_features = [&](bool keep_scroll = false) {
+        policy.compute(current_config(), plan_step);
+        rebuild_detail(keep_scroll);
+    };
+
+    // Initial compute
+    policy.compute(ins.starts, -1);
+    rebuild_detail();
+
+    // ---- hit-test: which agent is at pixel (mx,my)? ----
+    auto agent_at = [&](sf::Vector2f mp) -> int {
+        const Config& cfg = current_config();
+        for (uint i = 0; i < static_cast<uint>(cfg.size()); ++i) {
+            const Vertex* v = cfg[i];
+            float ax = MARGIN + (v->index % W) * CELL + CELL * 0.5f;
+            float ay = MARGIN + (v->index / W) * CELL + CELL * 0.5f;
+            float dx = mp.x - ax, dy = mp.y - ay;
+            if (std::sqrt(dx*dx + dy*dy) <= AGENT_R + 2.f)
+                return static_cast<int>(i);
+        }
+        return -1;
+    };
+
+    // ---- main loop ----
     while (window.isOpen()) {
+        sf::Vector2i mi = sf::Mouse::getPosition(window);
+        sf::Vector2f mf(static_cast<float>(mi.x), static_cast<float>(mi.y));
+
         sf::Event event;
         while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed)
-                window.close();
+            if (event.type == sf::Event::Closed) window.close();
+
+            if (event.type == sf::Event::KeyPressed) {
+                if (event.key.code == sf::Keyboard::Space) {
+                    if (!plan.empty()) {
+                        plan_step = (plan_step + 1) %
+                                    static_cast<int>(plan.size());
+                        refresh_features(/*keep_scroll=*/true);
+                    }
+                } else if (event.key.code == sf::Keyboard::Escape) {
+                    selected_agent = -1;
+                    rebuild_detail();
+                }
+            }
+
+            // Mouse-wheel scrolls the detail pane
+            if (event.type == sf::Event::MouseWheelScrolled) {
+                sf::FloatRect dr(panel_x + PANEL_PAD, detail_y, BW, detail_h);
+                if (dr.contains(mf)) {
+                    detail_scroll -= static_cast<int>(event.mouseWheelScroll.delta);
+                    int max_scroll = std::max(0,
+                        static_cast<int>(detail_lines.size()) -
+                        static_cast<int>(detail_h / DETAIL_LINE));
+                    detail_scroll = std::max(0, std::min(detail_scroll, max_scroll));
+                }
+            }
+
             if (event.type == sf::Event::MouseButtonPressed &&
-                event.mouseButton.button == sf::Mouse::Left) {
-                sf::Vector2f mp(static_cast<float>(event.mouseButton.x),
-                                static_cast<float>(event.mouseButton.y));
-                if (btn_shape.getGlobalBounds().contains(mp))
+                event.mouseButton.button == sf::Mouse::Left)
+            {
+                if (btn_exit.contains(mf)) {
                     window.close();
+                }
+                else if (btn_load.contains(mf)) {
+                    std::string path = open_file_dialog();
+                    if (!path.empty()) {
+                        Solution loaded = load_plan(path, ins);
+                        if (loaded.empty()) {
+                            info_text.setString("Load failed.");
+                            info_text.setFillColor(sf::Color(255, 100, 100));
+                        } else {
+                            plan      = std::move(loaded);
+                            plan_step = 0;
+                            auto sl   = path.rfind('/');
+                            std::string fname = (sl == std::string::npos)
+                                                ? path : path.substr(sl + 1);
+                            info_text.setString(
+                                fname + "\n" +
+                                std::to_string(plan.size()) + " steps, " +
+                                std::to_string(plan[0].size()) + " agents");
+                            info_text.setFillColor(sf::Color(180, 220, 180));
+                            policy.set_learning_mode(plan);
+                            refresh_features();
+                        }
+                    }
+                }
+                else if (btn_step.contains(mf)) {
+                    if (!plan.empty()) {
+                        plan_step = (plan_step + 1) %
+                                    static_cast<int>(plan.size());
+                        refresh_features(/*keep_scroll=*/true);
+                    }
+                }
+                else {
+                    // Click on map — try to select an agent
+                    int hit = agent_at(mf);
+                    if (hit >= 0) {
+                        selected_agent = hit;
+                        refresh_features();
+                    }
+                }
             }
         }
 
-        // Button hover highlight
-        sf::Vector2i mpos = sf::Mouse::getPosition(window);
-        sf::Vector2f mposf(static_cast<float>(mpos.x),
-                           static_cast<float>(mpos.y));
-        bool hovering = btn_shape.getGlobalBounds().contains(mposf);
-        btn_shape.setFillColor(hovering ? sf::Color(100, 160, 210)
-                                        : sf::Color(70, 130, 180));
+        // ---- update button states ----
+        btn_step.enabled = !plan.empty();
+        btn_load.updateColors(mf);
+        btn_step.updateColors(mf);
+        btn_exit.updateColors(mf);
 
-        window.clear(sf::Color(30, 30, 30));
+        if (font_ok) {
+            if (plan_step >= 0) {
+                std::string mode_str = (policy.mode() == PolicyMode::Learning)
+                                       ? " [Learning]" : " [Execution]";
+                step_text.setString("Step: " + std::to_string(plan_step) +
+                                    " / " + std::to_string((int)plan.size()-1) +
+                                    mode_str);
+            } else {
+                step_text.setString("Space=Step  Esc=Deselect");
+                step_text.setFillColor(sf::Color(130, 130, 130));
+            }
+        }
+
+        // ---- render ----
+        window.clear(sf::Color(20, 20, 20));
         window.draw(floor_va);
         window.draw(wall_va);
 
-        // Draw goals and agents
+        // goals
         for (uint i = 0; i < ins.N; ++i) {
-            const sf::Color col = PALETTE[i % PALETTE.size()];
-
-            // goal (small rectangle)
+            sf::Color col = PALETTE[i % PALETTE.size()]; col.a = 160;
+            goal_rect.setFillColor(col);
             const Vertex* gv = ins.goals[i];
-            uint gx = gv->index % W;
-            uint gy = gv->index / W;
-            sf::Color gc = col; gc.a = 180;
-            goal_rect.setFillColor(gc);
-            goal_rect.setPosition(
-                MARGIN + gx * CELL + CELL * 0.5f,
-                MARGIN + gy * CELL + CELL * 0.5f);
+            float gpx = MARGIN + (gv->index % W) * CELL + CELL * 0.5f;
+            float gpy = MARGIN + (gv->index / W) * CELL + CELL * 0.5f;
+            goal_rect.setPosition(gpx, gpy);
             window.draw(goal_rect);
-
-            // agent (filled circle)
-            const Vertex* sv = ins.starts[i];
-            uint sx = sv->index % W;
-            uint sy = sv->index / W;
-            circle.setFillColor(col);
-            circle.setPosition(
-                MARGIN + sx * CELL + CELL * 0.5f,
-                MARGIN + sy * CELL + CELL * 0.5f);
-            window.draw(circle);
+            // highlight the selected agent's goal
+            if (static_cast<int>(i) == selected_agent) {
+                goal_hl.setPosition(gpx, gpy);
+                window.draw(goal_hl);
+            }
         }
 
-        window.draw(btn_shape);
-        if (font_ok) window.draw(btn_label);
+        // agents
+        const Config& cfg = current_config();
+        for (uint i = 0; i < static_cast<uint>(cfg.size()); ++i) {
+            const Vertex* v = cfg[i];
+            float ax = MARGIN + (v->index % W) * CELL + CELL * 0.5f;
+            float ay = MARGIN + (v->index / W) * CELL + CELL * 0.5f;
+
+            if (static_cast<int>(i) == selected_agent) {
+                sel_ring.setPosition(ax, ay);
+                window.draw(sel_ring);
+            }
+
+            circle.setFillColor(PALETTE[i % PALETTE.size()]);
+            circle.setPosition(ax, ay);
+            window.draw(circle);
+
+            // compass arrow for non-zero intent
+            const AgentFeatures& af = policy.context()[i];
+            float ix = af.intent_x, iy = af.intent_y;
+            float imag = std::sqrt(ix*ix + iy*iy);
+            if (imag > 1e-4f) {
+                float shaft = AGENT_R * 0.72f;
+                float tx = ax + ix * shaft;
+                float ty = ay + iy * shaft;
+                // perpendicular for arrowhead wings
+                float px2 = -iy / imag, py2 = ix / imag;
+                float hw = AGENT_R * 0.22f;  // half-width of head
+                float hb = AGENT_R * 0.28f;  // how far back the base is
+                sf::VertexArray arrow(sf::Lines, 2);
+                arrow[0] = sf::Vertex({ax, ay}, sf::Color::White);
+                arrow[1] = sf::Vertex({tx, ty}, sf::Color::White);
+                window.draw(arrow);
+                sf::VertexArray head(sf::Triangles, 3);
+                head[0] = sf::Vertex({tx + ix/imag * AGENT_R * 0.2f, ty + iy/imag * AGENT_R * 0.2f}, sf::Color::White);
+                head[1] = sf::Vertex({tx - ix/imag*hb + px2*hw, ty - iy/imag*hb + py2*hw}, sf::Color::White);
+                head[2] = sf::Vertex({tx - ix/imag*hb - px2*hw, ty - iy/imag*hb - py2*hw}, sf::Color::White);
+                window.draw(head);
+            }
+        }
+
+        // panel background
+        window.draw(panel_bg);
+
+        // buttons / status
+        btn_load.draw(window);
+        btn_step.draw(window);
+        btn_exit.draw(window);
+        if (font_ok) {
+            window.draw(panel_title);
+            window.draw(info_text);
+            window.draw(step_text);
+        }
+
+        // feature detail pane
+        window.draw(detail_bg);
+        if ((font_ok || mono_ok) && !detail_lines.empty()) {
+            sf::Text line_text;
+            line_text.setFont(mono_ok ? mono : font);
+            line_text.setCharacterSize(11);
+            // dim colour for hint (no agent selected), bright for features
+            line_text.setFillColor(selected_agent < 0
+                ? sf::Color(90, 90, 90)
+                : sf::Color(210, 230, 210));
+
+            int visible = static_cast<int>(detail_h / DETAIL_LINE);
+            int start   = detail_scroll;
+            int end_idx = std::min(start + visible,
+                                   static_cast<int>(detail_lines.size()));
+
+            // Scissor via View is not trivial in SFML 2; just clip by not
+            // drawing lines that would fall outside the box.
+            for (int li = start; li < end_idx; ++li) {
+                float ty = detail_y + (li - start) * DETAIL_LINE;
+                if (ty + DETAIL_LINE > detail_y + detail_h) break;
+                line_text.setString(detail_lines[li]);
+                line_text.setPosition(panel_x + PANEL_PAD, ty);
+                window.draw(line_text);
+            }
+        }
+
         window.display();
     }
 }
-
