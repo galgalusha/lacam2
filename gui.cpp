@@ -238,13 +238,15 @@ void run_gui(const Instance& ins)
     }
 
     // ---- agent-detail area (scrollable monospace text) ----
-    // Sits below the status area, above the Exit button
     const float detail_y    = info_y + 60.f;
-    const float detail_h    = win_h - PANEL_PAD - BH - 8.f - detail_y;
-    const float DETAIL_LINE = 13.f;  // pixels per text line
-    const int   DETAIL_CHARS = (PANEL_W - 2 * PANEL_PAD) / 7;  // ~char width at size 11
+    // detail box ends just above the ring section
+    const float ring_section_y_pre = static_cast<float>(win_h)
+                                     - static_cast<float>(PANEL_PAD) - BH
+                                     - 8.f - (16.f + 4*(26.f+4.f));
+    const float detail_h    = ring_section_y_pre - 8.f - detail_y;
+    const float DETAIL_LINE = 13.f;
+    const int   DETAIL_CHARS = (PANEL_W - 2 * PANEL_PAD) / 7;
 
-    // Clip rect for the detail area
     sf::RectangleShape detail_bg(sf::Vector2f(BW, detail_h));
     detail_bg.setPosition(panel_x + PANEL_PAD, detail_y);
     detail_bg.setFillColor(sf::Color(24, 24, 24));
@@ -288,44 +290,78 @@ void run_gui(const Instance& ins)
     goal_hl.setOutlineColor(sf::Color::Yellow);
     goal_hl.setOutlineThickness(2.f);
 
+    // ---- ring button area (between detail box and Exit) ----
+    const float BH_RING    = 26.f;
+    const float RING_GAP   = 4.f;
+    // Reserve space at bottom of panel: label + 4 buttons + exit
+    const float ring_section_h = 16.f + 4 * (BH_RING + RING_GAP);
+    const float ring_section_y = static_cast<float>(win_h)
+                                 - static_cast<float>(PANEL_PAD) - BH
+                                 - 8.f - ring_section_h;
+    // Shrink the detail box to not overlap the ring section
+    // (detail_h is calculated later; we patch it here via an adjusted value)
+    // We define ring buttons now.
+    std::array<Button, N_RINGS> btn_ring;
+    sf::Text ring_section_label;
+    if (font_ok) {
+        ring_section_label.setFont(font);
+        ring_section_label.setString("Radar Rings");
+        ring_section_label.setCharacterSize(12);
+        ring_section_label.setStyle(sf::Text::Bold);
+        ring_section_label.setFillColor(sf::Color(160, 160, 200));
+        ring_section_label.setPosition(panel_x + PANEL_PAD, ring_section_y);
+        float ry = ring_section_y + 18.f;
+        for (int r = 0; r < N_RINGS; ++r) {
+            btn_ring[r] = Button(bx, ry, BW, BH_RING,
+                                 std::string(RING_LABELS[r]), font);
+            ry += BH_RING + RING_GAP;
+        }
+    }
+
     // ---- policy controller ----
     PolicyController policy(ins);
 
     // ---- plan / selection state ----
     Solution plan;
-    int      plan_step     = -1;
+    int      plan_step      = -1;
     int      selected_agent = -1;   // -1 = none
-    int      detail_scroll  = 0;    // line offset
+    int      selected_ring  = -1;   // -1 = none
+    int      detail_scroll  = 0;
+    RingMap  ring_cells;
+    bool     ring_cells_dirty = true;
 
-    std::vector<std::string> detail_lines;  // pre-wrapped feature text
+    std::vector<std::string> detail_lines;
 
     auto current_config = [&]() -> const Config& {
         if (plan.empty() || plan_step < 0) return ins.starts;
         return plan[static_cast<size_t>(plan_step)];
     };
 
-    // rebuild_detail: re-wrap feature text for the selected agent.
-    // keep_scroll: don't reset scroll position (e.g. when only stepping).
+    // rebuild_detail: re-wrap feature text or ring detail for the detail pane.
     auto rebuild_detail = [&](bool keep_scroll = false) {
         if (!keep_scroll) detail_scroll = 0;
         detail_lines.clear();
-        if (selected_agent < 0 ||
-            selected_agent >= static_cast<int>(ins.N)) {
+        if (selected_agent < 0) {
             detail_lines.push_back("Click an agent to");
             detail_lines.push_back("inspect its features.");
             return;
         }
-        const uint i    = static_cast<uint>(selected_agent);
-        const Vertex* v = current_config()[i];
+        const uint ai   = static_cast<uint>(selected_agent);
+        const Vertex* v = current_config()[ai];
         int cx = static_cast<int>(v->index % W);
         int cy = static_cast<int>(v->index / W);
-        const AgentFeatures& af = policy.context()[i];
-        detail_lines = wrap(af.summary(i, cx, cy),
-                            static_cast<size_t>(DETAIL_CHARS));
+        const AgentFeatures& af = policy.context()[ai];
+        std::string raw;
+        if (selected_ring >= 0)
+            raw = af.ring_detail(selected_ring);
+        else
+            raw = af.summary(ai, cx, cy);
+        detail_lines = wrap(raw, static_cast<size_t>(DETAIL_CHARS));
     };
 
     auto refresh_features = [&](bool keep_scroll = false) {
         policy.compute(current_config(), plan_step);
+        ring_cells_dirty = true;
         rebuild_detail(keep_scroll);
     };
 
@@ -364,7 +400,9 @@ void run_gui(const Instance& ins)
                         refresh_features(/*keep_scroll=*/true);
                     }
                 } else if (event.key.code == sf::Keyboard::Escape) {
-                    selected_agent = -1;
+                    selected_agent   = -1;
+                    selected_ring    = -1;
+                    ring_cells_dirty = true;
                     rebuild_detail();
                 }
             }
@@ -422,7 +460,18 @@ void run_gui(const Instance& ins)
                     int hit = agent_at(mf);
                     if (hit >= 0) {
                         selected_agent = hit;
+                        selected_ring  = -1;
+                        ring_cells_dirty = true;
                         refresh_features();
+                    }
+                    // Check ring buttons
+                    for (int r = 0; r < N_RINGS; ++r) {
+                        if (btn_ring[r].contains(mf)) {
+                            selected_ring = (selected_ring == r) ? -1 : r;
+                            ring_cells_dirty = true;
+                            rebuild_detail();
+                            break;
+                        }
                     }
                 }
             }
@@ -430,9 +479,26 @@ void run_gui(const Instance& ins)
 
         // ---- update button states ----
         btn_step.enabled = !plan.empty();
+        for (int r = 0; r < N_RINGS; ++r)
+            btn_ring[r].enabled = (selected_agent >= 0);
         btn_load.updateColors(mf);
         btn_step.updateColors(mf);
         btn_exit.updateColors(mf);
+        for (int r = 0; r < N_RINGS; ++r) {
+            if (!btn_ring[r].enabled) {
+                btn_ring[r].shape.setFillColor(sf::Color(45, 45, 45));
+                btn_ring[r].label.setFillColor(sf::Color(90, 90, 90));
+            } else if (r == selected_ring) {
+                btn_ring[r].shape.setFillColor(sf::Color(40, 120, 100));
+                btn_ring[r].label.setFillColor(sf::Color::White);
+            } else if (btn_ring[r].contains(mf)) {
+                btn_ring[r].shape.setFillColor(sf::Color(70, 150, 130));
+                btn_ring[r].label.setFillColor(sf::Color::White);
+            } else {
+                btn_ring[r].shape.setFillColor(sf::Color(55, 90, 80));
+                btn_ring[r].label.setFillColor(sf::Color(180, 220, 210));
+            }
+        }
 
         if (font_ok) {
             if (plan_step >= 0) {
@@ -451,6 +517,33 @@ void run_gui(const Instance& ins)
         window.clear(sf::Color(20, 20, 20));
         window.draw(floor_va);
         window.draw(wall_va);
+
+        // ring highlight (drawn before agents so agents appear on top)
+        if (selected_agent >= 0 && selected_ring >= 0) {
+            if (ring_cells_dirty) {
+                ring_cells = policy.compute_ring_map(
+                    static_cast<uint>(selected_agent), current_config());
+                ring_cells_dirty = false;
+            }
+            // Two alternating grays for even/odd sectors
+            static const sf::Color SECTOR_COL[2] = {
+                sf::Color(65, 65, 65),
+                sf::Color(95, 95, 95)
+            };
+            sf::VertexArray ring_va(sf::Quads);
+            for (int sec = 0; sec < N_ANGLES; ++sec) {
+                sf::Color col = SECTOR_COL[sec % 2];
+                for (uint vi : ring_cells[selected_ring][sec]) {
+                    float px = static_cast<float>(MARGIN + (vi % W) * CELL);
+                    float py = static_cast<float>(MARGIN + (vi / W) * CELL);
+                    ring_va.append(sf::Vertex({px,        py       }, col));
+                    ring_va.append(sf::Vertex({px + CELL, py       }, col));
+                    ring_va.append(sf::Vertex({px + CELL, py + CELL}, col));
+                    ring_va.append(sf::Vertex({px,        py + CELL}, col));
+                }
+            }
+            window.draw(ring_va);
+        }
 
         // goals
         for (uint i = 0; i < ins.N; ++i) {
@@ -519,7 +612,9 @@ void run_gui(const Instance& ins)
             window.draw(panel_title);
             window.draw(info_text);
             window.draw(step_text);
+            window.draw(ring_section_label);
         }
+        for (int r = 0; r < N_RINGS; ++r) btn_ring[r].draw(window);
 
         // feature detail pane
         window.draw(detail_bg);
