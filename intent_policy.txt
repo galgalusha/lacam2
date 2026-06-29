@@ -1,0 +1,54 @@
+# The PIBT Domain and the role of Tie Breaking
+
+In the domain of MAPF, PIBT is a step generator that is obstacle aware. A preprocessing calculates a distance table to each agent goal using BFS. PIBT usually (unless an agent is being pushed) uses this distance table (noted D[i][v] where i is the agent and v is the position) to decide on the agent's next move.
+When an agent at (0,0) needs to go to (3,3), there is an enormous number of possible equal-cost decisions PIBT can make. In PIBT (or LaCAM) terminology, it is named “tie breaking” and the default is random, so every step, given the moves RIGHT and DOWN usually equal in cost, the choice is randomized.  The agent can do RIGHT-RIGHT-RIGHT-RIGHT-DOWN-DOWN-DOWN-DOWN and any other permutation is also valid.
+We use the term “PIBT Rollout” to simulate a step-by-step PIBT execution from start state to goal state which could result with a failure (deadlock PIBT failed to resolve) or a success, in which case we will measure the SoC of that rollout. Note that failures are rare. PIBT usually succeeds in one shot, but SoC varies. 
+
+# The Map and previous experiment
+
+The map we will experiment with is random-32-32-20, a 32x32 grid with 20% random obstacles. We will use 100 agents (N=100), each has an index i from 0 to 99.
+In this specific map, there is no sense to think of “topology”. E.G, There are no continuous corridors.
+I already experimented with running thousands of PIBT rollouts, picking the best 100 (lowest SoC) and creating a per-agent position-fixed tie breaking based on “majority vote” of the 100 executions. The result was surprisingly good. It reduced 5% of the lowest SoC of all rollouts.
+The resulting policy did not cover all agent possible states. The policy reverts to random choice when it has no sample for a state. When running a rollout that uses this policy, it began with 13% randomness and increased to 20% halfway and finished with 35% near the goal.
+Now we want to experiment with a policy that does not fix an action per (agent,position) pair, which I think is too strict.
+
+# MLP Motivation
+We will design a policy based on a neural network (MLP) which will be trained on a specific MAPF instance (map + agent setups) not because it is practically valuable, but rather to experiment how much more can we squeeze out of a policy based PIBT tie breaking. Could it beat the majority-vote based policy?
+We recall again and again, because it is easy to forget, that the policy is not a solver and it does not dictate a next move. PIBT will decide when to call the policy for tie breaking. The policy does not need to be aware of obstacles. Being obstacle-aware is the responsibility of PIBT. The D[i][v] values (distance to goal) are already obstacle aware.
+
+# Representing direction (the compass)
+Note on MLP Math: While it is easy for humans to think of direction as a float from 0 to 1 (where 0=East, 0.25=North, 0.99=almost East again), this wrap-around discontinuity breaks Neural Networks. Therefore, when feeding compass data to the MLP, we will always convert the direction into a normalized 2D vector: (X, Y) where values range from -1.0 to 1.0.
+The math:
+dx = target_x - current_x and dy = target_y - current_y.
+Magnitude = sqrt(dx^2 + dy^2)
+Normalized X = dx / Magnitude
+Normalized Y = dy / Magnitude
+
+# Intent Feature
+
+We think that an agent's decision should not be based just on other agents' current positions because it doesn’t tell us where these agents are heading. We want to view the agents as a set of compasses on a map where each compass shows the intent of the agent, meaning, how is it willing to tie break PIBT (e.g., how much should it prefer RIGHT over DOWN).
+The policy will yield an intent for every state. Every time the policy yields a new intent, the transition from the previous intent to the new intent will be mathematically smoothed using an exponential moving average (LERP) over an INTENT_SMOOTHING factor. This means the policy is an intent accelerator rather than an intent dictator. This is required because when an agent takes into account other agents' temporal intents, it is only meaningful if those intents remain somewhat stable for the near future.
+
+#The MLP Inputs (State Representation)
+
+Because the policy is per-agent and PIBT handles obstacles, the MLP input layer will be extremely lean, containing no absolute (x,y) coordinates or wall data. 
+It is cleanly split into two categories: Polar Positional Features and Temporal Intent Features.
+## Positional Features
+* Positional Radius (Distance): The normalized BFS distance to the goal (D[i][v_current] / D[i][v_start]). This is an obstacle-aware float from 0.0 to 1.0.
+* Positional Angle (Euclidean Ray to Goal): The (X, Y) normalized vector of the direct, straight line from the agent's current position to the goal (dx = goal_x - curr_x, dy = goal_y - curr_y, normalized). This acts purely as a spatial coordinate, answering "what side of the goal am I on?". This vector shall be coarse rather than exact to prevent overfitting.
+## Intent Features
+* My Intent: Compass vector representing the agent's current smoothed tie-breaking preference/momentum.
+* The Intent Pie (Multi-Channel LIDAR Radar): The area around the agent is mapped into a high-resolution, 96-float radar 
+  sliced into angle slices and radial rings. A radar slice is a a range of radiuses (a ring) and range of angles.
+  Within each slice, we will have 3 different features. 
+  Angle Resolution (8 Slices): The space is divided into 8 absolute compass directions (N, NE, E, SE, S, SW, W, NW). 
+  Radius Sets (4 Rings): Depth perception is added by splitting slices into 4 concentric, expanding Manhattan distance rings: 
+  [1], [2-4], [5-10], and [11-20]. This allows the MLP to distinguish between immediate emergency dodging and long-term 
+  lane pressure.
+  The "RGB" Intent Groups (3 Channels per Sector): For each of the 32 resulting sectors (8 slices × 4 rings), 
+  we calculate 3 separate continuous floats based on the alignment (dot product) between the neighbors' intent and 
+  the agent's own intent:
+  ** Flow Channel: Density of agents aligned with the agent (e.g., dot product > 0.5).
+  ** Threat Channel: Density of agents colliding or opposing the agent (e.g., dot product < -0.5).
+  ** Cross-Traffic Channel: Density of agents moving perpendicularly (e.g., dot product between -0.5 and 0.5).
+  Channel Density = (Count of agents in sector) / (Total valid cells in that sector).

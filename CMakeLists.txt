@@ -9,12 +9,23 @@ if(LACAM2_BUILD_TESTS)
   add_subdirectory(./third_party/googletest)
 endif()
 
-add_executable(main main.cpp)
-target_compile_features(main PUBLIC cxx_std_17)
+# SFML for GUI visualizer
+find_package(SFML 2.6 COMPONENTS graphics window system REQUIRED)
 
-# CBSH2 library integration
-target_include_directories(main PRIVATE /home/galko/.local/include)
-target_link_libraries(main lacam2 argparse /home/galko/.local/lib/libCBSH2.so)
+add_executable(main
+    main.cpp
+    gui.cpp
+)
+target_compile_features(main PUBLIC cxx_std_17)
+target_include_directories(main PRIVATE
+    /home/galko/.local/include
+)
+target_link_libraries(main
+    lacam2
+    argparse
+    sfml-graphics sfml-window sfml-system
+    /home/galko/.local/lib/libCBSH2.so
+)
 
 # test
 if(LACAM2_BUILD_TESTS)

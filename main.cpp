@@ -1,5 +1,6 @@
 #include <argparse/argparse.hpp>
 #include <lacam2.hpp>
+#include "gui.hpp"
 #include <odplanner.hpp>
 #include <random_planner.hpp>
 #include <clustered_planner.hpp>
@@ -178,6 +179,10 @@ int main(int argc, char* argv[])
       .help("run unit tests and exit")
       .default_value(false)
       .implicit_value(true);
+  program.add_argument("--gui")
+      .help("launch GUI visualizer (map + agents + goals)")
+      .default_value(false)
+      .implicit_value(true);
 
   try {
     program.parse_known_args(argc, argv);
@@ -224,6 +229,10 @@ int main(int argc, char* argv[])
   Planner::max_ll_decay = max_ll_decay;
   if (!ins.is_valid(1)) return 1;
 
+  if (program.get<bool>("gui")) {
+    run_gui(ins);
+    return 0;
+  }
 
   // solve
   auto additional_info = std::string("");
