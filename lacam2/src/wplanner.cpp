@@ -84,7 +84,6 @@ std::vector<WPlanner::Successor> WPlanner::get_successors(
       auto L = H->search_tree.front();
       // H->search_tree.pop();
       // H->ll_search += 1;
-
       // expand_lowlevel_tree(H, L);
 
       const auto res = this->pibt->get_new_config(H, L.get(), C_new);
@@ -233,7 +232,7 @@ NeighborScorePolicy WPlanner::create_policy(const Config& start_config, int num_
   auto H_init = new HNode(start_config, D, nullptr, 0, 0);
   uint64_t node_counter = 0;
   uint best_cost = UINT_MAX;
-  const uint n_expansions = 5000;
+  const uint n_expansions = 2000;
   const uint n_rollouts = 100;
   std::cout << "generating " << n_expansions << " rollouts for policy" << std::endl;
   auto best_rollouts = get_successors(H_init, best_cost, node_counter, n_expansions, n_rollouts, true);
@@ -339,7 +338,6 @@ Solution build_solution(WPlanner::Successor successor)
 
 Solution WPlanner::solve(std::string& additional_info)
 {
-  std::cout << "starting experiment" << std::endl;
   const uint refresh_policy_depth = 50000;
 
   auto policy = std::make_shared<NeighborScorePolicy>(create_policy(ins->N));
@@ -348,8 +346,8 @@ Solution WPlanner::solve(std::string& additional_info)
   };
 
   auto cmp = [](const HNode* lhs, const HNode* rhs) {
-    auto l = lhs->g + lhs->h * 1.01;
-    auto r = rhs->g + rhs->h * 1.01;
+    auto l = lhs->g + lhs->h * 1.02;
+    auto r = rhs->g + rhs->h * 1.02;
     if (l != r) return l > r;
 
     //if (lhs->f != rhs->f) return lhs->f > rhs->f;
