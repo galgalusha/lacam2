@@ -89,6 +89,14 @@ public:
     // step: current timestep (-1 = no plan).
     void compute(const Config& cfg, int step = -1);
 
+    // Manually override the intent for one agent (Execution mode only).
+    // ix/iy will be normalised before storing. Override persists across
+    // compute() calls until clear_intent_override() is called.
+    void set_intent(uint agent_id, float ix, float iy);
+
+    // Remove a previously set manual intent override.
+    void clear_intent_override(uint agent_id);
+
     // Compute RingMap for a single agent (GUI visualisation, called on demand).
     RingMap compute_ring_map(uint agent_id, const Config& cfg) const;
 
@@ -102,7 +110,12 @@ private:
     PolicyMode      mode_     = PolicyMode::Execution;
     const Solution* solution_ = nullptr;
 
-    std::vector<uint> dist_at_start_;
+    std::vector<uint>        dist_at_start_;
+
+    // Per-agent manual intent overrides (set via set_intent())
+    // stored as {ix, iy} already normalised; NaN = no override
+    struct IntentOverride { float ix, iy; };
+    std::vector<IntentOverride> intent_overrides_;
 
     // BFS from src; returns per-vertex-id distances (-1 = unreachable/too far)
     std::vector<int> bfs_from(const Vertex* src, int max_depth) const;

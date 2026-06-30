@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cluster_detection_pibt.hpp>
+#include <policy_random_search_planner.hpp>
 
 static void test_clusters()
 {
@@ -169,6 +170,10 @@ int main(int argc, char* argv[])
       .help("use ClusteredPlanner (runs 5000 ClusterDetectionPIBT rollouts and prints clusters)")
       .default_value(false)
       .implicit_value(true);
+  program.add_argument("-prsplanner", "--prsplanner")
+      .help("use PolicyRandomSearchPlanner (build policy from random rollouts, then run one PolicyPIBT rollout)")
+      .default_value(false)
+      .implicit_value(true);
     program.add_argument("-max_ll")
       .help("max allowed low-level search; -1 disables cutoff")
       .default_value(std::string("-1"));
@@ -224,6 +229,7 @@ int main(int argc, char* argv[])
   const auto use_odplanner = program.get<bool>("odplanner");
   const auto use_rand_planner = program.get<bool>("rand_planner");
   const auto use_cplanner = program.get<bool>("cplanner");
+  const auto use_prsplanner = program.get<bool>("prsplanner");
   const auto max_ll_decay = std::clamp(std::stof(program.get<std::string>("max_ll_decay")), 0.0f, 1.0f);
   Planner::max_ll = std::stoi(program.get<std::string>("max_ll"));
   Planner::max_ll_decay = max_ll_decay;
@@ -238,7 +244,10 @@ int main(int argc, char* argv[])
   auto additional_info = std::string("");
   const auto deadline = Deadline(time_limit_sec * 1000);
   Solution solution;
-  if (use_cplanner) {
+  if (use_prsplanner) {
+    PolicyRandomSearchPlanner prs_planner(&ins, &deadline, &MT, verbose);
+    solution = prs_planner.solve(additional_info);
+  } else if (use_cplanner) {
     auto window = 4;
     auto rollouts = 1000;
     ClusteredPlanner cplanner(&ins, &deadline, &MT, verbose, rollouts, window);

@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 
 #ifndef M_PI
@@ -93,6 +94,9 @@ PolicyController::PolicyController(const Instance& ins)
     dist_at_start_.resize(ins.N);
     for (uint i = 0; i < ins.N; ++i)
         dist_at_start_[i] = dist_.get(i, const_cast<Vertex*>(ins.starts[i]));
+    // NaN = no override
+    intent_overrides_.assign(ins.N, {std::numeric_limits<float>::quiet_NaN(),
+                                      std::numeric_limits<float>::quiet_NaN()});
 }
 
 void PolicyController::set_learning_mode(const Solution& solution)
@@ -163,6 +167,13 @@ void PolicyController::compute_positional_(uint i, const Config& cfg)
 
 void PolicyController::compute_intent_(uint i, const Config& cfg, int step)
 {
+    // If a manual override is set, always use it (skip plan-based computation)
+    if (!std::isnan(intent_overrides_[i].ix)) {
+        ctx_[i].intent_x = intent_overrides_[i].ix;
+        ctx_[i].intent_y = intent_overrides_[i].iy;
+        return;
+    }
+
     if (mode_ != PolicyMode::Learning || solution_ == nullptr || step < 0)
         return;
 
@@ -256,6 +267,30 @@ void PolicyController::compute(const Config& cfg, int step)
         auto bfs = bfs_from(cfg[i], MAX_RING_DIST);
         compute_radar_(i, cfg, bfs);
     }
+}
+
+// ── set_intent() / clear_intent_override() ───────────────────────────────────
+
+void PolicyController::set_intent(uint agent_id, float ix, float iy)
+{
+    if (agent_id >= ctx_.size()) return;
+    float mag = std::sqrt(ix * ix + iy * iy);
+    if (mag > 1e-4f) {
+        intent_overrides_[agent_id] = {ix / mag, iy / mag};
+        ctx_[agent_id].intent_x = ix / mag;
+        ctx_[agent_id].intent_y = iy / mag;
+    } else {
+        intent_overrides_[agent_id] = {0.f, 0.f};
+        ctx_[agent_id].intent_x = 0.f;
+        ctx_[agent_id].intent_y = 0.f;
+    }
+}
+
+void PolicyController::clear_intent_override(uint agent_id)
+{
+    if (agent_id >= intent_overrides_.size()) return;
+    intent_overrides_[agent_id] = {std::numeric_limits<float>::quiet_NaN(),
+                                    std::numeric_limits<float>::quiet_NaN()};
 }
 
 // ── compute_ring_map() ───────────────────────────────────────────────────────

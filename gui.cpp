@@ -159,6 +159,11 @@ static std::vector<std::string> wrap(const std::string& s, size_t max_chars)
 }
 
 // ---------------------------------------------------------------------------
+// EditMode
+// ---------------------------------------------------------------------------
+enum class EditMode { None, Move, SetIntent };
+
+// ---------------------------------------------------------------------------
 // run_gui
 // ---------------------------------------------------------------------------
 void run_gui(const Instance& ins)
@@ -239,10 +244,11 @@ void run_gui(const Instance& ins)
 
     // ---- agent-detail area (scrollable monospace text) ----
     const float detail_y    = info_y + 60.f;
-    // detail box ends just above the ring section
+    // detail box ends just above the edit section
     const float ring_section_y_pre = static_cast<float>(win_h)
                                      - static_cast<float>(PANEL_PAD) - BH
-                                     - 8.f - (16.f + 4*(26.f+4.f));
+                                     - 8.f - (16.f + 4*(26.f+4.f))
+                                     - (16.f + 2*(26.f+4.f)) - 6.f;
     const float detail_h    = ring_section_y_pre - 8.f - detail_y;
     const float DETAIL_LINE = 13.f;
     const int   DETAIL_CHARS = (PANEL_W - 2 * PANEL_PAD) / 7;
@@ -293,16 +299,22 @@ void run_gui(const Instance& ins)
     // ---- ring button area (between detail box and Exit) ----
     const float BH_RING    = 26.f;
     const float RING_GAP   = 4.f;
-    // Reserve space at bottom of panel: label + 4 buttons + exit
+    // Agent-edit buttons (Move + SetIntent) sit above the ring section
+    const float BH_EDIT    = 26.f;
+    const float edit_section_h = 16.f + 2 * (BH_EDIT + RING_GAP);
+    // Reserve space at bottom of panel: label + 4 ring buttons + edit section + exit
     const float ring_section_h = 16.f + 4 * (BH_RING + RING_GAP);
     const float ring_section_y = static_cast<float>(win_h)
                                  - static_cast<float>(PANEL_PAD) - BH
                                  - 8.f - ring_section_h;
+    const float edit_section_y = ring_section_y - edit_section_h - 6.f;
     // Shrink the detail box to not overlap the ring section
     // (detail_h is calculated later; we patch it here via an adjusted value)
     // We define ring buttons now.
     std::array<Button, N_RINGS> btn_ring;
     sf::Text ring_section_label;
+    Button btn_move, btn_set_intent;
+    sf::Text edit_section_label;
     if (font_ok) {
         ring_section_label.setFont(font);
         ring_section_label.setString("Radar Rings");
@@ -316,10 +328,40 @@ void run_gui(const Instance& ins)
                                  std::string(RING_LABELS[r]), font);
             ry += BH_RING + RING_GAP;
         }
+        // Edit buttons
+        edit_section_label.setFont(font);
+        edit_section_label.setString("Edit Agent");
+        edit_section_label.setCharacterSize(12);
+        edit_section_label.setStyle(sf::Text::Bold);
+        edit_section_label.setFillColor(sf::Color(200, 180, 130));
+        edit_section_label.setPosition(panel_x + PANEL_PAD, edit_section_y);
+        float ey = edit_section_y + 18.f;
+        const float HBW = (BW - 4.f) / 2.f;
+        btn_move       = Button(bx,           ey, HBW, BH_EDIT, "Move",       font);
+        btn_set_intent = Button(bx + HBW + 4.f, ey, HBW, BH_EDIT, "Set Intent", font);
     }
 
     // ---- policy controller ----
     PolicyController policy(ins);
+
+    // ---- mutable working config (copy of current step; editable via Move) ----
+    Config edit_config;  // populated from current_config() when entering edit
+    bool   using_edit_config = false;  // true while editing agent position
+
+    // ---- edit state ----
+    EditMode edit_mode    = EditMode::None;
+    // hover preview values (updated every frame while editing)
+    int  hover_gx = -1, hover_gy = -1;  // grid cell under mouse
+    float hover_ix = 0.f, hover_iy = 0.f;  // preview intent direction
+
+    // edit-status text shown in panel while editing
+    sf::Text edit_status;
+    if (font_ok) {
+        edit_status.setFont(font);
+        edit_status.setCharacterSize(11);
+        edit_status.setFillColor(sf::Color(255, 220, 100));
+        edit_status.setPosition(panel_x + PANEL_PAD, detail_y);
+    }
 
     // ---- plan / selection state ----
     Solution plan;
@@ -333,8 +375,24 @@ void run_gui(const Instance& ins)
     std::vector<std::string> detail_lines;
 
     auto current_config = [&]() -> const Config& {
+        if (using_edit_config) return edit_config;
         if (plan.empty() || plan_step < 0) return ins.starts;
         return plan[static_cast<size_t>(plan_step)];
+    };
+
+    // grid cell under mouse (-1,-1 if outside map or on obstacle)
+    auto cell_at = [&](sf::Vector2f mp) -> std::pair<int,int> {
+        int gx = static_cast<int>((mp.x - MARGIN) / CELL);
+        int gy = static_cast<int>((mp.y - MARGIN) / CELL);
+        if (gx < 0 || gy < 0 || gx >= (int)W || gy >= (int)H) return {-1,-1};
+        uint idx = static_cast<uint>(gy * W + gx);
+        if (ins.G.U[idx] == nullptr) return {-1,-1};
+        return {gx, gy};
+    };
+
+    auto cancel_edit = [&]() {
+        edit_mode         = EditMode::None;
+        using_edit_config = false;
     };
 
     // rebuild_detail: re-wrap feature text or ring detail for the detail pane.
@@ -394,16 +452,22 @@ void run_gui(const Instance& ins)
 
             if (event.type == sf::Event::KeyPressed) {
                 if (event.key.code == sf::Keyboard::Space) {
-                    if (!plan.empty()) {
+                    if (edit_mode == EditMode::None && !plan.empty()) {
                         plan_step = (plan_step + 1) %
                                     static_cast<int>(plan.size());
+                        using_edit_config = false;  // step clears position override
                         refresh_features(/*keep_scroll=*/true);
                     }
                 } else if (event.key.code == sf::Keyboard::Escape) {
-                    selected_agent   = -1;
-                    selected_ring    = -1;
-                    ring_cells_dirty = true;
-                    rebuild_detail();
+                    if (edit_mode != EditMode::None) {
+                        cancel_edit();
+                        refresh_features();
+                    } else {
+                        selected_agent   = -1;
+                        selected_ring    = -1;
+                        ring_cells_dirty = true;
+                        rebuild_detail();
+                    }
                 }
             }
 
@@ -422,55 +486,104 @@ void run_gui(const Instance& ins)
             if (event.type == sf::Event::MouseButtonPressed &&
                 event.mouseButton.button == sf::Mouse::Left)
             {
-                if (btn_exit.contains(mf)) {
-                    window.close();
-                }
-                else if (btn_load.contains(mf)) {
-                    std::string path = open_file_dialog();
-                    if (!path.empty()) {
-                        Solution loaded = load_plan(path, ins);
-                        if (loaded.empty()) {
-                            info_text.setString("Load failed.");
-                            info_text.setFillColor(sf::Color(255, 100, 100));
-                        } else {
-                            plan      = std::move(loaded);
-                            plan_step = 0;
-                            auto sl   = path.rfind('/');
-                            std::string fname = (sl == std::string::npos)
-                                                ? path : path.substr(sl + 1);
-                            info_text.setString(
-                                fname + "\n" +
-                                std::to_string(plan.size()) + " steps, " +
-                                std::to_string(plan[0].size()) + " agents");
-                            info_text.setFillColor(sf::Color(180, 220, 180));
-                            policy.set_learning_mode(plan);
+                // --- while in an edit mode, clicks commit the edit ---
+                if (edit_mode == EditMode::Move) {
+                    auto [gx, gy] = cell_at(mf);
+                    if (gx >= 0) {
+                        uint new_idx = static_cast<uint>(gy * W + gx);
+                        // check cell is not occupied by another agent
+                        bool occupied = false;
+                        for (uint j = 0; j < (uint)edit_config.size(); ++j) {
+                            if (j != (uint)selected_agent &&
+                                edit_config[j]->index == new_idx) {
+                                occupied = true; break;
+                            }
+                        }
+                        if (!occupied) {
+                            edit_config[static_cast<uint>(selected_agent)] =
+                                ins.G.U[new_idx];
+                            edit_mode = EditMode::None;  // exit mode, but keep using_edit_config=true
                             refresh_features();
                         }
                     }
-                }
-                else if (btn_step.contains(mf)) {
-                    if (!plan.empty()) {
-                        plan_step = (plan_step + 1) %
-                                    static_cast<int>(plan.size());
-                        refresh_features(/*keep_scroll=*/true);
+                    // swallow click
+                } else if (edit_mode == EditMode::SetIntent) {
+                    auto [gx, gy] = cell_at(mf);
+                    if (gx >= 0 && selected_agent >= 0) {
+                        const Vertex* av = current_config()[
+                            static_cast<uint>(selected_agent)];
+                        int ax = static_cast<int>(av->index % W);
+                        int ay = static_cast<int>(av->index / W);
+                        float dx = static_cast<float>(gx - ax);
+                        float dy = static_cast<float>(gy - ay);
+                        policy.set_intent(static_cast<uint>(selected_agent),
+                                          dx, dy);
+                        cancel_edit();
+                        refresh_features();  // recomputes with override intact
                     }
-                }
-                else {
-                    // Click on map — try to select an agent
-                    int hit = agent_at(mf);
-                    if (hit >= 0) {
-                        selected_agent = hit;
-                        selected_ring  = -1;
-                        ring_cells_dirty = true;
-                        refresh_features();
+                } else {
+                    // Normal mode
+                    if (btn_exit.contains(mf)) {
+                        window.close();
                     }
-                    // Check ring buttons
-                    for (int r = 0; r < N_RINGS; ++r) {
-                        if (btn_ring[r].contains(mf)) {
-                            selected_ring = (selected_ring == r) ? -1 : r;
+                    else if (btn_load.contains(mf)) {
+                        std::string path = open_file_dialog();
+                        if (!path.empty()) {
+                            Solution loaded = load_plan(path, ins);
+                            if (loaded.empty()) {
+                                info_text.setString("Load failed.");
+                                info_text.setFillColor(sf::Color(255, 100, 100));
+                            } else {
+                                plan      = std::move(loaded);
+                                plan_step = 0;
+                                cancel_edit();  // also clears using_edit_config
+                                auto sl   = path.rfind('/');
+                                std::string fname = (sl == std::string::npos)
+                                                    ? path : path.substr(sl + 1);
+                                info_text.setString(
+                                    fname + "\n" +
+                                    std::to_string(plan.size()) + " steps, " +
+                                    std::to_string(plan[0].size()) + " agents");
+                                info_text.setFillColor(sf::Color(180, 220, 180));
+                                policy.set_learning_mode(plan);
+                                refresh_features();
+                            }
+                        }
+                    }
+                    else if (btn_step.contains(mf)) {
+                        if (!plan.empty()) {
+                            plan_step = (plan_step + 1) %
+                                        static_cast<int>(plan.size());
+                            using_edit_config = false;
+                            refresh_features(/*keep_scroll=*/true);
+                        }
+                    }
+                    else if (btn_move.contains(mf) && selected_agent >= 0) {
+                        edit_mode = EditMode::Move;
+                        // snapshot current config so we can mutate it
+                        edit_config       = current_config();
+                        using_edit_config = true;
+                    }
+                    else if (btn_set_intent.contains(mf) && selected_agent >= 0) {
+                        edit_mode = EditMode::SetIntent;
+                    }
+                    else {
+                        // Click on map — try to select an agent
+                        int hit = agent_at(mf);
+                        if (hit >= 0) {
+                            selected_agent = hit;
+                            selected_ring  = -1;
                             ring_cells_dirty = true;
-                            rebuild_detail();
-                            break;
+                            refresh_features();
+                        }
+                        // Check ring buttons
+                        for (int r = 0; r < N_RINGS; ++r) {
+                            if (btn_ring[r].contains(mf)) {
+                                selected_ring = (selected_ring == r) ? -1 : r;
+                                ring_cells_dirty = true;
+                                rebuild_detail();
+                                break;
+                            }
                         }
                     }
                 }
@@ -480,7 +593,12 @@ void run_gui(const Instance& ins)
         // ---- update button states ----
         btn_step.enabled = !plan.empty();
         for (int r = 0; r < N_RINGS; ++r)
-            btn_ring[r].enabled = (selected_agent >= 0);
+            btn_ring[r].enabled = (selected_agent >= 0 &&
+                                   edit_mode == EditMode::None);
+        btn_move.enabled       = (selected_agent >= 0 &&
+                                   edit_mode == EditMode::None);
+        btn_set_intent.enabled = (selected_agent >= 0 &&
+                                   edit_mode == EditMode::None);
         btn_load.updateColors(mf);
         btn_step.updateColors(mf);
         btn_exit.updateColors(mf);
@@ -497,6 +615,44 @@ void run_gui(const Instance& ins)
             } else {
                 btn_ring[r].shape.setFillColor(sf::Color(55, 90, 80));
                 btn_ring[r].label.setFillColor(sf::Color(180, 220, 210));
+            }
+        }
+        // edit buttons
+        auto style_edit_btn = [&](Button& btn, EditMode mode) {
+            if (!btn.enabled) {
+                btn.shape.setFillColor(sf::Color(45, 45, 45));
+                btn.label.setFillColor(sf::Color(90, 90, 90));
+            } else if (edit_mode == mode) {
+                btn.shape.setFillColor(sf::Color(160, 100, 40));
+                btn.label.setFillColor(sf::Color::White);
+            } else if (btn.contains(mf)) {
+                btn.shape.setFillColor(sf::Color(140, 110, 60));
+                btn.label.setFillColor(sf::Color::White);
+            } else {
+                btn.shape.setFillColor(sf::Color(90, 70, 40));
+                btn.label.setFillColor(sf::Color(230, 200, 150));
+            }
+        };
+        style_edit_btn(btn_move,       EditMode::Move);
+        style_edit_btn(btn_set_intent, EditMode::SetIntent);
+
+        // ---- update hover values while editing ----
+        hover_gx = -1; hover_gy = -1;
+        hover_ix = 0.f; hover_iy = 0.f;
+        if (edit_mode != EditMode::None) {
+            auto [gx, gy] = cell_at(mf);
+            hover_gx = gx; hover_gy = gy;
+            if (edit_mode == EditMode::SetIntent &&
+                gx >= 0 && selected_agent >= 0)
+            {
+                const Vertex* av = current_config()[
+                    static_cast<uint>(selected_agent)];
+                int ax = static_cast<int>(av->index % W);
+                int ay = static_cast<int>(av->index / W);
+                hover_ix = static_cast<float>(gx - ax);
+                hover_iy = static_cast<float>(gy - ay);
+                float mag = std::sqrt(hover_ix*hover_ix + hover_iy*hover_iy);
+                if (mag > 1e-4f) { hover_ix /= mag; hover_iy /= mag; }
             }
         }
 
@@ -601,6 +757,56 @@ void run_gui(const Instance& ins)
             }
         }
 
+        // ---- hover previews for edit modes ----
+        if (selected_agent >= 0 && hover_gx >= 0) {
+            float px2 = MARGIN + hover_gx * CELL + CELL * 0.5f;
+            float py2 = MARGIN + hover_gy * CELL + CELL * 0.5f;
+            if (edit_mode == EditMode::Move) {
+                // semi-transparent agent circle at hovered cell
+                sf::Color col = PALETTE[static_cast<uint>(selected_agent)
+                                        % PALETTE.size()];
+                col.a = 140;
+                circle.setFillColor(col);
+                circle.setPosition(px2, py2);
+                window.draw(circle);
+                // dashed outline ring
+                sel_ring.setPosition(px2, py2);
+                sf::Color rc = sel_ring.getOutlineColor(); rc.a = 140;
+                sel_ring.setOutlineColor(rc);
+                window.draw(sel_ring);
+                sel_ring.setOutlineColor(sf::Color(255, 255, 0, 255));  // restore
+            } else if (edit_mode == EditMode::SetIntent) {
+                // preview intent arrow on the actual agent
+                const Vertex* av = current_config()[
+                    static_cast<uint>(selected_agent)];
+                float ax2 = MARGIN + (av->index % W) * CELL + CELL * 0.5f;
+                float ay2 = MARGIN + (av->index / W) * CELL + CELL * 0.5f;
+                float imag = std::sqrt(hover_ix*hover_ix + hover_iy*hover_iy);
+                if (imag > 1e-4f) {
+                    float shaft = AGENT_R * 0.72f;
+                    float tx2 = ax2 + hover_ix * shaft;
+                    float ty2 = ay2 + hover_iy * shaft;
+                    float ppx = -hover_iy / imag, ppy = hover_ix / imag;
+                    float hw = AGENT_R * 0.22f, hb = AGENT_R * 0.28f;
+                    sf::VertexArray arr(sf::Lines, 2);
+                    arr[0] = sf::Vertex({ax2, ay2}, sf::Color(255, 220, 80));
+                    arr[1] = sf::Vertex({tx2, ty2}, sf::Color(255, 220, 80));
+                    window.draw(arr);
+                    sf::VertexArray hd(sf::Triangles, 3);
+                    hd[0] = sf::Vertex({tx2 + hover_ix/imag*AGENT_R*0.2f,
+                                        ty2 + hover_iy/imag*AGENT_R*0.2f},
+                                       sf::Color(255, 220, 80));
+                    hd[1] = sf::Vertex({tx2 - hover_ix/imag*hb + ppx*hw,
+                                        ty2 - hover_iy/imag*hb + ppy*hw},
+                                       sf::Color(255, 220, 80));
+                    hd[2] = sf::Vertex({tx2 - hover_ix/imag*hb - ppx*hw,
+                                        ty2 - hover_iy/imag*hb - ppy*hw},
+                                       sf::Color(255, 220, 80));
+                    window.draw(hd);
+                }
+            }
+        }
+
         // panel background
         window.draw(panel_bg);
 
@@ -608,17 +814,45 @@ void run_gui(const Instance& ins)
         btn_load.draw(window);
         btn_step.draw(window);
         btn_exit.draw(window);
+        btn_move.draw(window);
+        btn_set_intent.draw(window);
         if (font_ok) {
             window.draw(panel_title);
             window.draw(info_text);
             window.draw(step_text);
+            window.draw(edit_section_label);
             window.draw(ring_section_label);
         }
         for (int r = 0; r < N_RINGS; ++r) btn_ring[r].draw(window);
 
         // feature detail pane
         window.draw(detail_bg);
-        if ((font_ok || mono_ok) && !detail_lines.empty()) {
+        if (edit_mode != EditMode::None && font_ok && selected_agent >= 0) {
+            // show live edit status instead of detail lines
+            std::string es;
+            if (edit_mode == EditMode::Move) {
+                es = "Move agent #" + std::to_string(selected_agent) + "\n";
+                if (hover_gx >= 0)
+                    es += "pos: (" + std::to_string(hover_gx) + ","
+                               + std::to_string(hover_gy) + ")\n";
+                else
+                    es += "hover over empty cell\n";
+                es += "(Esc to cancel)";
+            } else {
+                es = "Set intent #" + std::to_string(selected_agent) + "\n";
+                if (hover_gx >= 0) {
+                    char buf[64];
+                    std::snprintf(buf, sizeof(buf), "dir: (%.2f, %.2f)\n",
+                                  hover_ix, hover_iy);
+                    es += buf;
+                } else {
+                    es += "hover over map\n";
+                }
+                es += "(Esc to cancel)";
+            }
+            edit_status.setString(es);
+            window.draw(edit_status);
+        } else if ((font_ok || mono_ok) && !detail_lines.empty()) {
             sf::Text line_text;
             line_text.setFont(mono_ok ? mono : font);
             line_text.setCharacterSize(11);
