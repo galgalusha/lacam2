@@ -159,6 +159,8 @@ Solution PolicyRandomSearchPlanner::solve(std::string& additional_info)
 
     // Pick one agent to mutate this round.
     uint agent_idx = agent_dist(*MT);
+    uint agent_idx2 = agent_dist(*MT);
+    while (agent_idx2 == agent_idx) agent_idx2 = agent_dist(*MT);
 
     // Create 6 candidates with the agent's blind_score_map re-randomized,
     // plus 1 candidate with that agent's vertex_scores shuffled.
@@ -166,17 +168,39 @@ Solution PolicyRandomSearchPlanner::solve(std::string& additional_info)
     const uint total_candidates = PRS_NUM_THREADS;
     std::vector<std::shared_ptr<NeighborScorePolicy>> candidates;
     candidates.reserve(total_candidates);
-    for (uint i = 0; i < PRS_NUM_THREADS - 1; ++i) {
+    // uint blind_candidates = 0;
+    // for (uint i = 0; i < blind_candidates; ++i) {
+    //   auto candidate = std::make_shared<NeighborScorePolicy>(*current_policy);
+    //   candidate->randomize_agent_blind_scores(agent_idx, ins, &rngs[i]);
+    //   candidates.push_back(std::move(candidate));
+    // }
+    auto NUM_OF_GROUP_CANDIDATES = 2;
+    auto NUM_OF_AGENT1_CANDIDATES = 2;
+    auto NUM_OF_AGENT2_CANDIDATES = PRS_NUM_THREADS - 2 - 2;
+  
+    for (uint i = 0; i < NUM_OF_GROUP_CANDIDATES; i++) {
       auto candidate = std::make_shared<NeighborScorePolicy>(*current_policy);
       candidate->randomize_agent_blind_scores(agent_idx, ins, &rngs[i]);
+      candidate->randomize_agent_scores(agent_idx, &rngs[i]);
+      candidate->randomize_agent_blind_scores(agent_idx2, ins, &rngs[i]);
+      candidate->randomize_agent_scores(agent_idx2, &rngs[i]);
       candidates.push_back(std::move(candidate));
     }
-    // Last candidate: shuffle vertex_scores for the same agent.
-    {
+  
+    for (uint i = 0; i < NUM_OF_AGENT1_CANDIDATES; i++) {
       auto candidate = std::make_shared<NeighborScorePolicy>(*current_policy);
-      candidate->randomize_agent_scores(agent_idx, &rngs[PRS_NUM_THREADS - 1]);
+      candidate->randomize_agent_blind_scores(agent_idx, ins, &rngs[i]);
+      candidate->randomize_agent_scores(agent_idx, &rngs[i]);
       candidates.push_back(std::move(candidate));
     }
+
+    for (uint i = 0; i < NUM_OF_AGENT2_CANDIDATES; i++) {
+      auto candidate = std::make_shared<NeighborScorePolicy>(*current_policy);
+      candidate->randomize_agent_blind_scores(agent_idx2, ins, &rngs[i]);
+      candidate->randomize_agent_scores(agent_idx2, &rngs[i]);
+      candidates.push_back(std::move(candidate));
+    }
+
 
     // Run rollouts in parallel.
     std::vector<std::future<RolloutResult>> futures;
