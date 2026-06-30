@@ -117,17 +117,30 @@ class AgentPolicyRandomizer {
                                  const Instance* ins, std::mt19937* rng) const;
 };
 
-// Policy backed by per-agent discrete favorites.
-// Assigns score -0.9 to the stored favorite neighbor, 0.0 to all others.
-// For blind-spot vertices (no favorite recorded), returns 0.0 for every neighbor.
+// Policy backed by per-agent discrete favorites, paired with the probability
+// policy that generated them.
+// On a known vertex: assigns -0.9 to the stored favorite, 0.0 to others.
+// On a blind-spot vertex: lazily adds a uniform distribution to `probs`,
+// samples a favorite (stored back into `discrete`), and returns -0.9 for it.
+// `discrete` and `probs` are public so solve() can move them out after rollout.
 class CrossEntropyPolicy : public Policy {
  public:
-  explicit CrossEntropyPolicy(std::vector<AgentDiscretePolicy> discrete_policies)
-      : policies(std::move(discrete_policies)) {}
+  CrossEntropyPolicy(std::vector<AgentDiscretePolicy> discrete_policies,
+                     ProbabilityPolicy prob_policies,
+                     const Instance* ins,
+                     std::mt19937* rng)
+      : discrete(std::move(discrete_policies)),
+        probs(std::move(prob_policies)),
+        ins(ins),
+        rng(rng) {}
 
   std::unordered_map<Vertex*, float> get_neighbor_scores(
       const Config& C, uint agent_id, const Vertices& neighbors) override;
 
+  std::vector<AgentDiscretePolicy> discrete;
+  ProbabilityPolicy probs;
+
  private:
-  std::vector<AgentDiscretePolicy> policies;
+  const Instance* ins;
+  std::mt19937* rng;
 };

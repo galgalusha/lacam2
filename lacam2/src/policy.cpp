@@ -188,10 +188,36 @@ std::unordered_map<Vertex*, float> CrossEntropyPolicy::get_neighbor_scores(
   result.reserve(neighbors.size());
   for (Vertex* v : neighbors) result[v] = 0.0f;
 
-  if (agent_id >= policies.size()) return result;
+  if (agent_id >= discrete.size()) return result;
   Vertex* current = C[agent_id];
-  const auto& dp = policies[agent_id];
+  auto& dp = discrete[agent_id];
+
   auto it = dp.favorite.find(current);
-  if (it != dp.favorite.end()) result[it->second] = -0.9f;
+  if (it != dp.favorite.end()) {
+    result[it->second] = -0.9f;
+    return result;
+  }
+
+  // Blind spot: lazily add a uniform distribution and sample a favorite.
+  if (agent_id < probs.size()) {
+    auto& nb_probs = probs[agent_id].vertex_probs[current];
+    if (nb_probs.empty()) {
+      Vertices cands = current->neighbor;
+      cands.push_back(current);
+      const double p = 1.0 / cands.size();
+      for (Vertex* nb : cands) nb_probs[nb] = p;
+    }
+    std::uniform_real_distribution<double> udist(0.0, 1.0);
+    double r = udist(*rng);
+    double cumul = 0.0;
+    Vertex* chosen = nb_probs.begin()->first;
+    for (const auto& [nb, p] : nb_probs) {
+      cumul += p;
+      chosen = nb;
+      if (r < cumul) break;
+    }
+    dp.favorite[current] = chosen;
+    result[chosen] = -0.9f;
+  }
   return result;
 }

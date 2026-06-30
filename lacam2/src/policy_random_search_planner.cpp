@@ -222,25 +222,23 @@ Solution PolicyRandomSearchPlanner::solve(std::string& additional_info)
   uint best_cost = UINT_MAX;
   std::vector<Config> best_configs;
 
-  // Main-thread RNG for candidate generation.
-  std::mt19937 gen_rng;
-  if (MT != nullptr) gen_rng.seed((*MT)());
-  else               gen_rng.seed(12345u);
+  // Per-thread RNGs (used for discrete policy generation and blind-spot sampling).
+  std::vector<std::mt19937> thread_rngs(PRS_NUM_THREADS);
+  if (MT != nullptr)
+    for (uint i = 0; i < PRS_NUM_THREADS; ++i) thread_rngs[i].seed((*MT)());
+  else
+    for (uint i = 0; i < PRS_NUM_THREADS; ++i) thread_rngs[i].seed(i + 1);
 
   for (uint gen = 0; !is_expired(deadline); ++gen) {
-    // 3. Generate CEM_NUM_CANDIDATES discrete candidate policies.
-    std::vector<std::vector<AgentDiscretePolicy>> candidates(
-        CEM_NUM_CANDIDATES, std::vector<AgentDiscretePolicy>(ins->N));
-    for (uint c = 0; c < CEM_NUM_CANDIDATES; ++c)
-      for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
-        candidates[c][a] = randomizer(prob_policy[a], ins, &gen_rng);
-
-    // 4. Evaluate candidates in parallel (PRS_NUM_THREADS threads).
+    // 3-4. Generate and evaluate CEM_NUM_CANDIDATES candidates in parallel.
+    //      Each thread copies prob_policy, generates a discrete policy, runs
+    //      a PolicyPIBT rollout, and returns the updated discrete+prob policies.
     struct EvalResult {
       uint cost;
       bool success;
       std::vector<Config> configs;
-      uint candidate_idx;
+      std::vector<AgentDiscretePolicy> discrete;
+      ProbabilityPolicy probs;
     };
 
     std::vector<EvalResult> eval_results;
@@ -254,15 +252,22 @@ Solution PolicyRandomSearchPlanner::solve(std::string& additional_info)
       std::vector<std::future<EvalResult>> futures;
       futures.reserve(batch_size);
       for (uint i = 0; i < batch_size; ++i) {
-        const uint cidx = dispatched + i;
         futures.push_back(std::async(std::launch::async,
-            [this, &candidates, cidx]() -> EvalResult {
-              auto ce_pol = std::make_shared<CrossEntropyPolicy>(candidates[cidx]);
+            [this, &prob_policy, &randomizer, &thread_rngs, i]() -> EvalResult {
+              // Each candidate gets its own copy of the probability policy.
+              auto candidate_probs = prob_policy;
+              std::vector<AgentDiscretePolicy> disc(ins->N);
+              for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
+                disc[a] = randomizer(candidate_probs[a], ins, &thread_rngs[i]);
+
+              auto ce_pol = std::make_shared<CrossEntropyPolicy>(
+                  std::move(disc), std::move(candidate_probs), ins, &thread_rngs[i]);
               PolicyPIBT pp(ins, D, ce_pol);
               auto* H = new HNode(ins->starts, D, nullptr, 0, 0);
               auto res = pp.rollout(H);
               delete H;
-              return {res.cost, res.success, std::move(res.configs), cidx};
+              return {res.cost, res.success, std::move(res.configs),
+                      std::move(ce_pol->discrete), std::move(ce_pol->probs)};
             }));
       }
 
@@ -291,27 +296,32 @@ Solution PolicyRandomSearchPlanner::solve(std::string& additional_info)
 
     // 6. Smoothed probability update using elite frequencies.
     for (uint a = 0; a < static_cast<uint>(ins->N); ++a) {
-      auto& agent_prob = prob_policy[a];
-      for (auto& [v, nb_probs] : agent_prob.vertex_probs) {
-        // Count how many elite policies generated a decision for v (E_v)
-        // and how many times each neighbor was chosen (N_u).
-        uint E_v = 0;
-        std::unordered_map<Vertex*, uint> neighbor_counts;
-        for (const auto& er : eval_results) {
-          const auto& disc = candidates[er.candidate_idx][a];
-          auto it = disc.favorite.find(v);
-          if (it != disc.favorite.end()) {
-            ++E_v;
-            ++neighbor_counts[it->second];
-          }
-        }
-        if (E_v == 0) continue;
+      auto& master_agent = prob_policy[a];
 
+      // Collect elite frequencies across all elite results.
+      std::unordered_map<Vertex*, std::unordered_map<Vertex*, uint>> neighbor_counts;
+      std::unordered_map<Vertex*, uint> E_v_map;
+      for (const auto& er : eval_results) {
+        for (const auto& [v, fav] : er.discrete[a].favorite) {
+          ++E_v_map[v];
+          ++neighbor_counts[v][fav];
+        }
+        // Merge vertices discovered lazily during this elite rollout into master.
+        for (const auto& [v, nb_probs] : er.probs[a].vertex_probs) {
+          if (!master_agent.vertex_probs.count(v))
+            master_agent.vertex_probs[v] = nb_probs;  // uniform initial value
+        }
+      }
+
+      // Apply smoothed update to every vertex in master that had elite activity.
+      for (auto& [v, nb_probs] : master_agent.vertex_probs) {
+        auto ev_it = E_v_map.find(v);
+        if (ev_it == E_v_map.end() || ev_it->second == 0) continue;
+        const uint E_v = ev_it->second;
+        const auto& vcnt = neighbor_counts[v];
         for (auto& [u, p_old] : nb_probs) {
-          const double N_u = [&]() -> double {
-            auto cnt = neighbor_counts.find(u);
-            return cnt != neighbor_counts.end() ? cnt->second : 0.0;
-          }();
+          auto cnt_it = vcnt.find(u);
+          const double N_u = cnt_it != vcnt.end() ? cnt_it->second : 0.0;
           const double p_elite = N_u / E_v;
           p_old = (1.0 - ALPHA) * p_old + ALPHA * p_elite;
         }
