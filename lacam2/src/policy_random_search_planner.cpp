@@ -7,6 +7,10 @@
 #include <iostream>
 #include <unordered_map>
 
+static const uint CEM_NUM_CANDIDATES = 100;
+static const uint CEM_ELITE_COUNT   = 10;
+static const double ALPHA           = 0.2;
+
 
 PolicyRandomSearchPlanner::PolicyRandomSearchPlanner(
     const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
@@ -200,10 +204,6 @@ Solution PolicyRandomSearchPlanner::solve_deprecated(std::string& additional_inf
 // CEM-based solve
 // ---------------------------------------------------------------------------
 
-static const uint MAX_GENERATIONS   = 50;
-static const uint CEM_NUM_CANDIDATES = 1000;
-static const uint CEM_ELITE_COUNT   = 100;
-static const double ALPHA           = 0.2;
 
 Solution PolicyRandomSearchPlanner::solve(std::string& additional_info)
 {
@@ -227,7 +227,7 @@ Solution PolicyRandomSearchPlanner::solve(std::string& additional_info)
   if (MT != nullptr) gen_rng.seed((*MT)());
   else               gen_rng.seed(12345u);
 
-  for (uint gen = 0; gen < MAX_GENERATIONS && !is_expired(deadline); ++gen) {
+  for (uint gen = 0; !is_expired(deadline); ++gen) {
     // 3. Generate CEM_NUM_CANDIDATES discrete candidate policies.
     std::vector<std::vector<AgentDiscretePolicy>> candidates(
         CEM_NUM_CANDIDATES, std::vector<AgentDiscretePolicy>(ins->N));
