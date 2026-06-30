@@ -257,7 +257,9 @@ NeighborScorePolicy WPlanner::create_policy(const Config& start_config, int num_
 
   delete H_init;
   seen_states.clear();
-  return NeighborScorePolicy(std::move(agent_policies), MT);
+  auto policy = NeighborScorePolicy(std::move(agent_policies), MT);
+  policy.finish_recording(ins);
+  return policy;
 }
 
 void WPlanner::test_policy(int TEST_AGENT_ID)

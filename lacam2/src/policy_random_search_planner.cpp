@@ -105,34 +105,109 @@ NeighborScorePolicy PolicyRandomSearchPlanner::create_initial_policy(
   }
 
   delete H_init;
-  return NeighborScorePolicy(std::move(agent_policies), MT);
+  auto policy = NeighborScorePolicy(std::move(agent_policies), MT);
+  policy.finish_recording(ins);
+  return policy;
 }
 
 Solution PolicyRandomSearchPlanner::solve(std::string& additional_info)
 {
   // Build the initial policy from random rollouts.
-  auto policy = std::make_shared<NeighborScorePolicy>(
+  auto current_policy = std::make_shared<NeighborScorePolicy>(
       create_initial_policy(ins->N));
 
-  // Run one PolicyPIBT rollout from the start using the policy.
-  PolicyPIBT policy_pibt(ins, D, policy);
-  auto H_init = new HNode(ins->starts, D, nullptr, 0, 0);
+  // Helper: run one PolicyPIBT rollout from starts using the given policy.
+  auto run_rollout = [&](std::shared_ptr<NeighborScorePolicy> policy) {
+    PolicyPIBT pp(ins, D, policy);
+    auto* H = new HNode(ins->starts, D, nullptr, 0, 0);
+    auto res = pp.rollout(H);
+    delete H;
+    return res;
+  };
 
-  std::cout << "PolicyRandomSearchPlanner: running policy rollout..." << std::endl;
-  auto res = policy_pibt.rollout(H_init);
-  delete H_init;
+  // Establish baseline cost with the initial policy.
+  auto baseline = run_rollout(current_policy);
+  uint best_cost = baseline.success ? baseline.cost : UINT_MAX;
+  std::vector<Config> best_configs = baseline.configs;
 
-  if (!res.success || res.configs.empty()) {
-    std::cout << "PolicyRandomSearchPlanner: policy rollout failed." << std::endl;
-    return Solution{};
+  if (baseline.success)
+    std::cout << "PolicyRandomSearchPlanner: initial SoC=" << best_cost << std::endl;
+  else
+    std::cout << "PolicyRandomSearchPlanner: initial rollout failed." << std::endl;
+
+  // Per-thread RNGs for mutation.
+  std::vector<std::mt19937> rngs(PRS_NUM_THREADS);
+  if (MT != nullptr) {
+    for (uint i = 0; i < PRS_NUM_THREADS; ++i) rngs[i].seed((*MT)());
+  } else {
+    for (uint i = 0; i < PRS_NUM_THREADS; ++i) rngs[i].seed(i + 1000);
+  }
+  std::uniform_int_distribution<uint> agent_dist(0, ins->N - 1);
+
+  auto last_print = std::chrono::steady_clock::now();
+
+  while (!is_expired(deadline)) {
+    loop_cnt++;
+
+    // Print iteration count every 2 seconds.
+    auto now = std::chrono::steady_clock::now();
+    if (std::chrono::duration_cast<std::chrono::seconds>(now - last_print).count() >= 2) {
+      std::cout << "PolicyRandomSearchPlanner: iterations=" << loop_cnt
+                << " best_SoC=" << best_cost << std::endl;
+      last_print = now;
+    }
+
+    // Pick one agent to mutate this round.
+    uint agent_idx = agent_dist(*MT);
+
+    // Create 6 candidates with the agent's blind_score_map re-randomized,
+    // plus 1 candidate with that agent's vertex_scores shuffled.
+    // Total = PRS_NUM_THREADS = 7.
+    const uint total_candidates = PRS_NUM_THREADS;
+    std::vector<std::shared_ptr<NeighborScorePolicy>> candidates;
+    candidates.reserve(total_candidates);
+    for (uint i = 0; i < PRS_NUM_THREADS - 1; ++i) {
+      auto candidate = std::make_shared<NeighborScorePolicy>(*current_policy);
+      candidate->randomize_agent_blind_scores(agent_idx, ins, &rngs[i]);
+      candidates.push_back(std::move(candidate));
+    }
+    // Last candidate: shuffle vertex_scores for the same agent.
+    {
+      auto candidate = std::make_shared<NeighborScorePolicy>(*current_policy);
+      candidate->randomize_agent_scores(agent_idx, &rngs[PRS_NUM_THREADS - 1]);
+      candidates.push_back(std::move(candidate));
+    }
+
+    // Run rollouts in parallel.
+    std::vector<std::future<RolloutResult>> futures;
+    futures.reserve(total_candidates);
+    for (uint i = 0; i < total_candidates; ++i) {
+      futures.push_back(std::async(std::launch::async,
+                                   [this, &candidates, i]() {
+                                     PolicyPIBT pp(ins, D, candidates[i]);
+                                     auto* H = new HNode(ins->starts, D, nullptr, 0, 0);
+                                     auto res = pp.rollout(H);
+                                     delete H;
+                                     return res;
+                                   }));
+    }
+
+    // Collect results; adopt any improvement.
+    for (uint i = 0; i < total_candidates; ++i) {
+      auto res = futures[i].get();
+      if (res.success && res.cost < best_cost) {
+        best_cost = res.cost;
+        best_configs = res.configs;
+        current_policy = candidates[i];
+        std::cout << "PolicyRandomSearchPlanner: new best SoC=" << best_cost << std::endl;
+      }
+    }
   }
 
-  std::cout << "PolicyRandomSearchPlanner: policy rollout succeeded. Cost="
-            << res.cost << std::endl;
+  if (best_configs.empty()) return Solution{};
 
-  // Build solution: starts config + rollout configs.
   Solution solution;
   solution.push_back(ins->starts);
-  for (auto& cfg : res.configs) solution.push_back(cfg);
+  for (auto& cfg : best_configs) solution.push_back(cfg);
   return solution;
 }

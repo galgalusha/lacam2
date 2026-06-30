@@ -36,7 +36,16 @@ struct NeighborScores {
 struct AgentPolicy {
   std::unordered_map<Vertex*, NeighborScores> vertex_scores;  // from-vertex -> neighbor scores
 
+  // Pre-computed random scores for vertices absent from vertex_scores.
+  // Maps from-vertex -> (neighbor-vertex -> random score in [-0.9, 0]).
+  std::unordered_map<Vertex*, std::unordered_map<Vertex*, float>> blind_score_map;
+
   void record_move(Vertex* from, Vertex* to);
+  // Populate blind_score_map for every vertex in the instance.
+  void finish_recording(const Instance* ins, std::mt19937* MT);
+  // For each vertex in vertex_scores, replace its neighbor scores with a
+  // random permutation of [1..num_neighbors], keeping keys intact.
+  void randomize_scores(std::mt19937* rng);
 };
 
 // Policy backed by learned neighbor scores.
@@ -48,6 +57,20 @@ class NeighborScorePolicy : public Policy {
 
   std::unordered_map<Vertex*, float> get_neighbor_scores(
       const Config& C, uint agent_id, const Vertices& neighbors) override;
+
+  // Call once after all rollouts are recorded to pre-compute blind scores.
+  void finish_recording(const Instance* ins);
+
+  // Replace one agent's blind_score_map with a fresh random draw.
+  void randomize_agent_blind_scores(uint agent_idx, const Instance* ins,
+                                    std::mt19937* rng);
+
+  // Shuffle vertex_scores for one agent with random [1..n] permutations.
+  void randomize_agent_scores(uint agent_idx, std::mt19937* rng);
+
+  // For every agent and every vertex in their vertex_scores, shuffle the
+  // neighbor scores with a random permutation of [1..num_neighbors].
+  void randomize_all_scores(std::mt19937* rng);
 
   uint random_count = 0;
   uint deterministic_count = 0;
