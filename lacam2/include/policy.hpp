@@ -6,6 +6,7 @@
 
 #include <random>
 #include <unordered_map>
+#include <vector>
 
 // Abstract base class for neighbor selection policy used in PolicyPIBT.
 // Given a config, an agent id, and all neighbor vertices (including self),
@@ -75,7 +76,58 @@ class NeighborScorePolicy : public Policy {
   uint random_count = 0;
   uint deterministic_count = 0;
 
+  const std::vector<AgentPolicy>& get_policies() const { return policies; }
+
  private:
   std::vector<AgentPolicy> policies;
   std::mt19937* MT;
+};
+
+// ---------------------------------------------------------------------------
+// CEM (Cross-Entropy Method) types
+// ---------------------------------------------------------------------------
+
+// Per-agent probability distribution over neighbor choices.
+// vertex_probs[v][u] = probability of choosing u when at vertex v.
+// Probabilities for each vertex v sum to 1.0.
+struct AgentProbabilityPolicy {
+  std::unordered_map<Vertex*, std::unordered_map<Vertex*, double>> vertex_probs;
+};
+
+// A flat collection of per-agent probability policies (one per agent).
+using ProbabilityPolicy = std::vector<AgentProbabilityPolicy>;
+
+// Convert an AgentPolicy (integer move counts) to normalized probabilities.
+// Only vertices present in ap.vertex_scores are stored; blind-spot vertices
+// are handled lazily by CrossEntropyPolicy (returns 0.0 == no preference).
+AgentProbabilityPolicy to_probability_policy(const AgentPolicy& ap);
+
+// Per-agent discrete policy: for each vertex, the single chosen favorite neighbor.
+struct AgentDiscretePolicy {
+  std::unordered_map<Vertex*, Vertex*> favorite;  // vertex -> chosen neighbor
+};
+
+// Samples an AgentDiscretePolicy from an AgentProbabilityPolicy.
+// For vertices in the policy, samples proportionally to stored probabilities.
+// Blind spots (vertices absent from the policy) produce no entry; the
+// CrossEntropyPolicy will treat them as no-preference (score = 0).
+class AgentPolicyRandomizer {
+ public:
+  AgentDiscretePolicy operator()(const AgentProbabilityPolicy& prob_policy,
+                                 const Instance* ins, std::mt19937* rng) const;
+};
+
+// Policy backed by per-agent discrete favorites.
+// Assigns score -0.9 to the stored favorite neighbor, 0.0 to all others.
+// For blind-spot vertices (no favorite recorded), returns 0.0 for every neighbor.
+class CrossEntropyPolicy : public Policy {
+ public:
+  explicit CrossEntropyPolicy(std::vector<AgentDiscretePolicy> discrete_policies)
+      : policies(std::move(discrete_policies)) {}
+
+  std::unordered_map<Vertex*, float> get_neighbor_scores(
+      const Config& C, uint agent_id, const Vertices& neighbors) override;
+
+ private:
+  std::vector<AgentDiscretePolicy> policies;
 };

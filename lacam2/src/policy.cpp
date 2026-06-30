@@ -139,3 +139,59 @@ void NeighborScorePolicy::randomize_all_scores(std::mt19937* rng)
     ap.randomize_scores(rng);
   }
 }
+
+// ---------------------------------------------------------------------------
+// CEM helpers
+// ---------------------------------------------------------------------------
+
+AgentProbabilityPolicy to_probability_policy(const AgentPolicy& ap)
+{
+  AgentProbabilityPolicy result;
+  for (const auto& [from, ns] : ap.vertex_scores) {
+    if (ns.scores.empty()) continue;
+    double total = 0.0;
+    for (const auto& [nb, score] : ns.scores) total += score;
+    // total > 0: scores are positive integers from record_move increments.
+    auto& dist = result.vertex_probs[from];
+    for (const auto& [nb, score] : ns.scores) dist[nb] = score / total;
+  }
+  return result;
+}
+
+AgentDiscretePolicy AgentPolicyRandomizer::operator()(
+    const AgentProbabilityPolicy& prob_policy,
+    const Instance* /*ins*/, std::mt19937* rng) const
+{
+  AgentDiscretePolicy result;
+  std::uniform_real_distribution<double> uniform(0.0, 1.0);
+
+  for (const auto& [v, nb_probs] : prob_policy.vertex_probs) {
+    if (nb_probs.empty()) continue;
+    double r = uniform(*rng);
+    double cumul = 0.0;
+    Vertex* chosen = nb_probs.begin()->first;
+    for (const auto& [nb, p] : nb_probs) {
+      cumul += p;
+      chosen = nb;
+      if (r < cumul) break;
+    }
+    result.favorite[v] = chosen;
+  }
+
+  return result;
+}
+
+std::unordered_map<Vertex*, float> CrossEntropyPolicy::get_neighbor_scores(
+    const Config& C, uint agent_id, const Vertices& neighbors)
+{
+  std::unordered_map<Vertex*, float> result;
+  result.reserve(neighbors.size());
+  for (Vertex* v : neighbors) result[v] = 0.0f;
+
+  if (agent_id >= policies.size()) return result;
+  Vertex* current = C[agent_id];
+  const auto& dp = policies[agent_id];
+  auto it = dp.favorite.find(current);
+  if (it != dp.favorite.end()) result[it->second] = -0.9f;
+  return result;
+}

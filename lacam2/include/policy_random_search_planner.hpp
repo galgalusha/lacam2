@@ -26,6 +26,10 @@ class PolicyRandomSearchPlanner : public Planner {
                                             uint keep = 100);
 
   Solution solve(std::string& additional_info);
+  Solution solve_deprecated(std::string& additional_info);
+
+  // The best policy found during solve(). Set after solve() returns.
+  std::shared_ptr<NeighborScorePolicy> policy;
 
  private:
   // Run up to num_rollouts random rollouts from H via this->pibt.
