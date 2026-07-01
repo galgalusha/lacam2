@@ -201,19 +201,39 @@ AgentDiscretePolicy AgentPolicyRandomizer::operator()(
     const Instance* /*ins*/, std::mt19937* rng) const
 {
   AgentDiscretePolicy result;
-  std::uniform_real_distribution<double> uniform(0.0, 1.0);
+  // Use double to match your probability types
+  std::uniform_real_distribution<double> uniform; 
 
   for (const auto& [v, nb_probs] : prob_policy.vertex_probs) {
     if (nb_probs.empty()) continue;
-    double r = uniform(*rng);
-    double cumul = 0.0;
-    Vertex* chosen = nb_probs.begin()->first;
-    for (const auto& [nb, p] : nb_probs) {
-      cumul += p;
-      chosen = nb;
-      if (r < cumul) break;
+    
+    // Weighted random sampling without replacement to build full strict ranking.
+    std::vector<std::pair<Vertex*, double>> remaining(nb_probs.begin(), nb_probs.end());
+    float score = -0.9f;
+    
+    while (!remaining.empty()) {
+      double total = 0.0;
+      for (const auto& [nb, p] : remaining) total += p;
+      
+      size_t chosen_idx = 0;
+      
+      // Safety check: Prevent UB in uniform_real_distribution if total is 0
+      if (total > 1e-9) {
+        double r = uniform(*rng, std::uniform_real_distribution<double>::param_type(0.0, total));
+        double cumul = 0.0;
+        
+        for (size_t i = 0; i < remaining.size(); ++i) {
+          cumul += remaining[i].second;
+          chosen_idx = i;
+          if (r <= cumul) break;
+        }
+      }
+      // If total <= 0, chosen_idx remains 0, deterministically assigning the rest.
+      
+      result.rankings[v][remaining[chosen_idx].first] = score;
+      score += 0.1f;
+      remaining.erase(remaining.begin() + chosen_idx);
     }
-    result.favorite[v] = chosen;
   }
 
   return result;
@@ -230,13 +250,16 @@ std::unordered_map<Vertex*, float> CrossEntropyPolicy::get_neighbor_scores(
   Vertex* current = C[agent_id];
   auto& dp = discrete[agent_id];
 
-  auto it = dp.favorite.find(current);
-  if (it != dp.favorite.end()) {
-    result[it->second] = -0.9f;
+  auto it = dp.rankings.find(current);
+  if (it != dp.rankings.end()) {
+    for (Vertex* v : neighbors) {
+      auto sit = it->second.find(v);
+      result[v] = (sit != it->second.end()) ? sit->second : 0.0f;
+    }
     return result;
   }
 
-  // Blind spot: lazily add a uniform distribution and sample a favorite.
+  // Blind spot: lazily add a uniform distribution and build a full strict ranking.
   if (agent_id < probs.size()) {
     auto& nb_probs = probs[agent_id].vertex_probs[current];
     if (nb_probs.empty()) {
@@ -245,17 +268,20 @@ std::unordered_map<Vertex*, float> CrossEntropyPolicy::get_neighbor_scores(
       const double p = 1.0 / cands.size();
       for (Vertex* nb : cands) nb_probs[nb] = p;
     }
-    std::uniform_real_distribution<double> udist(0.0, 1.0);
-    double r = udist(*rng);
-    double cumul = 0.0;
-    Vertex* chosen = nb_probs.begin()->first;
-    for (const auto& [nb, p] : nb_probs) {
-      cumul += p;
-      chosen = nb;
-      if (r < cumul) break;
+    // Build a uniformly shuffled full ranking.
+    Vertices cands = current->neighbor;
+    cands.push_back(current);
+    std::shuffle(cands.begin(), cands.end(), *rng);
+    float score = -0.9f;
+    auto& rank_map = dp.rankings[current];
+    for (Vertex* nb : cands) {
+      rank_map[nb] = score;
+      score += 0.1f;
     }
-    dp.favorite[current] = chosen;
-    result[chosen] = -0.9f;
+    for (Vertex* v : neighbors) {
+      auto sit = rank_map.find(v);
+      result[v] = (sit != rank_map.end()) ? sit->second : 0.0f;
+    }
   }
   return result;
 }

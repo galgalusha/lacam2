@@ -302,9 +302,14 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
     std::unordered_map<Vertex*, std::unordered_map<Vertex*, uint>> neighbor_counts;
     std::unordered_map<Vertex*, uint> E_v_map;
     for (const auto& er : elite) {
-      for (const auto& [v, fav] : er.discrete[a].favorite) {
-        ++E_v_map[v];
-        ++neighbor_counts[v][fav];
+      for (const auto& [v, rank_map] : er.discrete[a].rankings) {
+        // Find the top-ranked neighbor (lowest score = -0.9f).
+        Vertex* top = nullptr;
+        float best_score = 1.0f;
+        for (const auto& [nb, sc] : rank_map) {
+          if (sc < best_score) { best_score = sc; top = nb; }
+        }
+        if (top) { ++E_v_map[v]; ++neighbor_counts[v][top]; }
       }
       for (const auto& [v, nb_probs] : er.probs[a].vertex_probs) {
         if (!master_agent.vertex_probs.count(v))

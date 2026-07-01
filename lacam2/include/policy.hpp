@@ -130,9 +130,10 @@ class ProbabilityPolicy : public Policy {
   std::mt19937* rng;
 };
 
-// Per-agent discrete policy: for each vertex, the single chosen favorite neighbor.
+// Per-agent discrete policy: for each vertex, a pre-calculated score for every
+// valid neighbor. Scores are in [-0.9, 0], lower = more preferred.
 struct AgentDiscretePolicy {
-  std::unordered_map<Vertex*, Vertex*> favorite;  // vertex -> chosen neighbor
+  std::unordered_map<Vertex*, std::unordered_map<Vertex*, float>> rankings;  // vertex -> (neighbor -> score)
 };
 
 // Samples an AgentDiscretePolicy from an AgentProbabilityPolicy.
