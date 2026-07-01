@@ -1,11 +1,40 @@
 #include "../include/cem_planner.hpp"
 #include "../include/pibt.hpp"
+#include "../include/post_processing.hpp"
 
 #include <algorithm>
 #include <climits>
 #include <future>
 #include <iostream>
+#include <numeric>
 #include <unordered_map>
+#include <unordered_set>
+
+#include <termios.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+static bool key_pressed_to_stop()
+{
+  // Non-blocking check for Space (0x20) or Escape (0x1B) on stdin.
+  struct termios oldt, newt;
+  tcgetattr(STDIN_FILENO, &oldt);
+  newt = oldt;
+  newt.c_lflag &= ~(ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+  int old_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+  fcntl(STDIN_FILENO, F_SETFL, old_flags | O_NONBLOCK);
+
+  char c = 0;
+  bool stop = false;
+  if (read(STDIN_FILENO, &c, 1) == 1)
+    stop = (c == ' ' || c == 0x1B);
+
+  fcntl(STDIN_FILENO, F_SETFL, old_flags);
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  return stop;
+}
 
 static const uint CEM_NUM_CANDIDATES = 100;
 static const uint CEM_ELITE_COUNT   = 10;
@@ -326,6 +355,10 @@ Solution CEMPlanner::solve(std::string& additional_info)
     for (uint i = 0; i < PRS_NUM_THREADS; ++i) thread_rngs[i].seed(i + 1);
 
   for (uint gen = 0; !is_expired(deadline); ++gen) {
+    if (key_pressed_to_stop()) {
+      std::cout << "CEMPlanner: interrupted by user (Space/Escape)." << std::endl;
+      break;
+    }
     // 3-4. Generate and evaluate candidates.
     auto eval_results = run_candidate_rollouts(
         prob_policy, randomizer, thread_rngs, CEM_NUM_CANDIDATES);
@@ -345,8 +378,137 @@ Solution CEMPlanner::solve(std::string& additional_info)
 
   if (best_configs.empty()) return Solution{};
 
+  run_stall_test(prob_policy);
+
   Solution solution;
   solution.push_back(ins->starts);
   for (auto& cfg : best_configs) solution.push_back(cfg);
   return solution;
+}
+
+// ---------------------------------------------------------------------------
+// Interactive stall-simulation test
+// ---------------------------------------------------------------------------
+
+void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
+{
+  std::cout << "\n=== Stall-simulation test (q / empty Enter to quit) ===" << std::endl;
+
+  AgentPolicyRandomizer randomizer;
+
+  // Restore blocking terminal I/O for interactive use.
+  struct termios oldt;
+  tcgetattr(STDIN_FILENO, &oldt);
+  struct termios newt = oldt;
+  newt.c_lflag |= (ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+  int old_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+  fcntl(STDIN_FILENO, F_SETFL, old_flags & ~O_NONBLOCK);
+
+  while (true) {
+    // --- prompt ---
+    std::cout << "\nNumber of agents to stall [0-" << ins->N << "] (q or Enter=quit): ";
+    std::string line;
+    if (!std::getline(std::cin, line)) break;
+    if (line.empty() || line == "q" || line == "Q") break;
+
+    int num_stall = 0;
+    try { num_stall = std::stoi(line); }
+    catch (...) { std::cout << "Invalid input, try again." << std::endl; continue; }
+    if (num_stall < 0 || num_stall > ins->N) {
+      std::cout << "Out of range, try again." << std::endl; continue;
+    }
+
+    // --- 1. sample a discrete policy from the master prob_policy ---
+    std::vector<AgentDiscretePolicy> disc(ins->N);
+    for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
+      disc[a] = randomizer(prob_policy[a], ins, MT);
+    auto ce_pol = std::make_shared<CrossEntropyPolicy>(
+        std::move(disc), prob_policy, ins, MT);
+
+    // --- 2. pick random stall agents ---
+    std::vector<uint> stall_agents;
+    {
+      std::vector<uint> all(ins->N);
+      std::iota(all.begin(), all.end(), 0);
+      std::shuffle(all.begin(), all.end(), *MT);
+      stall_agents.assign(all.begin(), all.begin() + num_stall);
+    }
+    std::cout << "Stalling agents:";
+    for (auto a : stall_agents) std::cout << " " << a;
+    std::cout << std::endl;
+
+    // --- 3. run one PIBT step from starts ---
+    PolicyPIBT pp_step(ins, D, ce_pol);
+    auto* H_start = new HNode(ins->starts, D, nullptr, 0, 0);
+    LNode unconstrained;
+    Config C_step1(ins->N, nullptr);
+    if (!pp_step.get_new_config(H_start, &unconstrained, C_step1)) {
+      std::cout << "PIBT step failed, skipping." << std::endl;
+      delete H_start;
+      continue;
+    }
+
+    // --- 4. try to revert stall agents to their starts position ---
+    // Build a set of vertices occupied in C_step1 (excluding stall agents,
+    // since they are the candidates to be reverted).
+    std::unordered_set<uint> stall_set(stall_agents.begin(), stall_agents.end());
+    std::unordered_map<uint /*vertex id*/, uint /*agent*/> occupied_after;
+    for (uint a = 0; a < static_cast<uint>(ins->N); ++a) {
+      if (!stall_set.count(a))
+        occupied_after[C_step1[a]->id] = a;
+    }
+
+    int intended_reverts  = num_stall;
+    int successful_reverts = 0;
+    Config C_stalled = C_step1;  // copy; we'll overwrite stall agents if possible
+    for (uint a : stall_agents) {
+      Vertex* prev = ins->starts[a];
+      if (!occupied_after.count(prev->id)) {
+        // vertex is free — revert
+        C_stalled[a] = prev;
+        occupied_after[prev->id] = a;  // mark as now occupied
+        ++successful_reverts;
+      }
+    }
+    std::cout << "Reverts: " << successful_reverts << "/" << intended_reverts << std::endl;
+
+    // --- 5. rollout from stalled config ---
+    // Re-sample a fresh discrete policy for the rollout so it is independent.
+    std::vector<AgentDiscretePolicy> disc2(ins->N);
+    for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
+      disc2[a] = randomizer(prob_policy[a], ins, MT);
+    auto ce_pol2 = std::make_shared<CrossEntropyPolicy>(
+        std::move(disc2), prob_policy, ins, MT);
+    PolicyPIBT pp_rollout(ins, D, ce_pol2);
+
+    auto* H_stalled = new HNode(C_stalled, D, nullptr, 0, 0);
+    auto res = pp_rollout.rollout(H_stalled);
+    delete H_stalled;
+    delete H_start;
+
+    if (!res.success) {
+      std::cout << "Rollout from stalled config did not reach goal." << std::endl;
+      continue;
+    }
+
+    // --- 6. build full solution: starts -> C_stalled -> rollout ---
+    Solution sol;
+    sol.push_back(ins->starts);
+    sol.push_back(C_stalled);
+    for (auto& cfg : res.configs) sol.push_back(cfg);
+
+    // --- 7. feasibility check ---
+    bool feasible = is_feasible_solution(*ins, sol, /*verbose=*/1);
+    std::cout << "Feasible: " << (feasible ? "yes" : "NO") << std::endl;
+
+    // --- 8. sum of loss ---
+    int sum_loss = get_sum_of_loss(sol);
+    std::cout << "Sum-of-loss: " << sum_loss << std::endl;
+  }
+
+  // Restore terminal to its original state.
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  fcntl(STDIN_FILENO, F_SETFL, old_flags);
+  std::cout << "=== Stall test finished ===" << std::endl;
 }

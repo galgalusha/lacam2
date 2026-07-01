@@ -66,4 +66,11 @@ class CEMPlanner : public Planner {
   // Smooth prob_policy toward the elite frequencies using the ALPHA blend factor.
   void update_policy_with_elite(ProbabilityPolicy& prob_policy,
                                 const std::vector<EvalResult>& elite);
+
+  // Interactive stall-simulation test. Loops until the user enters 'q' or empty
+  // input. Each iteration: samples a discrete policy from prob_policy, lets the
+  // user choose N agents to stall, simulates one PIBT step then tries to revert
+  // those agents, runs a rollout from the resulting config, and reports feasibility
+  // and sum-of-loss.
+  void run_stall_test(const ProbabilityPolicy& prob_policy);
 };
