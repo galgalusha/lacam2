@@ -201,16 +201,113 @@ Solution CEMPlanner::solve_deprecated(std::string& additional_info)
 }
 
 // ---------------------------------------------------------------------------
-// CEM-based solve
+// CEM helper methods
 // ---------------------------------------------------------------------------
 
+std::vector<CEMPlanner::EvalResult> CEMPlanner::run_candidate_rollouts(
+    const ProbabilityPolicy& prob_policy,
+    AgentPolicyRandomizer& randomizer,
+    std::vector<std::mt19937>& thread_rngs,
+    uint num_candidates)
+{
+  std::vector<EvalResult> eval_results;
+  eval_results.reserve(num_candidates);
+
+  uint dispatched = 0;
+  while (dispatched < num_candidates && !is_expired(deadline)) {
+    const uint remaining  = num_candidates - dispatched;
+    const uint batch_size = std::min(remaining, PRS_NUM_THREADS);
+
+    std::vector<std::future<EvalResult>> futures;
+    futures.reserve(batch_size);
+    for (uint i = 0; i < batch_size; ++i) {
+      futures.push_back(std::async(std::launch::async,
+          [this, &prob_policy, &randomizer, &thread_rngs, i]() -> EvalResult {
+            auto candidate_probs = prob_policy;
+            std::vector<AgentDiscretePolicy> disc(ins->N);
+            for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
+              disc[a] = randomizer(candidate_probs[a], ins, &thread_rngs[i]);
+
+            auto ce_pol = std::make_shared<CrossEntropyPolicy>(
+                std::move(disc), std::move(candidate_probs), ins, &thread_rngs[i]);
+            PolicyPIBT pp(ins, D, ce_pol);
+            auto* H = new HNode(ins->starts, D, nullptr, 0, 0);
+            auto res = pp.rollout(H);
+            delete H;
+            return {res.cost, res.success, std::move(res.configs),
+                    std::move(ce_pol->discrete), std::move(ce_pol->probs)};
+          }));
+    }
+
+    for (auto& f : futures) {
+      auto er = f.get();
+      if (er.success) eval_results.push_back(std::move(er));
+    }
+    dispatched += batch_size;
+  }
+
+  return eval_results;
+}
+
+void CEMPlanner::select_elite(std::vector<EvalResult>& eval_results,
+                              uint elite_count,
+                              uint& best_cost,
+                              std::vector<Config>& best_configs)
+{
+  std::sort(eval_results.begin(), eval_results.end(),
+      [](const EvalResult& a, const EvalResult& b) { return a.cost < b.cost; });
+  if (eval_results.size() > elite_count) eval_results.resize(elite_count);
+
+  if (!eval_results.empty() && eval_results[0].cost < best_cost) {
+    best_cost    = eval_results[0].cost;
+    best_configs = eval_results[0].configs;
+  }
+}
+
+void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
+                                          const std::vector<EvalResult>& elite)
+{
+  for (uint a = 0; a < static_cast<uint>(ins->N); ++a) {
+    auto& master_agent = prob_policy[a];
+
+    std::unordered_map<Vertex*, std::unordered_map<Vertex*, uint>> neighbor_counts;
+    std::unordered_map<Vertex*, uint> E_v_map;
+    for (const auto& er : elite) {
+      for (const auto& [v, fav] : er.discrete[a].favorite) {
+        ++E_v_map[v];
+        ++neighbor_counts[v][fav];
+      }
+      for (const auto& [v, nb_probs] : er.probs[a].vertex_probs) {
+        if (!master_agent.vertex_probs.count(v))
+          master_agent.vertex_probs[v] = nb_probs;
+      }
+    }
+
+    for (auto& [v, nb_probs] : master_agent.vertex_probs) {
+      auto ev_it = E_v_map.find(v);
+      if (ev_it == E_v_map.end() || ev_it->second == 0) continue;
+      const uint E_v = ev_it->second;
+      const auto& vcnt = neighbor_counts[v];
+      for (auto& [u, p_old] : nb_probs) {
+        auto cnt_it = vcnt.find(u);
+        const double N_u = cnt_it != vcnt.end() ? cnt_it->second : 0.0;
+        const double p_elite = N_u / E_v;
+        p_old = (1.0 - ALPHA) * p_old + ALPHA * p_elite;
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// CEM-based solve
+// ---------------------------------------------------------------------------
 
 Solution CEMPlanner::solve(std::string& additional_info)
 {
   // 1. Build initial policy from random rollouts.
   auto initial_nsp = create_initial_policy(ins->N, 5000, 100);
 
-  // 2. Translate to a ProbabilityPolicy (one AgentProbabilityPolicy per agent).
+  // 2. Translate to a ProbabilityPolicy.
   AgentPolicyRandomizer randomizer;
   ProbabilityPolicy prob_policy(ins->N);
   const auto& agent_pols = initial_nsp.get_policies();
@@ -222,7 +319,6 @@ Solution CEMPlanner::solve(std::string& additional_info)
   uint best_cost = UINT_MAX;
   std::vector<Config> best_configs;
 
-  // Per-thread RNGs (used for discrete policy generation and blind-spot sampling).
   std::vector<std::mt19937> thread_rngs(PRS_NUM_THREADS);
   if (MT != nullptr)
     for (uint i = 0; i < PRS_NUM_THREADS; ++i) thread_rngs[i].seed((*MT)());
@@ -230,63 +326,12 @@ Solution CEMPlanner::solve(std::string& additional_info)
     for (uint i = 0; i < PRS_NUM_THREADS; ++i) thread_rngs[i].seed(i + 1);
 
   for (uint gen = 0; !is_expired(deadline); ++gen) {
-    // 3-4. Generate and evaluate CEM_NUM_CANDIDATES candidates in parallel.
-    //      Each thread copies prob_policy, generates a discrete policy, runs
-    //      a PolicyPIBT rollout, and returns the updated discrete+prob policies.
-    struct EvalResult {
-      uint cost;
-      bool success;
-      std::vector<Config> configs;
-      std::vector<AgentDiscretePolicy> discrete;
-      ProbabilityPolicy probs;
-    };
+    // 3-4. Generate and evaluate candidates.
+    auto eval_results = run_candidate_rollouts(
+        prob_policy, randomizer, thread_rngs, CEM_NUM_CANDIDATES);
 
-    std::vector<EvalResult> eval_results;
-    eval_results.reserve(CEM_NUM_CANDIDATES);
-
-    uint dispatched = 0;
-    while (dispatched < CEM_NUM_CANDIDATES && !is_expired(deadline)) {
-      const uint remaining  = CEM_NUM_CANDIDATES - dispatched;
-      const uint batch_size = std::min(remaining, PRS_NUM_THREADS);
-
-      std::vector<std::future<EvalResult>> futures;
-      futures.reserve(batch_size);
-      for (uint i = 0; i < batch_size; ++i) {
-        futures.push_back(std::async(std::launch::async,
-            [this, &prob_policy, &randomizer, &thread_rngs, i]() -> EvalResult {
-              // Each candidate gets its own copy of the probability policy.
-              auto candidate_probs = prob_policy;
-              std::vector<AgentDiscretePolicy> disc(ins->N);
-              for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
-                disc[a] = randomizer(candidate_probs[a], ins, &thread_rngs[i]);
-
-              auto ce_pol = std::make_shared<CrossEntropyPolicy>(
-                  std::move(disc), std::move(candidate_probs), ins, &thread_rngs[i]);
-              PolicyPIBT pp(ins, D, ce_pol);
-              auto* H = new HNode(ins->starts, D, nullptr, 0, 0);
-              auto res = pp.rollout(H);
-              delete H;
-              return {res.cost, res.success, std::move(res.configs),
-                      std::move(ce_pol->discrete), std::move(ce_pol->probs)};
-            }));
-      }
-
-      for (auto& f : futures) {
-        auto er = f.get();
-        if (er.success) eval_results.push_back(std::move(er));
-      }
-      dispatched += batch_size;
-    }
-
-    // 5. Sort by cost, keep best CEM_ELITE_COUNT.
-    std::sort(eval_results.begin(), eval_results.end(),
-        [](const EvalResult& a, const EvalResult& b) { return a.cost < b.cost; });
-    if (eval_results.size() > CEM_ELITE_COUNT) eval_results.resize(CEM_ELITE_COUNT);
-
-    if (!eval_results.empty() && eval_results[0].cost < best_cost) {
-      best_cost    = eval_results[0].cost;
-      best_configs = eval_results[0].configs;
-    }
+    // 5. Select elite.
+    select_elite(eval_results, CEM_ELITE_COUNT, best_cost, best_configs);
 
     std::cout << "PolicyRandomSearchPlanner CEM gen=" << gen
               << " elite=" << eval_results.size()
@@ -294,39 +339,8 @@ Solution CEMPlanner::solve(std::string& additional_info)
 
     if (eval_results.empty()) continue;
 
-    // 6. Smoothed probability update using elite frequencies.
-    for (uint a = 0; a < static_cast<uint>(ins->N); ++a) {
-      auto& master_agent = prob_policy[a];
-
-      // Collect elite frequencies across all elite results.
-      std::unordered_map<Vertex*, std::unordered_map<Vertex*, uint>> neighbor_counts;
-      std::unordered_map<Vertex*, uint> E_v_map;
-      for (const auto& er : eval_results) {
-        for (const auto& [v, fav] : er.discrete[a].favorite) {
-          ++E_v_map[v];
-          ++neighbor_counts[v][fav];
-        }
-        // Merge vertices discovered lazily during this elite rollout into master.
-        for (const auto& [v, nb_probs] : er.probs[a].vertex_probs) {
-          if (!master_agent.vertex_probs.count(v))
-            master_agent.vertex_probs[v] = nb_probs;  // uniform initial value
-        }
-      }
-
-      // Apply smoothed update to every vertex in master that had elite activity.
-      for (auto& [v, nb_probs] : master_agent.vertex_probs) {
-        auto ev_it = E_v_map.find(v);
-        if (ev_it == E_v_map.end() || ev_it->second == 0) continue;
-        const uint E_v = ev_it->second;
-        const auto& vcnt = neighbor_counts[v];
-        for (auto& [u, p_old] : nb_probs) {
-          auto cnt_it = vcnt.find(u);
-          const double N_u = cnt_it != vcnt.end() ? cnt_it->second : 0.0;
-          const double p_elite = N_u / E_v;
-          p_old = (1.0 - ALPHA) * p_old + ALPHA * p_elite;
-        }
-      }
-    }
+    // 6. Smooth probability update toward elite.
+    update_policy_with_elite(prob_policy, eval_results);
   }
 
   if (best_configs.empty()) return Solution{};

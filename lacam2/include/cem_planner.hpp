@@ -10,10 +10,20 @@
 #include "rollout_result.hpp"
 
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 class CEMPlanner : public Planner {
  public:
+  // Per-candidate result produced during CEM rollout evaluation.
+  struct EvalResult {
+    uint cost;
+    bool success;
+    std::vector<Config> configs;
+    std::vector<AgentDiscretePolicy> discrete;
+    ProbabilityPolicy probs;
+  };
+
   CEMPlanner(const Instance* _ins, const Deadline* _deadline,
                              std::mt19937* _MT, const int _verbose = 0,
                              const Objective _objective = OBJ_NONE,
@@ -37,4 +47,23 @@ class CEMPlanner : public Planner {
   std::vector<std::vector<Config>> get_rollouts(HNode* H,
                                                 uint num_rollouts,
                                                 uint keep);
+
+  // Generate and evaluate num_candidates PolicyPIBT candidates in parallel,
+  // sampling discrete policies from prob_policy. Returns only successful results.
+  std::vector<EvalResult> run_candidate_rollouts(
+      const ProbabilityPolicy& prob_policy,
+      AgentPolicyRandomizer& randomizer,
+      std::vector<std::mt19937>& thread_rngs,
+      uint num_candidates);
+
+  // Sort eval_results by cost, truncate to elite_count, and update best_cost /
+  // best_configs if the top result improves on the current best.
+  void select_elite(std::vector<EvalResult>& eval_results,
+                    uint elite_count,
+                    uint& best_cost,
+                    std::vector<Config>& best_configs);
+
+  // Smooth prob_policy toward the elite frequencies using the ALPHA blend factor.
+  void update_policy_with_elite(ProbabilityPolicy& prob_policy,
+                                const std::vector<EvalResult>& elite);
 };
