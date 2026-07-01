@@ -1,4 +1,4 @@
-#include "../include/policy_random_search_planner.hpp"
+#include "../include/cem_planner.hpp"
 #include "../include/pibt.hpp"
 
 #include <algorithm>
@@ -12,7 +12,7 @@ static const uint CEM_ELITE_COUNT   = 10;
 static const double ALPHA           = 0.2;
 
 
-PolicyRandomSearchPlanner::PolicyRandomSearchPlanner(
+CEMPlanner::CEMPlanner(
     const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
     const int _verbose, const Objective _objective, const float _restart_rate)
     : Planner(_ins, _deadline, _MT, _verbose, _objective, _restart_rate)
@@ -21,7 +21,7 @@ PolicyRandomSearchPlanner::PolicyRandomSearchPlanner(
 
 static const uint PRS_NUM_THREADS = 7;
 
-std::vector<std::vector<Config>> PolicyRandomSearchPlanner::get_rollouts(
+std::vector<std::vector<Config>> CEMPlanner::get_rollouts(
     HNode* H, uint num_rollouts, uint keep)
 {
   struct RolloutEntry {
@@ -81,7 +81,7 @@ std::vector<std::vector<Config>> PolicyRandomSearchPlanner::get_rollouts(
   return out;
 }
 
-NeighborScorePolicy PolicyRandomSearchPlanner::create_initial_policy(
+NeighborScorePolicy CEMPlanner::create_initial_policy(
     int num_agents, uint num_rollouts, uint keep)
 {
   auto H_init = new HNode(ins->starts, D, nullptr, 0, 0);
@@ -116,7 +116,7 @@ NeighborScorePolicy PolicyRandomSearchPlanner::create_initial_policy(
   return policy;
 }
 
-Solution PolicyRandomSearchPlanner::solve_deprecated(std::string& additional_info)
+Solution CEMPlanner::solve_deprecated(std::string& additional_info)
 {
   // Build the initial policy from random rollouts.
   auto current_policy = std::make_shared<NeighborScorePolicy>(
@@ -205,7 +205,7 @@ Solution PolicyRandomSearchPlanner::solve_deprecated(std::string& additional_inf
 // ---------------------------------------------------------------------------
 
 
-Solution PolicyRandomSearchPlanner::solve(std::string& additional_info)
+Solution CEMPlanner::solve(std::string& additional_info)
 {
   // 1. Build initial policy from random rollouts.
   auto initial_nsp = create_initial_policy(ins->N, 5000, 100);

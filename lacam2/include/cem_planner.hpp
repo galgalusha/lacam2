@@ -12,9 +12,9 @@
 #include <memory>
 #include <vector>
 
-class PolicyRandomSearchPlanner : public Planner {
+class CEMPlanner : public Planner {
  public:
-  PolicyRandomSearchPlanner(const Instance* _ins, const Deadline* _deadline,
+  CEMPlanner(const Instance* _ins, const Deadline* _deadline,
                              std::mt19937* _MT, const int _verbose = 0,
                              const Objective _objective = OBJ_NONE,
                              const float _restart_rate = 0.001);
