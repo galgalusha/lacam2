@@ -36,9 +36,9 @@ static bool key_pressed_to_stop()
   return stop;
 }
 
-static const uint CEM_NUM_CANDIDATES = 100;
-static const uint CEM_ELITE_COUNT   = 10;
-static const double ALPHA           = 0.2;
+static uint CEM_NUM_CANDIDATES = 100;
+static int CEM_ELITE_COUNT     = 10;
+static double LEARNING_RATE    = 0.2;
 
 
 CEMPlanner::CEMPlanner(
@@ -145,90 +145,6 @@ NeighborScorePolicy CEMPlanner::create_initial_policy(
   return policy;
 }
 
-Solution CEMPlanner::solve_deprecated(std::string& additional_info)
-{
-  // Build the initial policy from random rollouts.
-  auto current_policy = std::make_shared<NeighborScorePolicy>(
-      create_initial_policy(ins->N, 5000, 100));
-
-  std::cout << "Initial policy created" << std::endl;
-
-  // Helper: run one PolicyPIBT rollout from starts using the given policy.
-  auto run_rollout = [&](std::shared_ptr<NeighborScorePolicy> policy) {
-    PolicyPIBT pp(ins, D, policy);
-    auto* H = new HNode(ins->starts, D, nullptr, 0, 0);
-    auto res = pp.rollout(H);
-    delete H;
-    return res;
-  };
-
-  std::cout << "Running baseline rollout" << std::endl;
-  // Establish baseline cost with the initial policy.
-  auto baseline = run_rollout(current_policy);
-  uint best_cost = baseline.success ? baseline.cost : UINT_MAX;
-  std::cout << "Baseline cost: " << best_cost << std::endl;
-  std::vector<Config> best_configs = baseline.configs;
-
-  if (baseline.success)
-    std::cout << "PolicyRandomSearchPlanner: initial SoC=" << best_cost << std::endl;
-  else
-    std::cout << "PolicyRandomSearchPlanner: initial rollout failed." << std::endl;
-
-  // Per-thread RNGs for mutation.
-  std::uniform_int_distribution<uint> agent_dist(0, ins->N - 1);
-  std::uniform_int_distribution<uint> group_size_dist(1, 5);
-
-  auto last_print = std::chrono::steady_clock::now();
-
-  while (!is_expired(deadline)) {
-    loop_cnt++;
-
-    // Print iteration count every 2 seconds.
-    auto now = std::chrono::steady_clock::now();
-    if (std::chrono::duration_cast<std::chrono::seconds>(now - last_print).count() >= 2) {
-      std::cout << "PolicyRandomSearchPlanner: iterations=" << loop_cnt
-                << " best_SoC=" << best_cost << std::endl;
-      last_print = now;
-    }
-
-    // Pick a random group of distinct agents (size 1..15).
-    uint group_size = std::min(group_size_dist(*MT), (uint)ins->N);
-    std::vector<uint> group;
-    group.reserve(group_size);
-    while (group.size() < group_size) {
-      uint idx = agent_dist(*MT);
-      if (std::find(group.begin(), group.end(), idx) == group.end())
-        group.push_back(idx);
-    }
-
-    // Build one candidate: copy of current policy with all group agents randomized.
-    auto candidate = std::make_shared<NeighborScorePolicy>(*current_policy);
-    for (uint agent_idx : group) {
-      candidate->randomize_agent_blind_scores(agent_idx, ins, MT);
-      candidate->randomize_agent_scores(agent_idx, MT);
-    }
-
-    // Run a single rollout with the candidate policy.
-    auto res = run_rollout(candidate);
-    if (res.success && res.cost < best_cost) {
-      best_cost = res.cost;
-      best_configs = res.configs;
-      current_policy = candidate;
-      std::cout << "PolicyRandomSearchPlanner: new best SoC=" << best_cost
-                << " (group_size=" << group_size << ")" << std::endl;
-    }
-  }
-
-  if (best_configs.empty()) return Solution{};
-
-  policy = current_policy;
-
-  Solution solution;
-  solution.push_back(ins->starts);
-  for (auto& cfg : best_configs) solution.push_back(cfg);
-  return solution;
-}
-
 // ---------------------------------------------------------------------------
 // CEM helper methods
 // ---------------------------------------------------------------------------
@@ -326,7 +242,7 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
         auto cnt_it = vcnt.find(u);
         const double N_u = cnt_it != vcnt.end() ? cnt_it->second : 0.0;
         const double p_elite = N_u / E_v;
-        p_old = (1.0 - ALPHA) * p_old + ALPHA * p_elite;
+        p_old = (1.0 - LEARNING_RATE) * p_old + LEARNING_RATE * p_elite;
       }
     }
   }
