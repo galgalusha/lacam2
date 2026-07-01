@@ -232,8 +232,8 @@ NeighborScorePolicy WPlanner::create_policy(const Config& start_config, int num_
   auto H_init = new HNode(start_config, D, nullptr, 0, 0);
   uint64_t node_counter = 0;
   uint best_cost = UINT_MAX;
-  const uint n_expansions = 2000;
-  const uint n_rollouts = 100;
+  const uint n_expansions = 5000;
+  const uint n_rollouts = 50;
   std::cout << "generating " << n_expansions << " rollouts for policy" << std::endl;
   auto best_rollouts = get_successors(H_init, best_cost, node_counter, n_expansions, n_rollouts, true);
   std::cout << "Done generating " << n_expansions << " rollouts for policy. Best cost found: " << best_cost << std::endl;
@@ -342,7 +342,17 @@ Solution WPlanner::solve(std::string& additional_info)
 {
   const uint refresh_policy_depth = 50000;
 
-  auto policy = std::make_shared<NeighborScorePolicy>(create_policy(ins->N));
+  auto score_policy = create_policy(ins->N);
+
+  std::vector<AgentProbabilityPolicy> agent_probs(ins->N);
+  const auto& agent_pols = score_policy.get_policies();
+  for (uint a = 0; a < static_cast<uint>(ins->N); ++a) {
+    if (a < agent_pols.size())
+      agent_probs[a] = to_probability_policy(agent_pols[a]);
+  }
+  auto policy = std::make_shared<ProbabilityPolicy>(std::move(agent_probs), ins, MT);
+
+
   PIBTFactory policy_pibt_factory = [&](std::mt19937* rng) -> std::unique_ptr<PIBTBase> {
     return std::make_unique<PolicyPIBT>(ins, D, policy);
   };
@@ -426,13 +436,13 @@ Solution WPlanner::solve(std::string& additional_info)
     //           << " (" << (successors.size() * 100) / num_of_successors << "%)"
     //           << std::endl;
 
-    if (policy->deterministic_count+policy->random_count > 0) {
-      std::cout << "Policy: Random " << policy->random_count*100/(policy->deterministic_count+policy->random_count)
-                << "%" << std::endl;
-    }
+    // if (policy->deterministic_count+policy->random_count > 0) {
+    //   std::cout << "Policy: Random " << policy->random_count*100/(policy->deterministic_count+policy->random_count)
+    //             << "%" << std::endl;
+    // }
       
-    policy->deterministic_count = 0;
-    policy->random_count = 0;
+    // policy->deterministic_count = 0;
+    // policy->random_count = 0;
 
 
     for (const auto& successor : successors) {

@@ -94,13 +94,41 @@ struct AgentProbabilityPolicy {
   std::unordered_map<Vertex*, std::unordered_map<Vertex*, double>> vertex_probs;
 };
 
-// A flat collection of per-agent probability policies (one per agent).
-using ProbabilityPolicy = std::vector<AgentProbabilityPolicy>;
-
 // Convert an AgentPolicy (integer move counts) to normalized probabilities.
 // Only vertices present in ap.vertex_scores are stored; blind-spot vertices
 // are handled lazily by CrossEntropyPolicy (returns 0.0 == no preference).
 AgentProbabilityPolicy to_probability_policy(const AgentPolicy& ap);
+
+// Policy that samples a neighbor from per-agent probability distributions on every call.
+// The sampled neighbor gets score -0.9; all others get 0.
+// Also serves as the plain container for per-agent probability data.
+class ProbabilityPolicy : public Policy {
+ public:
+  // Default constructor (empty container; get_neighbor_scores must not be called).
+  ProbabilityPolicy() : probs(), ins(nullptr), rng(nullptr) {}
+
+  // Container-only constructor (ins/rng left null; get_neighbor_scores must not be called).
+  explicit ProbabilityPolicy(size_t n) : probs(n), ins(nullptr), rng(nullptr) {}
+
+  // Full constructor for use as a Policy.
+  ProbabilityPolicy(std::vector<AgentProbabilityPolicy> prob_policies,
+                    const Instance* ins,
+                    std::mt19937* rng)
+      : probs(std::move(prob_policies)), ins(ins), rng(rng) {}
+
+  std::unordered_map<Vertex*, float> get_neighbor_scores(
+      const Config& C, uint agent_id, const Vertices& neighbors) override;
+
+  AgentProbabilityPolicy& operator[](size_t i) { return probs[i]; }
+  const AgentProbabilityPolicy& operator[](size_t i) const { return probs[i]; }
+  size_t size() const { return probs.size(); }
+
+  std::vector<AgentProbabilityPolicy> probs;
+
+ private:
+  const Instance* ins;
+  std::mt19937* rng;
+};
 
 // Per-agent discrete policy: for each vertex, the single chosen favorite neighbor.
 struct AgentDiscretePolicy {

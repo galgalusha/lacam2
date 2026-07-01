@@ -474,17 +474,40 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
     std::cout << "Reverts: " << successful_reverts << "/" << intended_reverts << std::endl;
 
     // --- 5. rollout from stalled config ---
-    // Re-sample a fresh discrete policy for the rollout so it is independent.
-    std::vector<AgentDiscretePolicy> disc2(ins->N);
-    for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
-      disc2[a] = randomizer(prob_policy[a], ins, MT);
-    auto ce_pol2 = std::make_shared<CrossEntropyPolicy>(
-        std::move(disc2), prob_policy, ins, MT);
-    PolicyPIBT pp_rollout(ins, D, ce_pol2);
+    // Generate 20 discrete policies in parallel, pick the best successful rollout.
+    static constexpr uint STALL_NUM_POLICIES = 20;
+    std::vector<std::mt19937> stall_rngs(STALL_NUM_POLICIES);
+    for (uint i = 0; i < STALL_NUM_POLICIES; ++i)
+      stall_rngs[i].seed(MT ? (*MT)() : i + 42);
 
-    auto* H_stalled = new HNode(C_stalled, D, nullptr, 0, 0);
-    auto res = pp_rollout.rollout(H_stalled);
-    delete H_stalled;
+    struct StallResult { RolloutResult res; };
+    std::vector<std::future<StallResult>> stall_futures;
+    stall_futures.reserve(STALL_NUM_POLICIES);
+    for (uint i = 0; i < STALL_NUM_POLICIES; ++i) {
+      stall_futures.push_back(std::async(std::launch::async,
+          [this, &prob_policy, &randomizer, &C_stalled, &stall_rngs, i]() -> StallResult {
+            std::vector<AgentDiscretePolicy> d(ins->N);
+            for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
+              d[a] = randomizer(prob_policy[a], ins, &stall_rngs[i]);
+            auto pol = std::make_shared<CrossEntropyPolicy>(
+                std::move(d), prob_policy, ins, &stall_rngs[i]);
+            PolicyPIBT pp(ins, D, pol);
+            auto* H = new HNode(C_stalled, D, nullptr, 0, 0);
+            auto r = pp.rollout(H);
+            delete H;
+            return {std::move(r)};
+          }));
+    }
+
+    RolloutResult best_res;
+    best_res.success = false;
+    best_res.cost    = UINT_MAX;
+    for (auto& f : stall_futures) {
+      auto sr = f.get();
+      if (sr.res.success && sr.res.cost < best_res.cost)
+        best_res = std::move(sr.res);
+    }
+    auto& res = best_res;
     delete H_start;
 
     if (!res.success) {
