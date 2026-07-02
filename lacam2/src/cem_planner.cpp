@@ -132,7 +132,7 @@ NeighborScorePolicy CEMPlanner::create_initial_policy(
   std::cout << "PolicyRandomSearchPlanner: done. Got " << best_rollouts.size()
             << " successful rollouts." << std::endl;
 
-  std::vector<AgentPolicy> agent_policies(num_agents);
+  std::vector<AgentScores> agent_policies(num_agents);
 
   for (const auto& rollout : best_rollouts) {
     for (size_t step = 1; step < rollout.configs.size(); ++step) {
@@ -207,7 +207,7 @@ std::vector<CEMPlanner::EvalResult> CEMPlanner::run_candidate_rollouts(
       futures.push_back(std::async(std::launch::async,
           [this, &prob_policy, &randomizer, &thread_rngs, i]() -> EvalResult {
             auto candidate_probs = prob_policy;
-            std::vector<AgentDiscretePolicy> disc(ins->N);
+            std::vector<AgentDeterministicPolicy> disc(ins->N);
             for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
               disc[a] = randomizer(candidate_probs[a], ins, &thread_rngs[i]);
 
@@ -402,7 +402,7 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
     }
 
     // --- 1. sample a discrete policy from the master prob_policy ---
-    std::vector<AgentDiscretePolicy> disc(ins->N);
+    std::vector<AgentDeterministicPolicy> disc(ins->N);
     for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
       disc[a] = randomizer(prob_policy[a], ins, MT);
     auto ce_pol = std::make_shared<CrossEntropyPolicy>(
@@ -468,7 +468,7 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
     for (uint i = 0; i < STALL_NUM_POLICIES; ++i) {
       stall_futures.push_back(std::async(std::launch::async,
           [this, &prob_policy, &randomizer, &C_stalled, &stall_rngs, i]() -> StallResult {
-            std::vector<AgentDiscretePolicy> d(ins->N);
+            std::vector<AgentDeterministicPolicy> d(ins->N);
             for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
               d[a] = randomizer(prob_policy[a], ins, &stall_rngs[i]);
             auto pol = std::make_shared<CrossEntropyPolicy>(

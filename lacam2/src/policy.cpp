@@ -4,12 +4,12 @@
 #include <cmath>
 #include <numeric>
 
-void AgentPolicy::record_move(Vertex* from, Vertex* to)
+void AgentScores::record_move(Vertex* from, Vertex* to)
 {
   vertex_scores[from].scores[to]++;
 }
 
-void AgentPolicy::finish_recording(const Instance* ins, std::mt19937* MT)
+void AgentScores::finish_recording(const Instance* ins, std::mt19937* MT)
 {
   std::uniform_real_distribution<float> rand_dist(-0.9f, 0.0f);
   for (Vertex* v : ins->G.V) {
@@ -23,7 +23,7 @@ void AgentPolicy::finish_recording(const Instance* ins, std::mt19937* MT)
   }
 }
 
-void AgentPolicy::randomize_scores(std::mt19937* rng)
+void AgentScores::randomize_scores(std::mt19937* rng)
 {
   for (auto& [from, ns] : vertex_scores) {
     auto& scores = ns.scores;
@@ -183,7 +183,7 @@ std::unordered_map<Vertex*, float> ProbabilityPolicy::get_neighbor_scores(
 // CEM helpers
 // ---------------------------------------------------------------------------
 
-AgentProbabilityPolicy to_probability_policy(const AgentPolicy& ap)
+AgentProbabilityPolicy to_probability_policy(const AgentScores& ap)
 {
   AgentProbabilityPolicy result;
   result.vertex_probs.reserve(ap.vertex_scores.size());
@@ -225,11 +225,11 @@ AgentProbabilityPolicy to_probability_policy(const AgentPolicy& ap)
   return result;
 }
 
-AgentDiscretePolicy AgentPolicyRandomizer::operator()(
+AgentDeterministicPolicy AgentPolicyRandomizer::operator()(
     const AgentProbabilityPolicy& prob_policy,
     const Instance* /*ins*/, std::mt19937* rng) const
 {
-  AgentDiscretePolicy result;
+  AgentDeterministicPolicy result;
   // Use double to match your probability types
   std::uniform_real_distribution<double> uniform; 
 
@@ -263,6 +263,12 @@ AgentDiscretePolicy AgentPolicyRandomizer::operator()(
       score += 0.1f;
       remaining.erase(remaining.begin() + chosen_idx);
     }
+  }
+
+  // Sample continuous priority scores
+  for (const auto& [v, dist] : prob_policy.priority_dist) {
+    std::normal_distribution<double> norm_dist(dist.mu, dist.sigma);
+    result.priority_score[v] = norm_dist(*rng);
   }
 
   return result;

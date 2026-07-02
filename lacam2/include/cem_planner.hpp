@@ -21,7 +21,7 @@ class CEMPlanner : public Planner {
     bool success;
     std::vector<Config> configs;
     std::vector<std::vector<uint>> orders;  // execution order per timestep
-    std::vector<AgentDiscretePolicy> discrete;
+    std::vector<AgentDeterministicPolicy> discrete;
     ProbabilityPolicy probs;
   };
 

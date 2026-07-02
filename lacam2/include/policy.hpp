@@ -34,7 +34,7 @@ struct NeighborScores {
   std::unordered_map<Vertex*, int> scores;  // neighbor vertex -> score
 };
 
-struct AgentPolicy {
+struct AgentScores {
   std::unordered_map<Vertex*, NeighborScores> vertex_scores;  // from-vertex -> neighbor scores
 
   // Pre-computed random scores for vertices absent from vertex_scores.
@@ -55,7 +55,7 @@ struct AgentPolicy {
 // Policy backed by learned neighbor scores.
 class NeighborScorePolicy : public Policy {
  public:
-  explicit NeighborScorePolicy(std::vector<AgentPolicy> agent_policies,
+  explicit NeighborScorePolicy(std::vector<AgentScores> agent_policies,
                                std::mt19937* _MT)
       : policies(std::move(agent_policies)), MT(_MT) {}
 
@@ -79,10 +79,10 @@ class NeighborScorePolicy : public Policy {
   uint random_count = 0;
   uint deterministic_count = 0;
 
-  const std::vector<AgentPolicy>& get_policies() const { return policies; }
+  const std::vector<AgentScores>& get_policies() const { return policies; }
 
  private:
-  std::vector<AgentPolicy> policies;
+  std::vector<AgentScores> policies;
   std::mt19937* MT;
 };
 
@@ -107,7 +107,7 @@ struct AgentProbabilityPolicy {
 // Convert an AgentPolicy (integer move counts) to normalized probabilities.
 // Only vertices present in ap.vertex_scores are stored; blind-spot vertices
 // are handled lazily by CrossEntropyPolicy (returns 0.0 == no preference).
-AgentProbabilityPolicy to_probability_policy(const AgentPolicy& ap);
+AgentProbabilityPolicy to_probability_policy(const AgentScores& ap);
 
 // Policy that samples a neighbor from per-agent probability distributions on every call.
 // The sampled neighbor gets score -0.9; all others get 0.
@@ -142,8 +142,9 @@ class ProbabilityPolicy : public Policy {
 
 // Per-agent discrete policy: for each vertex, a pre-calculated score for every
 // valid neighbor. Scores are in [-0.9, 0], lower = more preferred.
-struct AgentDiscretePolicy {
+struct AgentDeterministicPolicy {
   std::unordered_map<Vertex*, std::unordered_map<Vertex*, float>> rankings;  // vertex -> (neighbor -> score)
+  std::unordered_map<Vertex*, double> priority_score;
 };
 
 // Samples an AgentDiscretePolicy from an AgentProbabilityPolicy.
@@ -152,7 +153,7 @@ struct AgentDiscretePolicy {
 // CrossEntropyPolicy will treat them as no-preference (score = 0).
 class AgentPolicyRandomizer {
  public:
-  AgentDiscretePolicy operator()(const AgentProbabilityPolicy& prob_policy,
+  AgentDeterministicPolicy operator()(const AgentProbabilityPolicy& prob_policy,
                                  const Instance* ins, std::mt19937* rng) const;
 };
 
@@ -164,7 +165,7 @@ class AgentPolicyRandomizer {
 // `discrete` and `probs` are public so solve() can move them out after rollout.
 class CrossEntropyPolicy : public Policy {
  public:
-  CrossEntropyPolicy(std::vector<AgentDiscretePolicy> discrete_policies,
+  CrossEntropyPolicy(std::vector<AgentDeterministicPolicy> discrete_policies,
                      ProbabilityPolicy prob_policies,
                      const Instance* ins,
                      std::mt19937* rng)
@@ -176,7 +177,7 @@ class CrossEntropyPolicy : public Policy {
   std::unordered_map<Vertex*, float> get_neighbor_scores(
       const Config& C, uint agent_id, const Vertices& neighbors) override;
 
-  std::vector<AgentDiscretePolicy> discrete;
+  std::vector<AgentDeterministicPolicy> discrete;
   ProbabilityPolicy probs;
 
  private:

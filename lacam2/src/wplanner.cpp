@@ -238,7 +238,7 @@ NeighborScorePolicy WPlanner::create_policy(const Config& start_config, int num_
   auto best_rollouts = get_successors(H_init, best_cost, node_counter, n_expansions, n_rollouts, true);
   std::cout << "Done generating " << n_expansions << " rollouts for policy. Best cost found: " << best_cost << std::endl;
 
-  std::vector<AgentPolicy> agent_policies(num_agents);
+  std::vector<AgentScores> agent_policies(num_agents);
 
   for (const auto& successor : best_rollouts) {
     const auto& rollout = successor.rollout;
