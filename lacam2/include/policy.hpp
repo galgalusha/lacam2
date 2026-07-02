@@ -41,6 +41,9 @@ struct AgentPolicy {
   // Maps from-vertex -> (neighbor-vertex -> random score in [-0.9, 0]).
   std::unordered_map<Vertex*, std::unordered_map<Vertex*, float>> blind_score_map;
 
+  // Flat list of every execution order observed at a specific vertex (for CEM priority).
+  std::unordered_map<Vertex*, std::vector<uint>> priority_records;
+
   void record_move(Vertex* from, Vertex* to);
   // Populate blind_score_map for every vertex in the instance.
   void finish_recording(const Instance* ins, std::mt19937* MT);
@@ -87,11 +90,18 @@ class NeighborScorePolicy : public Policy {
 // CEM (Cross-Entropy Method) types
 // ---------------------------------------------------------------------------
 
+// Gaussian parameters for continuous execution-priority distribution.
+struct PriorityDist {
+  double mu;     // mean execution order
+  double sigma;  // exploration noise (standard deviation)
+};
+
 // Per-agent probability distribution over neighbor choices.
 // vertex_probs[v][u] = probability of choosing u when at vertex v.
 // Probabilities for each vertex v sum to 1.0.
 struct AgentProbabilityPolicy {
   std::unordered_map<Vertex*, std::unordered_map<Vertex*, double>> vertex_probs;
+  std::unordered_map<Vertex*, PriorityDist> priority_dist;
 };
 
 // Convert an AgentPolicy (integer move counts) to normalized probabilities.

@@ -1,6 +1,7 @@
 #include "../include/policy.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <numeric>
 
 void AgentPolicy::record_move(Vertex* from, Vertex* to)
@@ -185,6 +186,9 @@ std::unordered_map<Vertex*, float> ProbabilityPolicy::get_neighbor_scores(
 AgentProbabilityPolicy to_probability_policy(const AgentPolicy& ap)
 {
   AgentProbabilityPolicy result;
+  result.vertex_probs.reserve(ap.vertex_scores.size());
+  result.priority_dist.reserve(ap.priority_records.size());
+  
   for (const auto& [from, ns] : ap.vertex_scores) {
     if (ns.scores.empty()) continue;
     double total = 0.0;
@@ -193,6 +197,31 @@ AgentProbabilityPolicy to_probability_policy(const AgentPolicy& ap)
     auto& dist = result.vertex_probs[from];
     for (const auto& [nb, score] : ns.scores) dist[nb] = score / total;
   }
+
+  // Compute Gaussian priority distribution parameters from priority_records.
+  for (const auto& [from, records] : ap.priority_records) {
+    const size_t K = records.size();
+    if (K == 0) continue;
+
+    // Sample mean.
+    double mu = 0.0;
+    for (uint r : records) mu += r;
+    mu /= static_cast<double>(K);
+
+    // Sample standard deviation (population formula).
+    double variance = 0.0;
+    for (uint r : records) {
+      double diff = static_cast<double>(r) - mu;
+      variance += diff * diff;
+    }
+    double sigma = std::sqrt(variance / static_cast<double>(K));
+
+    // Safety floor: prevent sigma == 0 from killing exploration.
+    if (sigma < 1.0) sigma = 1.0;
+
+    result.priority_dist[from] = {mu, sigma};
+  }
+
   return result;
 }
 
@@ -261,7 +290,8 @@ std::unordered_map<Vertex*, float> CrossEntropyPolicy::get_neighbor_scores(
 
   // Blind spot: lazily add a uniform distribution and build a full strict ranking.
   if (agent_id < probs.size()) {
-    auto& nb_probs = probs[agent_id].vertex_probs[current];
+    auto& agent_prob = probs[agent_id];
+    auto& nb_probs = agent_prob.vertex_probs[current];
     if (nb_probs.empty()) {
       Vertices cands = current->neighbor;
       cands.push_back(current);

@@ -20,6 +20,7 @@ class CEMPlanner : public Planner {
     uint cost;
     bool success;
     std::vector<Config> configs;
+    std::vector<std::vector<uint>> orders;  // execution order per timestep
     std::vector<AgentDiscretePolicy> discrete;
     ProbabilityPolicy probs;
   };
@@ -42,10 +43,10 @@ class CEMPlanner : public Planner {
 
  private:
   // Run up to num_rollouts random rollouts from H via this->pibt.
-  // Returns the configs sequences of the best `keep` rollouts (by cost).
-  std::vector<std::vector<Config>> get_rollouts(HNode* H,
-                                                uint num_rollouts,
-                                                uint keep);
+  // Returns the RolloutResults of the best `keep` rollouts (by cost).
+  std::vector<RolloutResult> get_rollouts(HNode* H,
+                                          uint num_rollouts,
+                                          uint keep);
 
   // Generate and evaluate num_candidates PolicyPIBT candidates in parallel,
   // sampling discrete policies from prob_policy. Returns only successful results.

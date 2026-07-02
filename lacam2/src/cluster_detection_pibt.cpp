@@ -140,7 +140,7 @@ bool ClusterDetectionPIBT::get_new_config(HNode* H, LNode* L, Config& C_new)
 
 RolloutResult ClusterDetectionPIBT::rollout(HNode* H)
 {
-  if (H == nullptr) return {false, 0, 0, {}};
+  if (H == nullptr) return {false, 0, 0, {}, {}};
   if (is_same_config(H->C, ins->goals)) return {true, 0, 0, {}};
 
   LNode unconstrained;
@@ -163,7 +163,7 @@ RolloutResult ClusterDetectionPIBT::rollout(HNode* H)
     current_step = rollout_depth;
     if (!get_new_config(current, &unconstrained, C_new)) {
       cleanup();
-      return {false, 0, 0, {}};
+      return {false, 0, 0, {}, {}};
     }
 
     total_cost += get_edge_cost(current->C, C_new);
@@ -172,13 +172,13 @@ RolloutResult ClusterDetectionPIBT::rollout(HNode* H)
 
     if (is_same_config(C_new, ins->goals)) {
       cleanup();
-      return {true, total_cost, rollout_depth, rollout_configs};
+      return {true, total_cost, rollout_depth, rollout_configs, {}};
     }
 
     const auto h = hasher(C_new);
     if (!visited.insert(h).second) {
       cleanup();
-      return {false, 0, 0, {}};
+      return {false, 0, 0, {}, {}};
     }
 
     auto next = new HNode(C_new, D, current, 0, 0);

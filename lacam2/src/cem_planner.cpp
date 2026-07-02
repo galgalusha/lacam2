@@ -50,12 +50,13 @@ CEMPlanner::CEMPlanner(
 
 static const uint PRS_NUM_THREADS = 7;
 
-std::vector<std::vector<Config>> CEMPlanner::get_rollouts(
+std::vector<RolloutResult> CEMPlanner::get_rollouts(
     HNode* H, uint num_rollouts, uint keep)
 {
   struct RolloutEntry {
     uint cost;
     std::vector<Config> configs;
+    std::vector<std::vector<uint>> orders;
   };
 
   // Create one RNG and one PIBT instance per thread.
@@ -90,7 +91,7 @@ std::vector<std::vector<Config>> CEMPlanner::get_rollouts(
 
     for (auto& f : futures) {
       auto res = f.get();
-      if (res.success) results.push_back({res.cost, std::move(res.configs)});
+      if (res.success) results.push_back({res.cost, std::move(res.configs), std::move(res.orders)});
     }
 
     dispatched += batch_size;
@@ -104,9 +105,17 @@ std::vector<std::vector<Config>> CEMPlanner::get_rollouts(
 
   if (results.size() > keep) results.resize(keep);
 
-  std::vector<std::vector<Config>> out;
+  std::vector<RolloutResult> out;
   out.reserve(results.size());
-  for (auto& e : results) out.push_back(std::move(e.configs));
+  for (auto& e : results) {
+    RolloutResult rr;
+    rr.success = true;
+    rr.cost = e.cost;
+    rr.makespan = static_cast<uint>(e.configs.size());
+    rr.configs = std::move(e.configs);
+    rr.orders = std::move(e.orders);
+    out.push_back(std::move(rr));
+  }
   return out;
 }
 
@@ -126,18 +135,47 @@ NeighborScorePolicy CEMPlanner::create_initial_policy(
   std::vector<AgentPolicy> agent_policies(num_agents);
 
   for (const auto& rollout : best_rollouts) {
-    for (size_t step = 1; step < rollout.size(); ++step) {
-      const Config& prev = rollout[step - 1];
-      const Config& curr = rollout[step];
+    for (size_t step = 1; step < rollout.configs.size(); ++step) {
+      const Config& prev = rollout.configs[step - 1];
+      const Config& curr = rollout.configs[step];
+      // orders[0] is for the initial HNode; orders[step] aligns with configs[step-1] -> configs[step].
+      const std::vector<uint>* step_order = nullptr;
+      step_order = &rollout.orders[step - 1];
+
       for (int agent = 0; agent < num_agents; ++agent) {
         Vertex* from = prev[agent];
         Vertex* to   = curr[agent];
         if (from != to) {
           agent_policies[agent].record_move(from, to);
         }
+        // // Record execution order for this agent at this vertex.
+//          step_order is the agent ordering vector; find agent's position in it.
+        for (uint pos = 0; pos < step_order->size(); ++pos) {
+          if ((*step_order)[pos] == static_cast<uint>(agent)) {
+            agent_policies[agent].priority_records[from].push_back(pos);
+            break;
+          }
+        }
       }
     }
   }
+
+  // // --- Sanity print: agent 0, best rollout step-by-step (vertex -> agent order) ---
+  // if (!best_rollouts.empty()) {
+  //   const auto& br = best_rollouts[0];
+  //   const uint W = ins->G.width;
+  //   std::cout << "=== create_initial_policy: agent 0 best rollout (cost=" << br.cost << ") ===" << std::endl;
+  //   for (size_t step = 0; step + 1 < br.configs.size(); ++step) {
+  //     Vertex* v = br.configs[step][0];
+  //     uint row = v->index / W, col = v->index % W;
+  //     // orders[step] maps step->step+1 transition; find agent 0's position
+  //     uint agent_pos = UINT_MAX;
+  //     for (uint pos = 0; pos < br.orders[step].size(); ++pos) {
+  //       if (br.orders[step][pos] == 0) { agent_pos = pos; break; }
+  //     }
+  //     std::cout << "  step " << step << ": (" << row << "," << col << ")->" << agent_pos << std::endl;
+  //   }
+  // }
 
   delete H_init;
   auto policy = NeighborScorePolicy(std::move(agent_policies), MT);
@@ -180,6 +218,7 @@ std::vector<CEMPlanner::EvalResult> CEMPlanner::run_candidate_rollouts(
             auto res = pp.rollout(H);
             delete H;
             return {res.cost, res.success, std::move(res.configs),
+                    std::move(res.orders),
                     std::move(ce_pol->discrete), std::move(ce_pol->probs)};
           }));
     }
@@ -266,6 +305,28 @@ Solution CEMPlanner::solve(std::string& additional_info)
       prob_policy[a] = to_probability_policy(agent_pols[a]);
   }
 
+  // // --- Sanity print: agent 0 AgentPolicy (priority_records) ---
+  // {
+  //   const uint W = ins->G.width;
+  //   const auto& ap0 = agent_pols[0];
+  //   std::cout << "=== solve: agent 0 AgentPolicy (priority_records) ===" << std::endl;
+  //   for (const auto& [v, orders] : ap0.priority_records) {
+  //     uint row = v->index / W, col = v->index % W;
+  //     std::cout << "  (" << row << "," << col << "): [";
+  //     for (size_t i = 0; i < orders.size(); ++i) {
+  //       if (i) std::cout << ",";
+  //       std::cout << orders[i];
+  //     }
+  //     std::cout << "]" << std::endl;
+  //   }
+  //   std::cout << "=== solve: agent 0 ProbabilityPolicy (priority_dist) ===" << std::endl;
+  //   for (const auto& [v, pd] : prob_policy[0].priority_dist) {
+  //     uint row = v->index / W, col = v->index % W;
+  //     std::cout << "  (" << row << "," << col << "): mu=" << pd.mu
+  //               << " sigma=" << pd.sigma << std::endl;
+  //   }
+  // }
+
   uint best_cost = UINT_MAX;
   std::vector<Config> best_configs;
 
@@ -302,7 +363,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
   run_stall_test(prob_policy);
 
   Solution solution;
-  solution.push_back(ins->starts);
+  // solution.push_back(ins->starts);
   for (auto& cfg : best_configs) solution.push_back(cfg);
   return solution;
 }
@@ -438,7 +499,7 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
 
     // --- 6. build full solution: starts -> C_stalled -> rollout ---
     Solution sol;
-    sol.push_back(ins->starts);
+    // sol.push_back(ins->starts);
     sol.push_back(C_stalled);
     for (auto& cfg : res.configs) sol.push_back(cfg);
 
