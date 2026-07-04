@@ -36,10 +36,13 @@ static bool key_pressed_to_stop()
   return stop;
 }
 
-static uint CEM_NUM_CANDIDATES = 100;
-static int CEM_ELITE_COUNT     = 10;
-static double LEARNING_RATE    = 0.2;
+// Hyper Parameters
 
+static uint CEM_NUM_CANDIDATES = 21;
+static int CEM_ELITE_COUNT     = 3;
+static auto LEARNING_RATE_FUNC = [](int gen) 
+                                 { return 0.2 * sqrt(100.0 / (100.0 + gen)); };
+static float LEARNING_RATE     = LEARNING_RATE_FUNC(0);
 
 CEMPlanner::CEMPlanner(
     const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
@@ -131,34 +134,6 @@ ScorePolicy CEMPlanner::create_initial_policy(
 
   std::cout << "PolicyRandomSearchPlanner: done. Got " << best_rollouts.size()
             << " successful rollouts." << std::endl;
-
-//   std::vector<AgentScores> agent_policies(num_agents);
-
-//   for (const auto& rollout : best_rollouts) {
-//     for (size_t step = 1; step < rollout.configs.size(); ++step) {
-//       const Config& prev = rollout.configs[step - 1];
-//       const Config& curr = rollout.configs[step];
-//       // orders[0] is for the initial HNode; orders[step] aligns with configs[step-1] -> configs[step].
-//       const std::vector<uint>* step_order = nullptr;
-//       step_order = &rollout.orders[step - 1];
-
-//       for (int agent = 0; agent < num_agents; ++agent) {
-//         Vertex* from = prev[agent];
-//         Vertex* to   = curr[agent];
-//         if (from != to) {
-//           agent_policies[agent].record_move(from, to);
-//         }
-//         // // Record execution order for this agent at this vertex.
-// //          step_order is the agent ordering vector; find agent's position in it.
-//         for (uint pos = 0; pos < step_order->size(); ++pos) {
-//           if ((*step_order)[pos] == static_cast<uint>(agent)) {
-//             agent_policies[agent].priority_records[from].push_back(pos);
-//             break;
-//           }
-//         }
-//       }
-//     }
-//   }
 
   // // --- Sanity print: agent 0, best rollout step-by-step (vertex -> agent order) ---
   // if (!best_rollouts.empty()) {

@@ -28,4 +28,21 @@ AgentScores and ScorePolicy only used for initialization and are forgotten after
 
 # CEM iterations (generations)
 The loop uses a randomizer to randomize deterministic tie breaking values per agent
-stored in AgentDeterministicPolicy.
+stored in DeterministicPolicy. We have as many deterministic policies as number
+of rollouts. We run them all in threads (parallel) and filter the best ones.
+Then we take the best rollouts to create ScorePolicy (which is collected scores) 
+and update the master policy.
+
+# To sum up
+## create initial policy:
+* run rollouts
+* filter best rollouts
+* creates ScorePolicy from best rollouts
+* creates master model from ScorePolicy
+## CEM gen:
+* randomize descrete policies
+* run rollouts
+* filter best rollouts
+* creates ScorePolicy from best rollouts
+* update master model from ScorePolicy
+
