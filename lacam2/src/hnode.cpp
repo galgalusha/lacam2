@@ -47,7 +47,7 @@ void HNode::initialize_order(DistTable& D)
   // set priorities (original logic)
   if (parent == nullptr) {
     // initialize
-    for (uint i = 0; i < N; ++i) priorities[i] = (float)D.get(i, C[i]) / N;
+    for (uint i = 0; i < N; ++i) priorities[i] = (float)D.get(i, C[i]) / (1.0 + D.V_size);
   } else {
     // dynamic priorities, akin to PIBT
     for (size_t i = 0; i < N; ++i) {

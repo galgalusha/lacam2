@@ -40,11 +40,15 @@ static bool key_pressed_to_stop()
 
 // Hyper Parameters
 
-static uint CEM_NUM_CANDIDATES = 20;
-static int CEM_ELITE_COUNT     = 2;
-static auto LEARNING_RATE_FUNC = [](int gen) 
-                                 { return 0.2 * sqrt(100.0 / (100.0 + gen)); };
-static float LEARNING_RATE     = LEARNING_RATE_FUNC(0);
+static uint CEM_NUM_CANDIDATES   = 100;
+static int CEM_ELITE_COUNT       = 5;
+static auto LEARNING_RATE_FUNC   = [](int gen) 
+                                   { return 0.2 * sqrt(100.0 / (100.0 + gen)); };
+static float LEARNING_RATE       = LEARNING_RATE_FUNC(0);
+static auto PRIORITY_TEMP_FUNC   = [](int gen) 
+                                   { return 5.0 * 100.0 / (100.0 + gen); };
+static float PRIORITY_TEMPRATURE = PRIORITY_TEMP_FUNC(0);                          
+
 
 CEMPlanner::CEMPlanner(
     const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
@@ -376,7 +380,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
   auto initial_nsp = create_initial_policy(ins->N, 1000, 100);
 
   // 2. Translate to a ProbabilityPolicy.
-  PolicyRandomizer randomizer;
+  PolicyRandomizer randomizer(&ins->G, MT, PRIORITY_TEMP_FUNC(0));
   ProbabilityPolicy prob_policy(ins->N);
   const auto& agent_pols = initial_nsp.get_policies();
   for (uint a = 0; a < static_cast<uint>(ins->N); ++a) {
@@ -416,6 +420,8 @@ Solution CEMPlanner::solve(std::string& additional_info)
     for (uint i = 0; i < PRS_NUM_THREADS; ++i) thread_rngs[i].seed(i + 1);
 
   for (uint gen = 0; !is_expired(deadline); ++gen) {
+    randomizer.priority_temprature = PRIORITY_TEMP_FUNC(gen);
+
     print_sample_priority(prob_policy[10], ins->G, ins->starts[10]);
     if (key_pressed_to_stop()) {
       std::cout << "CEMPlanner: interrupted by user (Space/Escape)." << std::endl;
@@ -456,7 +462,7 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
 {
   std::cout << "\n=== Stall-simulation test (q / empty Enter to quit) ===" << std::endl;
 
-  PolicyRandomizer randomizer;
+  PolicyRandomizer randomizer(&ins->G, MT, PRIORITY_TEMPRATURE);
 
   // Restore blocking terminal I/O for interactive use.
   struct termios oldt;

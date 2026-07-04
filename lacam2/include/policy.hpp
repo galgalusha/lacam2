@@ -184,12 +184,23 @@ class DeterministicPolicy : public Policy {
 // rngs[i % rngs.size()] is used both for sampling probabilities and as the blind-spot RNG
 // of the resulting DeterministicPolicy, so each policy is independently seeded.
 class PolicyRandomizer {
- public:
+ public:  PolicyRandomizer(const Graph* graph = nullptr,
+                   std::mt19937* rng = nullptr,
+                   double priority_temprature = 1.0)
+      : graph(graph), rng(rng), priority_temprature(priority_temprature) {}
   std::vector<std::shared_ptr<DeterministicPolicy>> operator()(
       const ProbabilityPolicy& prob_policy,
       const Instance* ins,
       std::vector<std::mt19937>& rngs,
       uint num_policies) const;
+
+  AgentDeterministicPolicy sample_agent_policy(
+      const AgentProbabilityPolicy& prob_policy,
+      const std::vector<PriorityDist>& filled_dist) const;
+
+  const Graph* graph = nullptr;
+  std::mt19937* rng = nullptr;
+  double priority_temprature;
 };
 
 void test_randomizer();
