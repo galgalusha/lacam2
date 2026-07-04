@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <vector>
 
+struct HNode;
+
 // Abstract base class for neighbor selection policy used in PolicyPIBT.
 // Given a config, an agent id, and all neighbor vertices (including self),
 // returns a score in [-0.9, 0] for each neighbor. -0.9 = most preferred.
@@ -17,6 +19,9 @@ class Policy {
   virtual ~Policy() = default;
   virtual std::unordered_map<Vertex*, float> get_neighbor_scores(
       const Config& C, uint agent_id, const Vertices& neighbors) = 0;
+  // Returns agent IDs ordered from smallest to largest priority value.
+  // Default implementation returns H->order unchanged.
+  virtual std::vector<uint> get_agents_order(HNode* H) const;
 };
 
 // Naive policy: all zeros (no preference, equivalent to vanilla PIBT random tie-breaking).
@@ -155,6 +160,9 @@ struct AgentDeterministicPolicy {
 // `discrete` is public so callers can move it out after rollout.
 class DeterministicPolicy : public Policy {
  public:
+  // Override: orders agents by priority_grid value at their current vertex (ascending).
+  std::vector<uint> get_agents_order(HNode* H) const override;
+
   DeterministicPolicy(std::vector<AgentDeterministicPolicy> discrete_policies,
                       const Instance* ins,
                       std::mt19937* rng)

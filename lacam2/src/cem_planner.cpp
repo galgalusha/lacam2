@@ -5,8 +5,10 @@
 #include <algorithm>
 #include <climits>
 #include <future>
+#include <iomanip>
 #include <iostream>
 #include <numeric>
+#include <queue>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -38,8 +40,8 @@ static bool key_pressed_to_stop()
 
 // Hyper Parameters
 
-static uint CEM_NUM_CANDIDATES = 21;
-static int CEM_ELITE_COUNT     = 3;
+static uint CEM_NUM_CANDIDATES = 20;
+static int CEM_ELITE_COUNT     = 2;
 static auto LEARNING_RATE_FUNC = [](int gen) 
                                  { return 0.2 * sqrt(100.0 / (100.0 + gen)); };
 static float LEARNING_RATE     = LEARNING_RATE_FUNC(0);
@@ -255,7 +257,7 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
     if (a >= agent_scores.size()) continue;
 
     const auto elite_prob = to_probability_policy(agent_scores[a]);
-
+/*
     // Add newly seen vertices to the master policy.
     for (const auto& [v, nb_probs] : elite_prob.vertex_probs) {
       if (!master_agent.vertex_probs.count(v))
@@ -273,18 +275,103 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
         p_old = (1.0 - LEARNING_RATE) * p_old + LEARNING_RATE * p_elite;
       }
     }
+*/
+    // Add newly seen priority vertices to the master policy.
+    for (const auto& [v, dist] : elite_prob.priority_dist) {
+      if (!master_agent.priority_dist.count(v)) {
+        master_agent.priority_dist[v] = dist;
+      }
+    }
+
+    // Blend existing priority distributions using Gaussian Mixture Variance.
+    for (auto& [v, old_dist] : master_agent.priority_dist) {
+      auto eit = elite_prob.priority_dist.find(v);
+      if (eit == elite_prob.priority_dist.end()) continue;
+
+      const double mu_old = old_dist.mu;
+      const double var_old = old_dist.sigma * old_dist.sigma;
+
+      const double mu_elite = eit->second.mu;
+      const double var_elite = eit->second.sigma * eit->second.sigma;
+
+      // 1. Shift the mean
+      old_dist.mu = (1.0 - LEARNING_RATE) * mu_old + LEARNING_RATE * mu_elite;
+
+      // 2. Blend variance AND add the mean-shift uncertainty
+      double diff = mu_old - mu_elite;
+      double new_var = (1.0 - LEARNING_RATE) * var_old + 
+                      LEARNING_RATE * var_elite + 
+                      LEARNING_RATE * (1.0 - LEARNING_RATE) * (diff * diff);
+
+      old_dist.sigma = std::sqrt(new_var);
+
+      // Safety floor: prevent sigma == 0 from killing exploration
+      if (old_dist.sigma < 1.0) old_dist.sigma = 1.0;
+    }
+
   }
 }
 
 // ---------------------------------------------------------------------------
+// Temporary sanity helper: prints a 9x9 subgrid of mean priorities centred on
+// `start`. Cells outside the grid or on walls are shown as "  --- ".
+static void print_sample_priority(const AgentProbabilityPolicy& app,
+                                  const Graph& G,
+                                  const Vertex* start)
+{
+  const int W = static_cast<int>(G.width);
+  const int H = static_cast<int>(G.height);
+  const int cy = static_cast<int>(start->index) / W;
+  const int cx = static_cast<int>(start->index) % W;
+
+  // Build floodfilled mean grid directly.
+  const size_t grid_size = static_cast<size_t>(W) * H;
+  std::vector<double> mu_grid(grid_size, 0.0);
+  std::vector<bool>   visited(grid_size, false);
+  std::queue<const Vertex*> q;
+  for (const auto& [v, pd] : app.priority_dist) {
+    mu_grid[v->index] = pd.mu;
+    visited[v->index] = true;
+    q.push(v);
+  }
+  while (!q.empty()) {
+    const Vertex* cur = q.front(); q.pop();
+    for (Vertex* nb : cur->neighbor) {
+      if (nb == nullptr || visited[nb->index]) continue;
+      mu_grid[nb->index] = mu_grid[cur->index];
+      visited[nb->index] = true;
+      q.push(nb);
+    }
+  }
+
+  std::cout << "Priority mu grid (9x9) centred on agent start (" << cy << "," << cx << "):\n";
+  for (int dy = -4; dy <= 4; ++dy) {
+    int row = cy + dy;
+    for (int dx = -4; dx <= 4; ++dx) {
+      int col = cx + dx;
+      if (row < 0 || row >= H || col < 0 || col >= W) {
+        std::cout << "  --- ";
+      } else {
+        uint idx = static_cast<uint>(row) * W + col;
+        if (G.U[idx] == nullptr) {
+          std::cout << "  ### ";
+        } else {
+          std::cout << std::fixed;
+          std::cout.precision(2);
+          std::cout << std::setw(6) << mu_grid[idx];
+        }
+      }
+    }
+    std::cout << '\n';
+  }
+  std::cout << std::flush;
+}
+
 // CEM-based solve
 // ---------------------------------------------------------------------------
 
 Solution CEMPlanner::solve(std::string& additional_info)
 {
-  test_randomizer();
-  exit(0);
-
   // 1. Build initial policy from random rollouts.
   auto initial_nsp = create_initial_policy(ins->N, 1000, 100);
 
@@ -329,6 +416,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
     for (uint i = 0; i < PRS_NUM_THREADS; ++i) thread_rngs[i].seed(i + 1);
 
   for (uint gen = 0; !is_expired(deadline); ++gen) {
+    print_sample_priority(prob_policy[10], ins->G, ins->starts[10]);
     if (key_pressed_to_stop()) {
       std::cout << "CEMPlanner: interrupted by user (Space/Escape)." << std::endl;
       break;

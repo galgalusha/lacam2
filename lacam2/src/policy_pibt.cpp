@@ -73,7 +73,7 @@ bool PolicyPIBT::get_new_config(HNode* H, LNode* L, Config& C_new)
   }
 
   // perform PIBT
-  for (auto k : H->order) {
+  for (auto k : policy->get_agents_order(H)) {
     auto a = A[k];
     if (a->v_next == nullptr && !funcPIBT(a, H->C)) return false;
   }
@@ -102,7 +102,7 @@ RolloutResult PolicyPIBT::rollout(HNode* H)
   std::vector<std::vector<uint>> rollout_orders;
 
   rollout_configs.push_back(H->C);
-  rollout_orders.push_back(H->order);
+  rollout_orders.push_back(policy->get_agents_order(H));
 
   auto cleanup = [&]() {
     for (auto node : rollout_nodes) delete node;

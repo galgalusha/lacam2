@@ -1,4 +1,5 @@
 #include "../include/policy.hpp"
+#include "../include/planner.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -6,6 +7,28 @@
 #include <numeric>
 #include <queue>
 #include <queue>
+
+std::vector<uint> Policy::get_agents_order(HNode* H) const
+{
+  return H->order;
+}
+
+std::vector<uint> DeterministicPolicy::get_agents_order(HNode* H) const
+{
+  const uint N = static_cast<uint>(H->C.size());
+  std::vector<uint> order(N);
+  std::iota(order.begin(), order.end(), 0);
+  std::stable_sort(order.begin(), order.end(), [&](uint a, uint b) {
+    const auto& pa = discrete[a].priority_grid;
+    const auto& pb = discrete[b].priority_grid;
+    const uint ia = H->C[a]->index;
+    const uint ib = H->C[b]->index;
+    double va = (ia < pa.size()) ? pa[ia] : 0.0;
+    double vb = (ib < pb.size()) ? pb[ib] : 0.0;
+    return va < vb;
+  });
+  return order;
+}
 
 void AgentScores::record_move(Vertex* from, Vertex* to)
 {
