@@ -1,5 +1,5 @@
 /*
- * PolicyRandomSearchPlanner: builds an initial policy from random PIBT rollouts,
+ * CEMPlanner: builds an initial policy from random PIBT rollouts,
  * then runs one PolicyPIBT rollout guided by that policy and returns the result.
  */
 #pragma once
@@ -42,7 +42,7 @@ class CEMPlanner : public Planner {
   // sampling discrete policies from prob_policy. Returns only successful results.
   std::vector<RolloutResult> run_candidate_rollouts(
       const ProbabilityPolicy& prob_policy,
-      AgentPolicyRandomizer& randomizer,
+      PolicyRandomizer& randomizer,
       std::vector<std::mt19937>& thread_rngs,
       uint num_candidates);
 

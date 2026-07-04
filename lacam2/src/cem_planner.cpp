@@ -127,12 +127,12 @@ ScorePolicy CEMPlanner::create_initial_policy(
 {
   auto H_init = new HNode(ins->starts, D, nullptr, 0, 0);
 
-  std::cout << "PolicyRandomSearchPlanner: generating " << num_rollouts
+  std::cout << "CEMPlanner: generating " << num_rollouts
             << " rollouts for initial policy" << std::endl;
 
   auto best_rollouts = get_rollouts(H_init, num_rollouts, keep);
 
-  std::cout << "PolicyRandomSearchPlanner: done. Got " << best_rollouts.size()
+  std::cout << "CEMPlanner: done. Got " << best_rollouts.size()
             << " successful rollouts." << std::endl;
 
   // // --- Sanity print: agent 0, best rollout step-by-step (vertex -> agent order) ---
@@ -190,29 +190,27 @@ ScorePolicy CEMPlanner::build_score_policy_from_rollouts(
 
 std::vector<RolloutResult> CEMPlanner::run_candidate_rollouts(
     const ProbabilityPolicy& prob_policy,
-    AgentPolicyRandomizer& randomizer,
+    PolicyRandomizer& randomizer,
     std::vector<std::mt19937>& thread_rngs,
     uint num_candidates)
 {
+  // Generate all candidate policies upfront before spawning threads.
+  auto policies = randomizer(prob_policy, ins, thread_rngs, num_candidates);
+
   std::vector<RolloutResult> results;
   results.reserve(num_candidates);
 
   uint dispatched = 0;
-  while (dispatched < num_candidates && !is_expired(deadline)) {
-    const uint remaining  = num_candidates - dispatched;
+  while (dispatched < static_cast<uint>(policies.size()) && !is_expired(deadline)) {
+    const uint remaining  = static_cast<uint>(policies.size()) - dispatched;
     const uint batch_size = std::min(remaining, PRS_NUM_THREADS);
 
     std::vector<std::future<RolloutResult>> futures;
     futures.reserve(batch_size);
     for (uint i = 0; i < batch_size; ++i) {
+      auto pol = policies[dispatched + i];
       futures.push_back(std::async(std::launch::async,
-          [this, &prob_policy, &randomizer, &thread_rngs, i]() -> RolloutResult {
-            std::vector<AgentDeterministicPolicy> deterministic(ins->N);
-            for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
-              deterministic[a] = randomizer(prob_policy[a], ins, &thread_rngs[i]);
-
-            auto pol = std::make_shared<DeterministicPolicy>(
-                std::move(deterministic), ins, &thread_rngs[i]);
+          [this, pol]() -> RolloutResult {
             PolicyPIBT pp(ins, D, pol);
             auto* H = new HNode(ins->starts, D, nullptr, 0, 0);
             auto res = pp.rollout(H);
@@ -284,11 +282,14 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
 
 Solution CEMPlanner::solve(std::string& additional_info)
 {
+  test_randomizer();
+  exit(0);
+
   // 1. Build initial policy from random rollouts.
-  auto initial_nsp = create_initial_policy(ins->N, 5000, 100);
+  auto initial_nsp = create_initial_policy(ins->N, 1000, 100);
 
   // 2. Translate to a ProbabilityPolicy.
-  AgentPolicyRandomizer randomizer;
+  PolicyRandomizer randomizer;
   ProbabilityPolicy prob_policy(ins->N);
   const auto& agent_pols = initial_nsp.get_policies();
   for (uint a = 0; a < static_cast<uint>(ins->N); ++a) {
@@ -339,7 +340,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
     // 5. Select elite.
     select_elite(eval_results, CEM_ELITE_COUNT, best_cost, best_configs);
 
-    std::cout << "PolicyRandomSearchPlanner CEM gen=" << gen
+    std::cout << "CEMPlanner CEM gen=" << gen
               << " elite=" << eval_results.size()
               << " best_SoC=" << best_cost << std::endl;
 
@@ -367,7 +368,7 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
 {
   std::cout << "\n=== Stall-simulation test (q / empty Enter to quit) ===" << std::endl;
 
-  AgentPolicyRandomizer randomizer;
+  PolicyRandomizer randomizer;
 
   // Restore blocking terminal I/O for interactive use.
   struct termios oldt;
@@ -393,11 +394,10 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
     }
 
     // --- 1. sample a discrete policy from the master prob_policy ---
-    std::vector<AgentDeterministicPolicy> disc(ins->N);
-    for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
-      disc[a] = randomizer(prob_policy[a], ins, MT);
-    auto ce_pol = std::make_shared<DeterministicPolicy>(
-        std::move(disc), ins, MT);
+    std::vector<std::mt19937> single_rng(1);
+    if (MT) single_rng[0].seed((*MT)());
+    auto step_policies = randomizer(prob_policy, ins, single_rng, 1);
+    auto ce_pol = step_policies[0];
 
     // --- 2. pick random stall agents ---
     std::vector<uint> stall_agents;
@@ -453,17 +453,16 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
     for (uint i = 0; i < STALL_NUM_POLICIES; ++i)
       stall_rngs[i].seed(MT ? (*MT)() : i + 42);
 
+    // Generate all stall policies before spawning threads.
+    auto stall_policies = randomizer(prob_policy, ins, stall_rngs, STALL_NUM_POLICIES);
+
     struct StallResult { RolloutResult res; };
     std::vector<std::future<StallResult>> stall_futures;
     stall_futures.reserve(STALL_NUM_POLICIES);
     for (uint i = 0; i < STALL_NUM_POLICIES; ++i) {
+      auto pol = stall_policies[i];
       stall_futures.push_back(std::async(std::launch::async,
-          [this, &prob_policy, &randomizer, &C_stalled, &stall_rngs, i]() -> StallResult {
-            std::vector<AgentDeterministicPolicy> d(ins->N);
-            for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
-              d[a] = randomizer(prob_policy[a], ins, &stall_rngs[i]);
-            auto pol = std::make_shared<DeterministicPolicy>(
-                std::move(d), ins, &stall_rngs[i]);
+          [this, pol, &C_stalled]() -> StallResult {
             PolicyPIBT pp(ins, D, pol);
             auto* H = new HNode(C_stalled, D, nullptr, 0, 0);
             auto r = pp.rollout(H);

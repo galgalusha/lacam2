@@ -112,7 +112,7 @@ AgentProbabilityPolicy to_probability_policy(const AgentScores& ap);
 // Policy that samples a neighbor from per-agent probability distributions on every call.
 // The sampled neighbor gets score -0.9; all others get 0.
 // Also serves as the plain container for per-agent probability data.
-// Used as the master policy in CEM; passed to AgentPolicyRandomizer to sample
+// Used as the master policy in CEM; passed to PolicyRandomizer to sample
 // DeterministicPolicy instances for rollout evaluation.
 class ProbabilityPolicy : public Policy {
  public:
@@ -146,20 +146,10 @@ class ProbabilityPolicy : public Policy {
 // valid neighbor. Scores are in [-0.9, 0], lower = more preferred.
 struct AgentDeterministicPolicy {
   std::unordered_map<Vertex*, std::unordered_map<Vertex*, float>> rankings;  // vertex -> (neighbor -> score)
-  std::unordered_map<Vertex*, double> priority_score;
+  std::vector<double> priority_grid;  // indexed by vertex->index (width*y+x), size = width*height
 };
 
-// Samples an AgentDiscretePolicy from an AgentProbabilityPolicy.
-// For vertices in the policy, samples proportionally to stored probabilities.
-// Blind spots (vertices absent from the policy) produce no entry; the
-// DeterministicPolicy will treat them as no-preference (score = 0).
-class AgentPolicyRandomizer {
- public:
-  AgentDeterministicPolicy operator()(const AgentProbabilityPolicy& prob_policy,
-                                 const Instance* ins, std::mt19937* rng) const;
-};
 
-// Policy backed by per-agent pre-sampled discrete rankings.
 // On a known vertex: assigns the stored scores to neighbors.
 // On a blind-spot vertex: returns 0.0 for all neighbors (random tie-breaking by PolicyPIBT).
 // `discrete` is public so callers can move it out after rollout.
@@ -181,3 +171,17 @@ class DeterministicPolicy : public Policy {
   const Instance* ins;
   std::mt19937* rng;
 };
+
+// Samples num_policies complete DeterministicPolicy instances from a full ProbabilityPolicy.
+// rngs[i % rngs.size()] is used both for sampling probabilities and as the blind-spot RNG
+// of the resulting DeterministicPolicy, so each policy is independently seeded.
+class PolicyRandomizer {
+ public:
+  std::vector<std::shared_ptr<DeterministicPolicy>> operator()(
+      const ProbabilityPolicy& prob_policy,
+      const Instance* ins,
+      std::vector<std::mt19937>& rngs,
+      uint num_policies) const;
+};
+
+void test_randomizer();

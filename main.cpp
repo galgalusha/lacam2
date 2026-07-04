@@ -171,7 +171,7 @@ int main(int argc, char* argv[])
       .default_value(false)
       .implicit_value(true);
   program.add_argument("-cem", "--cem")
-      .help("use PolicyRandomSearchPlanner (build policy from random rollouts, then run one PolicyPIBT rollout)")
+      .help("use CEMPlanner (build policy from random rollouts, then run one PolicyPIBT rollout)")
       .default_value(false)
       .implicit_value(true);
     program.add_argument("-max_ll")
