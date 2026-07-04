@@ -53,9 +53,9 @@ struct AgentScores {
 };
 
 // Policy backed by learned neighbor scores.
-class NeighborScorePolicy : public Policy {
+class ScorePolicy : public Policy {
  public:
-  explicit NeighborScorePolicy(std::vector<AgentScores> agent_policies,
+  explicit ScorePolicy(std::vector<AgentScores> agent_policies,
                                std::mt19937* _MT)
       : policies(std::move(agent_policies)), MT(_MT) {}
 
@@ -179,7 +179,7 @@ class CrossEntropyPolicy : public Policy {
 
   std::vector<AgentDeterministicPolicy> discrete;
   ProbabilityPolicy probs;
-
+  
  private:
   const Instance* ins;
   std::mt19937* rng;

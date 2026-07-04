@@ -224,11 +224,11 @@ HNode* WPlanner::get_node_at_depth(const Successor& successor, uint depth)
   return current;
 }
 
-NeighborScorePolicy WPlanner::create_policy(int num_agents) {
+ScorePolicy WPlanner::create_policy(int num_agents) {
   return create_policy(ins->starts, num_agents);
 }
 
-NeighborScorePolicy WPlanner::create_policy(const Config& start_config, int num_agents) {
+ScorePolicy WPlanner::create_policy(const Config& start_config, int num_agents) {
   auto H_init = new HNode(start_config, D, nullptr, 0, 0);
   uint64_t node_counter = 0;
   uint best_cost = UINT_MAX;
@@ -257,7 +257,7 @@ NeighborScorePolicy WPlanner::create_policy(const Config& start_config, int num_
 
   delete H_init;
   seen_states.clear();
-  auto policy = NeighborScorePolicy(std::move(agent_policies), MT);
+  auto policy = ScorePolicy(std::move(agent_policies), MT);
   policy.finish_recording(ins);
   return policy;
 }

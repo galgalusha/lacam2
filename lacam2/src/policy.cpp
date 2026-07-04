@@ -49,7 +49,7 @@ std::unordered_map<Vertex*, float> RandomPolicy::get_neighbor_scores(
   return result;
 }
 
-std::unordered_map<Vertex*, float> NeighborScorePolicy::get_neighbor_scores(
+std::unordered_map<Vertex*, float> ScorePolicy::get_neighbor_scores(
     const Config& C, uint agent_id, const Vertices& neighbors)
 {
   std::unordered_map<Vertex*, float> result;
@@ -110,14 +110,14 @@ std::unordered_map<Vertex*, float> NeighborScorePolicy::get_neighbor_scores(
   return result;
 }
 
-void NeighborScorePolicy::finish_recording(const Instance* ins)
+void ScorePolicy::finish_recording(const Instance* ins)
 {
   for (auto& ap : policies) {
     ap.finish_recording(ins, MT);
   }
 }
 
-void NeighborScorePolicy::randomize_agent_blind_scores(uint agent_idx,
+void ScorePolicy::randomize_agent_blind_scores(uint agent_idx,
                                                         const Instance* ins,
                                                         std::mt19937* rng)
 {
@@ -126,7 +126,7 @@ void NeighborScorePolicy::randomize_agent_blind_scores(uint agent_idx,
   }
 }
 
-void NeighborScorePolicy::randomize_agent_scores(uint agent_idx,
+void ScorePolicy::randomize_agent_scores(uint agent_idx,
                                                   std::mt19937* rng)
 {
   if (agent_idx < policies.size()) {
@@ -134,7 +134,7 @@ void NeighborScorePolicy::randomize_agent_scores(uint agent_idx,
   }
 }
 
-void NeighborScorePolicy::randomize_all_scores(std::mt19937* rng)
+void ScorePolicy::randomize_all_scores(std::mt19937* rng)
 {
   for (auto& ap : policies) {
     ap.randomize_scores(rng);

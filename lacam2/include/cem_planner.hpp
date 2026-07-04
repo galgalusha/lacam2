@@ -32,14 +32,14 @@ class CEMPlanner : public Planner {
 
   // Build a NeighborScorePolicy from random PIBT rollouts starting at ins->starts.
   // Runs up to num_rollouts rollouts using this->pibt, keeps the best ones by cost.
-  NeighborScorePolicy create_initial_policy(int num_agents,
+  ScorePolicy create_initial_policy(int num_agents,
                                             uint num_rollouts = 5000,
                                             uint keep = 100);
 
   Solution solve(std::string& additional_info);
 
   // The best policy found during solve(). Set after solve() returns.
-  std::shared_ptr<NeighborScorePolicy> policy;
+  std::shared_ptr<ScorePolicy> policy;
 
  private:
   // Run up to num_rollouts random rollouts from H via this->pibt.

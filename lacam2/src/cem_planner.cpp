@@ -119,7 +119,7 @@ std::vector<RolloutResult> CEMPlanner::get_rollouts(
   return out;
 }
 
-NeighborScorePolicy CEMPlanner::create_initial_policy(
+ScorePolicy CEMPlanner::create_initial_policy(
     int num_agents, uint num_rollouts, uint keep)
 {
   auto H_init = new HNode(ins->starts, D, nullptr, 0, 0);
@@ -178,7 +178,7 @@ NeighborScorePolicy CEMPlanner::create_initial_policy(
   // }
 
   delete H_init;
-  auto policy = NeighborScorePolicy(std::move(agent_policies), MT);
+  auto policy = ScorePolicy(std::move(agent_policies), MT);
 //  policy.finish_recording(ins);
   return policy;
 }
@@ -207,19 +207,20 @@ std::vector<CEMPlanner::EvalResult> CEMPlanner::run_candidate_rollouts(
       futures.push_back(std::async(std::launch::async,
           [this, &prob_policy, &randomizer, &thread_rngs, i]() -> EvalResult {
             auto candidate_probs = prob_policy;
-            std::vector<AgentDeterministicPolicy> disc(ins->N);
+            std::vector<AgentDeterministicPolicy> deterministic(ins->N);
             for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
-              disc[a] = randomizer(candidate_probs[a], ins, &thread_rngs[i]);
+              deterministic[a] = randomizer(candidate_probs[a], ins, &thread_rngs[i]);
 
             auto ce_pol = std::make_shared<CrossEntropyPolicy>(
-                std::move(disc), std::move(candidate_probs), ins, &thread_rngs[i]);
+                std::move(deterministic), std::move(candidate_probs), ins, &thread_rngs[i]);
             PolicyPIBT pp(ins, D, ce_pol);
             auto* H = new HNode(ins->starts, D, nullptr, 0, 0);
             auto res = pp.rollout(H);
             delete H;
             return {res.cost, res.success, std::move(res.configs),
                     std::move(res.orders),
-                    std::move(ce_pol->discrete), std::move(ce_pol->probs)};
+                    std::move(ce_pol->discrete),
+                    std::move(ce_pol->probs)};
           }));
     }
 
@@ -254,29 +255,32 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
   for (uint a = 0; a < static_cast<uint>(ins->N); ++a) {
     auto& master_agent = prob_policy[a];
 
-    std::unordered_map<Vertex*, std::unordered_map<Vertex*, uint>> neighbor_counts;
-    std::unordered_map<Vertex*, uint> E_v_map;
-    for (const auto& er : elite) {
-      for (const auto& [v, rank_map] : er.discrete[a].rankings) {
+    // neighbor stats from all epochs
+    std::unordered_map<Vertex*, std::unordered_map<Vertex*, uint>> v_neighbor_counts;
+    std::unordered_map<Vertex*, uint> v_visit_count;
+
+    // collect neighbor stats from all epochs
+    for (const auto& epoch : elite) {
+      for (const auto& [v, rank_map] : epoch.discrete[a].rankings) {
         // Find the top-ranked neighbor (lowest score = -0.9f).
-        Vertex* top = nullptr;
+        Vertex* actual_chosen_neighbor = nullptr;
         float best_score = 1.0f;
         for (const auto& [nb, sc] : rank_map) {
-          if (sc < best_score) { best_score = sc; top = nb; }
+          if (sc < best_score) { best_score = sc; actual_chosen_neighbor = nb; }
         }
-        if (top) { ++E_v_map[v]; ++neighbor_counts[v][top]; }
+        if (actual_chosen_neighbor) { ++v_visit_count[v]; ++v_neighbor_counts[v][actual_chosen_neighbor]; }
       }
-      for (const auto& [v, nb_probs] : er.probs[a].vertex_probs) {
+      for (const auto& [v, nb_probs] : epoch.probs[a].vertex_probs) {
         if (!master_agent.vertex_probs.count(v))
           master_agent.vertex_probs[v] = nb_probs;
       }
     }
 
     for (auto& [v, nb_probs] : master_agent.vertex_probs) {
-      auto ev_it = E_v_map.find(v);
-      if (ev_it == E_v_map.end() || ev_it->second == 0) continue;
+      auto ev_it = v_visit_count.find(v);
+      if (ev_it == v_visit_count.end() || ev_it->second == 0) continue;
       const uint E_v = ev_it->second;
-      const auto& vcnt = neighbor_counts[v];
+      const auto& vcnt = v_neighbor_counts[v];
       for (auto& [u, p_old] : nb_probs) {
         auto cnt_it = vcnt.find(u);
         const double N_u = cnt_it != vcnt.end() ? cnt_it->second : 0.0;
