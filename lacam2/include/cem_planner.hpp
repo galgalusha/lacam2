@@ -15,16 +15,6 @@
 
 class CEMPlanner : public Planner {
  public:
-  // Per-candidate result produced during CEM rollout evaluation.
-  struct EvalResult {
-    uint cost;
-    bool success;
-    std::vector<Config> configs;
-    std::vector<std::vector<uint>> orders;  // execution order per timestep
-    std::vector<AgentDeterministicPolicy> discrete;
-    ProbabilityPolicy probs;
-  };
-
   CEMPlanner(const Instance* _ins, const Deadline* _deadline,
                              std::mt19937* _MT, const int _verbose = 0,
                              const Objective _objective = OBJ_NONE,
@@ -50,22 +40,26 @@ class CEMPlanner : public Planner {
 
   // Generate and evaluate num_candidates PolicyPIBT candidates in parallel,
   // sampling discrete policies from prob_policy. Returns only successful results.
-  std::vector<EvalResult> run_candidate_rollouts(
+  std::vector<RolloutResult> run_candidate_rollouts(
       const ProbabilityPolicy& prob_policy,
       AgentPolicyRandomizer& randomizer,
       std::vector<std::mt19937>& thread_rngs,
       uint num_candidates);
 
-  // Sort eval_results by cost, truncate to elite_count, and update best_cost /
+  // Sort results by cost, truncate to elite_count, and update best_cost /
   // best_configs if the top result improves on the current best.
-  void select_elite(std::vector<EvalResult>& eval_results,
+  void select_elite(std::vector<RolloutResult>& results,
                     uint elite_count,
                     uint& best_cost,
                     std::vector<Config>& best_configs);
 
+  // Build a ScorePolicy by accumulating moves from a set of rollouts.
+  // Shared by create_initial_policy and update_policy_with_elite.
+  ScorePolicy build_score_policy_from_rollouts(const std::vector<RolloutResult>& rollouts);
+
   // Smooth prob_policy toward the elite frequencies using the ALPHA blend factor.
   void update_policy_with_elite(ProbabilityPolicy& prob_policy,
-                                const std::vector<EvalResult>& elite);
+                                const std::vector<RolloutResult>& elite);
 
   // Interactive stall-simulation test. Loops until the user enters 'q' or empty
   // input. Each iteration: samples a discrete policy from prob_policy, lets the

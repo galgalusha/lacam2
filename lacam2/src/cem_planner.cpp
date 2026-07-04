@@ -132,33 +132,33 @@ ScorePolicy CEMPlanner::create_initial_policy(
   std::cout << "PolicyRandomSearchPlanner: done. Got " << best_rollouts.size()
             << " successful rollouts." << std::endl;
 
-  std::vector<AgentScores> agent_policies(num_agents);
+//   std::vector<AgentScores> agent_policies(num_agents);
 
-  for (const auto& rollout : best_rollouts) {
-    for (size_t step = 1; step < rollout.configs.size(); ++step) {
-      const Config& prev = rollout.configs[step - 1];
-      const Config& curr = rollout.configs[step];
-      // orders[0] is for the initial HNode; orders[step] aligns with configs[step-1] -> configs[step].
-      const std::vector<uint>* step_order = nullptr;
-      step_order = &rollout.orders[step - 1];
+//   for (const auto& rollout : best_rollouts) {
+//     for (size_t step = 1; step < rollout.configs.size(); ++step) {
+//       const Config& prev = rollout.configs[step - 1];
+//       const Config& curr = rollout.configs[step];
+//       // orders[0] is for the initial HNode; orders[step] aligns with configs[step-1] -> configs[step].
+//       const std::vector<uint>* step_order = nullptr;
+//       step_order = &rollout.orders[step - 1];
 
-      for (int agent = 0; agent < num_agents; ++agent) {
-        Vertex* from = prev[agent];
-        Vertex* to   = curr[agent];
-        if (from != to) {
-          agent_policies[agent].record_move(from, to);
-        }
-        // // Record execution order for this agent at this vertex.
-//          step_order is the agent ordering vector; find agent's position in it.
-        for (uint pos = 0; pos < step_order->size(); ++pos) {
-          if ((*step_order)[pos] == static_cast<uint>(agent)) {
-            agent_policies[agent].priority_records[from].push_back(pos);
-            break;
-          }
-        }
-      }
-    }
-  }
+//       for (int agent = 0; agent < num_agents; ++agent) {
+//         Vertex* from = prev[agent];
+//         Vertex* to   = curr[agent];
+//         if (from != to) {
+//           agent_policies[agent].record_move(from, to);
+//         }
+//         // // Record execution order for this agent at this vertex.
+// //          step_order is the agent ordering vector; find agent's position in it.
+//         for (uint pos = 0; pos < step_order->size(); ++pos) {
+//           if ((*step_order)[pos] == static_cast<uint>(agent)) {
+//             agent_policies[agent].priority_records[from].push_back(pos);
+//             break;
+//           }
+//         }
+//       }
+//     }
+//   }
 
   // // --- Sanity print: agent 0, best rollout step-by-step (vertex -> agent order) ---
   // if (!best_rollouts.empty()) {
@@ -178,113 +178,125 @@ ScorePolicy CEMPlanner::create_initial_policy(
   // }
 
   delete H_init;
-  auto policy = ScorePolicy(std::move(agent_policies), MT);
-//  policy.finish_recording(ins);
-  return policy;
+  return build_score_policy_from_rollouts(best_rollouts);
+}
+
+ScorePolicy CEMPlanner::build_score_policy_from_rollouts(
+    const std::vector<RolloutResult>& rollouts)
+{
+  std::vector<AgentScores> agent_policies(ins->N);
+
+  for (const auto& rollout : rollouts) {
+    for (size_t step = 1; step < rollout.configs.size(); ++step) {
+      const Config& prev = rollout.configs[step - 1];
+      const Config& curr = rollout.configs[step];
+      const std::vector<uint>* step_order = &rollout.orders[step - 1];
+
+      for (int agent = 0; agent < ins->N; ++agent) {
+        Vertex* from = prev[agent];
+        Vertex* to   = curr[agent];
+        if (from != to) agent_policies[agent].record_move(from, to);
+        for (uint pos = 0; pos < step_order->size(); ++pos) {
+          if ((*step_order)[pos] == static_cast<uint>(agent)) {
+            agent_policies[agent].priority_records[from].push_back(pos);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return ScorePolicy(std::move(agent_policies), MT);
 }
 
 // ---------------------------------------------------------------------------
 // CEM helper methods
 // ---------------------------------------------------------------------------
 
-std::vector<CEMPlanner::EvalResult> CEMPlanner::run_candidate_rollouts(
+std::vector<RolloutResult> CEMPlanner::run_candidate_rollouts(
     const ProbabilityPolicy& prob_policy,
     AgentPolicyRandomizer& randomizer,
     std::vector<std::mt19937>& thread_rngs,
     uint num_candidates)
 {
-  std::vector<EvalResult> eval_results;
-  eval_results.reserve(num_candidates);
+  std::vector<RolloutResult> results;
+  results.reserve(num_candidates);
 
   uint dispatched = 0;
   while (dispatched < num_candidates && !is_expired(deadline)) {
     const uint remaining  = num_candidates - dispatched;
     const uint batch_size = std::min(remaining, PRS_NUM_THREADS);
 
-    std::vector<std::future<EvalResult>> futures;
+    std::vector<std::future<RolloutResult>> futures;
     futures.reserve(batch_size);
     for (uint i = 0; i < batch_size; ++i) {
       futures.push_back(std::async(std::launch::async,
-          [this, &prob_policy, &randomizer, &thread_rngs, i]() -> EvalResult {
-            auto candidate_probs = prob_policy;
+          [this, &prob_policy, &randomizer, &thread_rngs, i]() -> RolloutResult {
             std::vector<AgentDeterministicPolicy> deterministic(ins->N);
             for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
-              deterministic[a] = randomizer(candidate_probs[a], ins, &thread_rngs[i]);
+              deterministic[a] = randomizer(prob_policy[a], ins, &thread_rngs[i]);
 
-            auto ce_pol = std::make_shared<CrossEntropyPolicy>(
-                std::move(deterministic), std::move(candidate_probs), ins, &thread_rngs[i]);
-            PolicyPIBT pp(ins, D, ce_pol);
+            auto pol = std::make_shared<DeterministicPolicy>(
+                std::move(deterministic), ins, &thread_rngs[i]);
+            PolicyPIBT pp(ins, D, pol);
             auto* H = new HNode(ins->starts, D, nullptr, 0, 0);
             auto res = pp.rollout(H);
             delete H;
-            return {res.cost, res.success, std::move(res.configs),
-                    std::move(res.orders),
-                    std::move(ce_pol->discrete),
-                    std::move(ce_pol->probs)};
+            return res;
           }));
     }
 
     for (auto& f : futures) {
-      auto er = f.get();
-      if (er.success) eval_results.push_back(std::move(er));
+      auto res = f.get();
+      if (res.success) results.push_back(std::move(res));
     }
     dispatched += batch_size;
   }
 
-  return eval_results;
+  return results;
 }
 
-void CEMPlanner::select_elite(std::vector<EvalResult>& eval_results,
+void CEMPlanner::select_elite(std::vector<RolloutResult>& results,
                               uint elite_count,
                               uint& best_cost,
                               std::vector<Config>& best_configs)
 {
-  std::sort(eval_results.begin(), eval_results.end(),
-      [](const EvalResult& a, const EvalResult& b) { return a.cost < b.cost; });
-  if (eval_results.size() > elite_count) eval_results.resize(elite_count);
+  std::sort(results.begin(), results.end(),
+      [](const RolloutResult& a, const RolloutResult& b) { return a.cost < b.cost; });
+  if (results.size() > elite_count) results.resize(elite_count);
 
-  if (!eval_results.empty() && eval_results[0].cost < best_cost) {
-    best_cost    = eval_results[0].cost;
-    best_configs = eval_results[0].configs;
+  if (!results.empty() && results[0].cost < best_cost) {
+    best_cost    = results[0].cost;
+    best_configs = results[0].configs;
   }
 }
 
 void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
-                                          const std::vector<EvalResult>& elite)
+                                          const std::vector<RolloutResult>& elite)
 {
+  auto score_pol = build_score_policy_from_rollouts(elite);
+  const auto& agent_scores = score_pol.get_policies();
+
   for (uint a = 0; a < static_cast<uint>(ins->N); ++a) {
     auto& master_agent = prob_policy[a];
+    if (a >= agent_scores.size()) continue;
 
-    // neighbor stats from all epochs
-    std::unordered_map<Vertex*, std::unordered_map<Vertex*, uint>> v_neighbor_counts;
-    std::unordered_map<Vertex*, uint> v_visit_count;
+    const auto elite_prob = to_probability_policy(agent_scores[a]);
 
-    // collect neighbor stats from all epochs
-    for (const auto& epoch : elite) {
-      for (const auto& [v, rank_map] : epoch.discrete[a].rankings) {
-        // Find the top-ranked neighbor (lowest score = -0.9f).
-        Vertex* actual_chosen_neighbor = nullptr;
-        float best_score = 1.0f;
-        for (const auto& [nb, sc] : rank_map) {
-          if (sc < best_score) { best_score = sc; actual_chosen_neighbor = nb; }
-        }
-        if (actual_chosen_neighbor) { ++v_visit_count[v]; ++v_neighbor_counts[v][actual_chosen_neighbor]; }
-      }
-      for (const auto& [v, nb_probs] : epoch.probs[a].vertex_probs) {
-        if (!master_agent.vertex_probs.count(v))
-          master_agent.vertex_probs[v] = nb_probs;
-      }
+    // Add newly seen vertices to the master policy.
+    for (const auto& [v, nb_probs] : elite_prob.vertex_probs) {
+      if (!master_agent.vertex_probs.count(v))
+        master_agent.vertex_probs[v] = nb_probs;
     }
 
+    // Blend existing entries toward elite frequencies.
     for (auto& [v, nb_probs] : master_agent.vertex_probs) {
-      auto ev_it = v_visit_count.find(v);
-      if (ev_it == v_visit_count.end() || ev_it->second == 0) continue;
-      const uint E_v = ev_it->second;
-      const auto& vcnt = v_neighbor_counts[v];
+      auto eit = elite_prob.vertex_probs.find(v);
+      if (eit == elite_prob.vertex_probs.end()) continue;
+      const auto& elite_nb = eit->second;
       for (auto& [u, p_old] : nb_probs) {
-        auto cnt_it = vcnt.find(u);
-        const double N_u = cnt_it != vcnt.end() ? cnt_it->second : 0.0;
-        const double p_elite = N_u / E_v;
+        auto cnt_it = elite_nb.find(u);
+        const double p_elite = cnt_it != elite_nb.end() ? cnt_it->second : 0.0;
         p_old = (1.0 - LEARNING_RATE) * p_old + LEARNING_RATE * p_elite;
       }
     }
@@ -358,7 +370,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
 
     if (eval_results.empty()) continue;
 
-    // 6. Smooth probability update toward elite.
+    // 6. Update probability policy from elite rollout moves.
     update_policy_with_elite(prob_policy, eval_results);
   }
 
@@ -409,8 +421,8 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
     std::vector<AgentDeterministicPolicy> disc(ins->N);
     for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
       disc[a] = randomizer(prob_policy[a], ins, MT);
-    auto ce_pol = std::make_shared<CrossEntropyPolicy>(
-        std::move(disc), prob_policy, ins, MT);
+    auto ce_pol = std::make_shared<DeterministicPolicy>(
+        std::move(disc), ins, MT);
 
     // --- 2. pick random stall agents ---
     std::vector<uint> stall_agents;
@@ -475,8 +487,8 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
             std::vector<AgentDeterministicPolicy> d(ins->N);
             for (uint a = 0; a < static_cast<uint>(ins->N); ++a)
               d[a] = randomizer(prob_policy[a], ins, &stall_rngs[i]);
-            auto pol = std::make_shared<CrossEntropyPolicy>(
-                std::move(d), prob_policy, ins, &stall_rngs[i]);
+            auto pol = std::make_shared<DeterministicPolicy>(
+                std::move(d), ins, &stall_rngs[i]);
             PolicyPIBT pp(ins, D, pol);
             auto* H = new HNode(C_stalled, D, nullptr, 0, 0);
             auto r = pp.rollout(H);

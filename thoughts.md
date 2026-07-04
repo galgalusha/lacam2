@@ -27,4 +27,5 @@ The rest of the execution of the planner will modify the parameters in the maste
 AgentScores and ScorePolicy only used for initialization and are forgotten afterwards.
 
 # CEM iterations (generations)
-The loop uses a randomizer to generate deterministic 
+The loop uses a randomizer to randomize deterministic tie breaking values per agent
+stored in AgentDeterministicPolicy.

@@ -274,7 +274,7 @@ AgentDeterministicPolicy AgentPolicyRandomizer::operator()(
   return result;
 }
 
-std::unordered_map<Vertex*, float> CrossEntropyPolicy::get_neighbor_scores(
+std::unordered_map<Vertex*, float> DeterministicPolicy::get_neighbor_scores(
     const Config& C, uint agent_id, const Vertices& neighbors)
 {
   std::unordered_map<Vertex*, float> result;
@@ -283,41 +283,17 @@ std::unordered_map<Vertex*, float> CrossEntropyPolicy::get_neighbor_scores(
 
   if (agent_id >= discrete.size()) return result;
   Vertex* current = C[agent_id];
-  auto& dp = discrete[agent_id];
+  const auto& deterministic = discrete[agent_id];
 
-  auto it = dp.rankings.find(current);
-  if (it != dp.rankings.end()) {
+  auto it = deterministic.rankings.find(current);
+  if (it != deterministic.rankings.end()) {
     for (Vertex* v : neighbors) {
       auto sit = it->second.find(v);
       result[v] = (sit != it->second.end()) ? sit->second : 0.0f;
     }
-    return result;
-  }
-
-  // Blind spot: lazily add a uniform distribution and build a full strict ranking.
-  if (agent_id < probs.size()) {
-    auto& agent_prob = probs[agent_id];
-    auto& nb_probs = agent_prob.vertex_probs[current];
-    if (nb_probs.empty()) {
-      Vertices cands = current->neighbor;
-      cands.push_back(current);
-      const double p = 1.0 / cands.size();
-      for (Vertex* nb : cands) nb_probs[nb] = p;
-    }
-    // Build a uniformly shuffled full ranking.
-    Vertices cands = current->neighbor;
-    cands.push_back(current);
-    std::shuffle(cands.begin(), cands.end(), *rng);
-    float score = -0.9f;
-    auto& rank_map = dp.rankings[current];
-    for (Vertex* nb : cands) {
-      rank_map[nb] = score;
-      score += 0.1f;
-    }
-    for (Vertex* v : neighbors) {
-      auto sit = rank_map.find(v);
-      result[v] = (sit != rank_map.end()) ? sit->second : 0.0f;
-    }
+  } else {
+    // Blind spot: assign random scores so PolicyPIBT gets varied tie-breaking.
+    for (Vertex* v : neighbors) result[v] = get_random_float(rng, -0.9f, 0.0f);
   }
   return result;
 }
