@@ -23,6 +23,7 @@ class CEMPlanner : public Planner {
   // Build a NeighborScorePolicy from random PIBT rollouts starting at ins->starts.
   // Runs up to num_rollouts rollouts using this->pibt, keeps the best ones by cost.
   ScorePolicy create_initial_policy(int num_agents,
+                                            std::vector<RolloutResult>& global_elite,
                                             uint num_rollouts = 5000,
                                             uint keep = 100);
 
@@ -45,6 +46,12 @@ class CEMPlanner : public Planner {
       PolicyRandomizer& randomizer,
       std::vector<std::mt19937>& thread_rngs,
       uint num_candidates);
+
+  // Merge new_results into global_elite (sorted ascending by cost, capped at
+  // CEM_ELITE_COUNT). Returns the number of entries that were inserted or
+  // replaced (i.e. genuine improvements over the worst current elite).
+  int update_global_elite(std::vector<RolloutResult>& global_elite,
+                          const std::vector<RolloutResult>& new_results);
 
   // Sort results by cost, truncate to elite_count, and update best_cost /
   // best_configs if the top result improves on the current best.

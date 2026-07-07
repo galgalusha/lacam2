@@ -41,9 +41,9 @@ static bool key_pressed_to_stop()
 // Hyper Parameters
 
 static uint CEM_NUM_CANDIDATES   = 100;
-static int CEM_ELITE_COUNT       = 5;
+static int CEM_ELITE_COUNT       = 10;
 static auto LEARNING_RATE_FUNC   = [](int gen) 
-                                   { return 0.2 * sqrt(100.0 / (100.0 + gen)); };
+                                   { return 0.1 * sqrt(100.0 / (100.0 + gen)); };
 static float LEARNING_RATE       = LEARNING_RATE_FUNC(0);
 
 CEMPlanner::CEMPlanner(
@@ -123,7 +123,7 @@ std::vector<RolloutResult> CEMPlanner::get_rollouts(
 }
 
 ScorePolicy CEMPlanner::create_initial_policy(
-    int num_agents, uint num_rollouts, uint keep)
+    int num_agents, std::vector<RolloutResult>& global_elite, uint num_rollouts, uint keep)
 {
   auto H_init = new HNode(ins->starts, D, nullptr, 0, 0);
 
@@ -134,6 +134,12 @@ ScorePolicy CEMPlanner::create_initial_policy(
   std::cout << "CEMPlanner: done. Got " << best_rollouts.size()
             << " successful rollouts." << std::endl;
   delete H_init;
+
+  // Populate global_elite with the best rollouts (already sorted by cost).
+  global_elite = best_rollouts;
+  if (static_cast<int>(global_elite.size()) > CEM_ELITE_COUNT)
+    global_elite.resize(CEM_ELITE_COUNT);
+
   return build_score_policy_from_rollouts(best_rollouts);
 }
 
@@ -159,7 +165,7 @@ ScorePolicy CEMPlanner::build_score_policy_from_rollouts(
 }
 
 // ---------------------------------------------------------------------------
-// CEM helper methods
+// CEM helper methodsCEM_ELITE_COUNT
 // ---------------------------------------------------------------------------
 
 std::vector<RolloutResult> CEMPlanner::run_candidate_rollouts(
@@ -201,6 +207,26 @@ std::vector<RolloutResult> CEMPlanner::run_candidate_rollouts(
   }
 
   return results;
+}
+
+int CEMPlanner::update_global_elite(std::vector<RolloutResult>& global_elite,
+                                    const std::vector<RolloutResult>& new_results)
+{
+  int new_elite_count = 0;
+  for (const auto& rr : new_results) {
+    if (static_cast<int>(global_elite.size()) < CEM_ELITE_COUNT) {
+      global_elite.push_back(rr);
+      std::sort(global_elite.begin(), global_elite.end(),
+          [](const RolloutResult& a, const RolloutResult& b) { return a.cost < b.cost; });
+      ++new_elite_count;
+    } else if (!global_elite.empty() && rr.cost < global_elite.back().cost) {
+      global_elite.back() = rr;
+      std::sort(global_elite.begin(), global_elite.end(),
+          [](const RolloutResult& a, const RolloutResult& b) { return a.cost < b.cost; });
+      ++new_elite_count;
+    }
+  }
+  return new_elite_count;
 }
 
 void CEMPlanner::select_elite(std::vector<RolloutResult>& results,
@@ -256,7 +282,9 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
 Solution CEMPlanner::solve(std::string& additional_info)
 {
   // 1. Build initial policy from random rollouts.
-  auto initial_nsp = create_initial_policy(ins->N, 1000, 100);
+  std::vector<RolloutResult> global_elite;
+  global_elite.reserve(CEM_ELITE_COUNT);
+  auto initial_nsp = create_initial_policy(ins->N, global_elite, 1000, 100);
 
   // 2. Translate to a ProbabilityPolicy.
   PolicyRandomizer randomizer(&ins->G, MT);
@@ -287,15 +315,20 @@ Solution CEMPlanner::solve(std::string& additional_info)
 
     // 5. Select elite.
     select_elite(eval_results, CEM_ELITE_COUNT, best_cost, best_configs);
+    if (eval_results.empty()) continue;
+
+    // Update global_elite: replace worse entries with better new ones.
+    int new_elite_count = update_global_elite(global_elite, eval_results);
 
     std::cout << "CEMPlanner CEM gen=" << gen
               << " elite=" << eval_results.size()
+              << " new_global_elite=" << new_elite_count
               << " best_SoC=" << best_cost << std::endl;
 
-    if (eval_results.empty()) continue;
-
     // 6. Update probability policy from elite rollout moves.
-    update_policy_with_elite(prob_policy, eval_results);
+    if (new_elite_count > 0)
+      update_policy_with_elite(prob_policy, global_elite);
+
   }
 
   if (best_configs.empty()) return Solution{};
