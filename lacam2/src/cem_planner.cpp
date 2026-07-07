@@ -45,10 +45,6 @@ static int CEM_ELITE_COUNT       = 5;
 static auto LEARNING_RATE_FUNC   = [](int gen) 
                                    { return 0.2 * sqrt(100.0 / (100.0 + gen)); };
 static float LEARNING_RATE       = LEARNING_RATE_FUNC(0);
-static auto PRIORITY_TEMP_FUNC   = [](int gen) 
-                                   { return 5.0 * 100.0 / (100.0 + gen); };
-static float PRIORITY_TEMPRATURE = PRIORITY_TEMP_FUNC(0);                          
-
 
 CEMPlanner::CEMPlanner(
     const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
@@ -65,7 +61,6 @@ std::vector<RolloutResult> CEMPlanner::get_rollouts(
   struct RolloutEntry {
     uint cost;
     std::vector<Config> configs;
-    std::vector<std::vector<uint>> orders;
   };
 
   // Create one RNG and one PIBT instance per thread.
@@ -100,7 +95,7 @@ std::vector<RolloutResult> CEMPlanner::get_rollouts(
 
     for (auto& f : futures) {
       auto res = f.get();
-      if (res.success) results.push_back({res.cost, std::move(res.configs), std::move(res.orders)});
+      if (res.success) results.push_back({res.cost, std::move(res.configs)});
     }
 
     dispatched += batch_size;
@@ -122,7 +117,6 @@ std::vector<RolloutResult> CEMPlanner::get_rollouts(
     rr.cost = e.cost;
     rr.makespan = static_cast<uint>(e.configs.size());
     rr.configs = std::move(e.configs);
-    rr.orders = std::move(e.orders);
     out.push_back(std::move(rr));
   }
   return out;
@@ -137,27 +131,8 @@ ScorePolicy CEMPlanner::create_initial_policy(
             << " rollouts for initial policy" << std::endl;
 
   auto best_rollouts = get_rollouts(H_init, num_rollouts, keep);
-
   std::cout << "CEMPlanner: done. Got " << best_rollouts.size()
             << " successful rollouts." << std::endl;
-
-  // // --- Sanity print: agent 0, best rollout step-by-step (vertex -> agent order) ---
-  // if (!best_rollouts.empty()) {
-  //   const auto& br = best_rollouts[0];
-  //   const uint W = ins->G.width;
-  //   std::cout << "=== create_initial_policy: agent 0 best rollout (cost=" << br.cost << ") ===" << std::endl;
-  //   for (size_t step = 0; step + 1 < br.configs.size(); ++step) {
-  //     Vertex* v = br.configs[step][0];
-  //     uint row = v->index / W, col = v->index % W;
-  //     // orders[step] maps step->step+1 transition; find agent 0's position
-  //     uint agent_pos = UINT_MAX;
-  //     for (uint pos = 0; pos < br.orders[step].size(); ++pos) {
-  //       if (br.orders[step][pos] == 0) { agent_pos = pos; break; }
-  //     }
-  //     std::cout << "  step " << step << ": (" << row << "," << col << ")->" << agent_pos << std::endl;
-  //   }
-  // }
-
   delete H_init;
   return build_score_policy_from_rollouts(best_rollouts);
 }
@@ -171,18 +146,11 @@ ScorePolicy CEMPlanner::build_score_policy_from_rollouts(
     for (size_t step = 1; step < rollout.configs.size(); ++step) {
       const Config& prev = rollout.configs[step - 1];
       const Config& curr = rollout.configs[step];
-      const std::vector<uint>* step_order = &rollout.orders[step - 1];
 
       for (int agent = 0; agent < ins->N; ++agent) {
         Vertex* from = prev[agent];
         Vertex* to   = curr[agent];
         if (from != to) agent_policies[agent].record_move(from, to);
-        for (uint pos = 0; pos < step_order->size(); ++pos) {
-          if ((*step_order)[pos] == static_cast<uint>(agent)) {
-            agent_policies[agent].priority_records[from].push_back(pos);
-            break;
-          }
-        }
       }
     }
   }
@@ -261,7 +229,7 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
     if (a >= agent_scores.size()) continue;
 
     const auto elite_prob = to_probability_policy(agent_scores[a]);
-/*
+
     // Add newly seen vertices to the master policy.
     for (const auto& [v, nb_probs] : elite_prob.vertex_probs) {
       if (!master_agent.vertex_probs.count(v))
@@ -279,96 +247,7 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
         p_old = (1.0 - LEARNING_RATE) * p_old + LEARNING_RATE * p_elite;
       }
     }
-*/
-    // Add newly seen priority vertices to the master policy.
-    for (const auto& [v, dist] : elite_prob.priority_dist) {
-      if (!master_agent.priority_dist.count(v)) {
-        master_agent.priority_dist[v] = dist;
-      }
-    }
-
-    // Blend existing priority distributions using Gaussian Mixture Variance.
-    for (auto& [v, old_dist] : master_agent.priority_dist) {
-      auto eit = elite_prob.priority_dist.find(v);
-      if (eit == elite_prob.priority_dist.end()) continue;
-
-      const double mu_old = old_dist.mu;
-      const double var_old = old_dist.sigma * old_dist.sigma;
-
-      const double mu_elite = eit->second.mu;
-      const double var_elite = eit->second.sigma * eit->second.sigma;
-
-      // 1. Shift the mean
-      old_dist.mu = (1.0 - LEARNING_RATE) * mu_old + LEARNING_RATE * mu_elite;
-
-      // 2. Blend variance AND add the mean-shift uncertainty
-      double diff = mu_old - mu_elite;
-      double new_var = (1.0 - LEARNING_RATE) * var_old + 
-                      LEARNING_RATE * var_elite + 
-                      LEARNING_RATE * (1.0 - LEARNING_RATE) * (diff * diff);
-
-      old_dist.sigma = std::sqrt(new_var);
-
-      // Safety floor: prevent sigma == 0 from killing exploration
-      if (old_dist.sigma < 1.0) old_dist.sigma = 1.0;
-    }
-
   }
-}
-
-// ---------------------------------------------------------------------------
-// Temporary sanity helper: prints a 9x9 subgrid of mean priorities centred on
-// `start`. Cells outside the grid or on walls are shown as "  --- ".
-static void print_sample_priority(const AgentProbabilityPolicy& app,
-                                  const Graph& G,
-                                  const Vertex* start)
-{
-  const int W = static_cast<int>(G.width);
-  const int H = static_cast<int>(G.height);
-  const int cy = static_cast<int>(start->index) / W;
-  const int cx = static_cast<int>(start->index) % W;
-
-  // Build floodfilled mean grid directly.
-  const size_t grid_size = static_cast<size_t>(W) * H;
-  std::vector<double> mu_grid(grid_size, 0.0);
-  std::vector<bool>   visited(grid_size, false);
-  std::queue<const Vertex*> q;
-  for (const auto& [v, pd] : app.priority_dist) {
-    mu_grid[v->index] = pd.mu;
-    visited[v->index] = true;
-    q.push(v);
-  }
-  while (!q.empty()) {
-    const Vertex* cur = q.front(); q.pop();
-    for (Vertex* nb : cur->neighbor) {
-      if (nb == nullptr || visited[nb->index]) continue;
-      mu_grid[nb->index] = mu_grid[cur->index];
-      visited[nb->index] = true;
-      q.push(nb);
-    }
-  }
-
-  std::cout << "Priority mu grid (9x9) centred on agent start (" << cy << "," << cx << "):\n";
-  for (int dy = -4; dy <= 4; ++dy) {
-    int row = cy + dy;
-    for (int dx = -4; dx <= 4; ++dx) {
-      int col = cx + dx;
-      if (row < 0 || row >= H || col < 0 || col >= W) {
-        std::cout << "  --- ";
-      } else {
-        uint idx = static_cast<uint>(row) * W + col;
-        if (G.U[idx] == nullptr) {
-          std::cout << "  ### ";
-        } else {
-          std::cout << std::fixed;
-          std::cout.precision(2);
-          std::cout << std::setw(6) << mu_grid[idx];
-        }
-      }
-    }
-    std::cout << '\n';
-  }
-  std::cout << std::flush;
 }
 
 // CEM-based solve
@@ -380,35 +259,13 @@ Solution CEMPlanner::solve(std::string& additional_info)
   auto initial_nsp = create_initial_policy(ins->N, 1000, 100);
 
   // 2. Translate to a ProbabilityPolicy.
-  PolicyRandomizer randomizer(&ins->G, MT, PRIORITY_TEMP_FUNC(0));
+  PolicyRandomizer randomizer(&ins->G, MT);
   ProbabilityPolicy prob_policy(ins->N);
   const auto& agent_pols = initial_nsp.get_policies();
   for (uint a = 0; a < static_cast<uint>(ins->N); ++a) {
     if (a < agent_pols.size())
       prob_policy[a] = to_probability_policy(agent_pols[a]);
   }
-
-  // // --- Sanity print: agent 0 AgentPolicy (priority_records) ---
-  // {
-  //   const uint W = ins->G.width;
-  //   const auto& ap0 = agent_pols[0];
-  //   std::cout << "=== solve: agent 0 AgentPolicy (priority_records) ===" << std::endl;
-  //   for (const auto& [v, orders] : ap0.priority_records) {
-  //     uint row = v->index / W, col = v->index % W;
-  //     std::cout << "  (" << row << "," << col << "): [";
-  //     for (size_t i = 0; i < orders.size(); ++i) {
-  //       if (i) std::cout << ",";
-  //       std::cout << orders[i];
-  //     }
-  //     std::cout << "]" << std::endl;
-  //   }
-  //   std::cout << "=== solve: agent 0 ProbabilityPolicy (priority_dist) ===" << std::endl;
-  //   for (const auto& [v, pd] : prob_policy[0].priority_dist) {
-  //     uint row = v->index / W, col = v->index % W;
-  //     std::cout << "  (" << row << "," << col << "): mu=" << pd.mu
-  //               << " sigma=" << pd.sigma << std::endl;
-  //   }
-  // }
 
   uint best_cost = UINT_MAX;
   std::vector<Config> best_configs;
@@ -420,9 +277,6 @@ Solution CEMPlanner::solve(std::string& additional_info)
     for (uint i = 0; i < PRS_NUM_THREADS; ++i) thread_rngs[i].seed(i + 1);
 
   for (uint gen = 0; !is_expired(deadline); ++gen) {
-    randomizer.priority_temprature = PRIORITY_TEMP_FUNC(gen);
-
-    print_sample_priority(prob_policy[10], ins->G, ins->starts[10]);
     if (key_pressed_to_stop()) {
       std::cout << "CEMPlanner: interrupted by user (Space/Escape)." << std::endl;
       break;
@@ -446,7 +300,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
 
   if (best_configs.empty()) return Solution{};
 
-  run_stall_test(prob_policy);
+  // run_stall_test(prob_policy);
 
   Solution solution;
   // solution.push_back(ins->starts);
@@ -462,7 +316,7 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
 {
   std::cout << "\n=== Stall-simulation test (q / empty Enter to quit) ===" << std::endl;
 
-  PolicyRandomizer randomizer(&ins->G, MT, PRIORITY_TEMPRATURE);
+  PolicyRandomizer randomizer(&ins->G, MT);
 
   // Restore blocking terminal I/O for interactive use.
   struct termios oldt;
@@ -584,6 +438,7 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
     // --- 6. build full solution: starts -> C_stalled -> rollout ---
     Solution sol;
     // sol.push_back(ins->starts);
+    sol.push_back(ins->starts);
     sol.push_back(C_stalled);
     for (auto& cfg : res.configs) sol.push_back(cfg);
 

@@ -8,57 +8,6 @@
 #include <queue>
 #include <queue>
 
-std::vector<uint> Policy::get_agents_order(HNode* H) const
-{
-  return H->order;
-}
-
-std::vector<uint> DeterministicPolicy::get_agents_order(HNode* H) const
-{
-  const uint N = static_cast<uint>(H->C.size());
-  std::vector<double> priorities(N); 
-
-  // 1. Shave the Vanilla HNode and Inject CEM Tie-Breakers
-  for (uint i = 0; i < N; ++i) {
-    // Extract the strict integer wait_count (Tier 1 constraint)
-    int wait_count = static_cast<int>(H->priorities[i]);
-    
-    // Extract the continuous CEM score for this agent's current vertex
-    const uint v_index = H->C[i]->index;
-    const auto& grid = discrete[i].priority_grid;
-    
-    // Default blind spots to exactly N/2.0
-    double cem_score = (v_index < grid.size() && grid[v_index] >= 0.0) 
-                       ? grid[v_index] 
-                       : (N / 2.0); 
-                       
-    // Clamp the score just in case a wild Gaussian sample goes out of bounds
-    cem_score = std::max(0.0, std::min(cem_score, static_cast<double>(N)));
-    
-    // Normalize to [0.0, 1.0) and invert it.
-    // We divide by (N + 1) to ensure the decimal never strictly equals 1.0, 
-    // which would accidentally increment the wait_count integer!
-    // We invert it (1.0 - X) because PIBT sorts descending (higher float = moves first).
-    double cem_tie_breaker = 1.0 - (cem_score / static_cast<double>(N + 1));
-    
-    // Recombine: Wait Count + Learned CEM Tie Breaker
-    priorities[i] = static_cast<float>(wait_count + cem_tie_breaker);
-  }
-
-  // 2. Sort the Agents based on the injected HNode priorities
-  std::vector<uint> order(N);
-  std::iota(order.begin(), order.end(), 0);
-  
-  std::stable_sort(order.begin(), order.end(), [&](uint a, uint b) {
-    if (std::abs(priorities[a] - priorities[b]) > 0.0001) {
-        return priorities[a] > priorities[b]; // Descending sort
-    }
-    return a < b; // Absolute deterministic fallback if CEM scores clash perfectly
-  });
-
-  return order;
-}
-
 void AgentScores::record_move(Vertex* from, Vertex* to)
 {
   vertex_scores[from].scores[to]++;
@@ -242,7 +191,6 @@ AgentProbabilityPolicy to_probability_policy(const AgentScores& ap)
 {
   AgentProbabilityPolicy result;
   result.vertex_probs.reserve(ap.vertex_scores.size());
-  result.priority_dist.reserve(ap.priority_records.size());
   
   for (const auto& [from, ns] : ap.vertex_scores) {
     if (ns.scores.empty()) continue;
@@ -252,70 +200,11 @@ AgentProbabilityPolicy to_probability_policy(const AgentScores& ap)
     auto& dist = result.vertex_probs[from];
     for (const auto& [nb, score] : ns.scores) dist[nb] = score / total;
   }
-
-  // Compute Gaussian priority distribution parameters from priority_records.
-  for (const auto& [from, records] : ap.priority_records) {
-    const size_t K = records.size();
-    if (K == 0) continue;
-
-    // Sample mean.
-    double mu = 0.0;
-    for (uint r : records) mu += r;
-    mu /= static_cast<double>(K);
-
-    // Sample standard deviation (population formula).
-    double variance = 0.0;
-    for (uint r : records) {
-      double diff = static_cast<double>(r) - mu;
-      variance += diff * diff;
-    }
-    double sigma = std::sqrt(variance / static_cast<double>(K));
-
-    // Safety floor: prevent sigma == 0 from killing exploration.
-    if (sigma < 1.0) sigma = 1.0;
-
-    result.priority_dist[from] = {mu, sigma};
-  }
-
   return result;
 }
 
-// Multi-source BFS: propagates PriorityDist from known vertices to all
-// reachable vertices (nearest-neighbour copy). Run once per agent in
-// PolicyRandomizer::operator(); each per-policy sample then just draws
-// from the returned grid. Wall cells stay at the default {0.0, 1.0}.
-static std::vector<PriorityDist> floodfill_priority_dist(
-    const Graph& G,
-    const std::unordered_map<Vertex*, PriorityDist>& known)
-{
-  const size_t grid_size = static_cast<size_t>(G.width) * G.height;
-  std::vector<PriorityDist> grid(grid_size, {0.0, 1.0});
-  std::vector<bool> visited(grid_size, false);
-
-  std::queue<Vertex*> q;
-  for (const auto& [v, dist] : known) {
-    grid[v->index] = dist;
-    visited[v->index] = true;
-    q.push(v);
-  }
-
-  while (!q.empty()) {
-    Vertex* cur = q.front(); q.pop();
-    for (Vertex* nb : cur->neighbor) {
-      if (nb == nullptr) continue;
-      if (visited[nb->index]) continue;
-      grid[nb->index] = grid[cur->index];
-      visited[nb->index] = true;
-      q.push(nb);
-    }
-  }
-
-  return grid;
-}
-
 AgentDeterministicPolicy PolicyRandomizer::sample_agent_policy(
-    const AgentProbabilityPolicy& prob_policy,
-    const std::vector<PriorityDist>& filled_dist) const
+    const AgentProbabilityPolicy& prob_policy) const
 {
   const Graph& G = *graph;
   AgentDeterministicPolicy result;
@@ -350,16 +239,6 @@ AgentDeterministicPolicy PolicyRandomizer::sample_agent_policy(
       remaining.erase(remaining.begin() + chosen_idx);
     }
   }
-
-  // Sample priority score for every passable vertex from the pre-filled dist grid.
-  const size_t grid_size = static_cast<size_t>(G.width) * G.height;
-  result.priority_grid.resize(grid_size, 0.0);
-  for (Vertex* v : G.V) {
-    std::normal_distribution<double> nd(filled_dist[v->index].mu,
-                                        filled_dist[v->index].sigma + priority_temprature);
-    result.priority_grid[v->index] = nd(*rng);  // uses member rng
-  }
-
   return result;
 }
 
@@ -372,25 +251,18 @@ std::vector<std::shared_ptr<DeterministicPolicy>> PolicyRandomizer::operator()(
   const Graph& G = ins->G;
   const uint N = static_cast<uint>(prob_policy.size());
 
-  // Pre-compute floodfilled PriorityDist grid once per agent.
-  std::vector<std::vector<PriorityDist>> filled_dists(N);
-  for (uint a = 0; a < N; ++a)
-    filled_dists[a] = floodfill_priority_dist(G, prob_policy[a].priority_dist);
-
   std::vector<std::shared_ptr<DeterministicPolicy>> policies;
   policies.reserve(num_policies);
-
   PolicyRandomizer local_copy = *this;
   local_copy.graph = &ins->G;
   for (uint p = 0; p < num_policies; ++p) {
     local_copy.rng = &rngs[p % rngs.size()];
     std::vector<AgentDeterministicPolicy> disc(N);
     for (uint a = 0; a < N; ++a)
-      disc[a] = local_copy.sample_agent_policy(prob_policy[a], filled_dists[a]);
+      disc[a] = local_copy.sample_agent_policy(prob_policy[a]);
     policies.push_back(
         std::make_shared<DeterministicPolicy>(std::move(disc), ins, local_copy.rng));
   }
-
   return policies;
 }
 
@@ -408,34 +280,6 @@ void test_randomizer()
   // Locate (0,0) and (3,3) by their index.
   Vertex* v00 = G.U[0 * 4 + 0];  // index 0
   Vertex* v33 = G.U[3 * 4 + 3];  // index 15
-
-  // Set up one agent with known priority distributions at two vertices.
-  AgentProbabilityPolicy app;
-  app.priority_dist[v00] = {1.0, 0.1};   // (0,0): mu=1, low noise
-  app.priority_dist[v33] = {5.0, 0.1};   // (3,3): mu=5, low noise
-
-  // Floodfill once.
-  std::vector<PriorityDist> filled = floodfill_priority_dist(G, app.priority_dist);
-
-  // Sample one deterministic policy from the filled dist.
-  std::mt19937 rng(42);
-  PolicyRandomizer randomizer;
-  randomizer.graph = &G;
-  randomizer.rng = &rng;
-  AgentDeterministicPolicy det = randomizer.sample_agent_policy(app, filled);
-
-  // Print the 2D grid of sampled priority values.
-  std::cout << "Priority grid (4x4), sampled from floodfilled dist:\n";
-  for (uint y = 0; y < G.height; ++y) {
-    for (uint x = 0; x < G.width; ++x) {
-      uint idx = y * G.width + x;
-      std::cout << std::fixed;
-      std::cout.precision(2);
-      std::cout << det.priority_grid[idx];
-      if (x + 1 < G.width) std::cout << "  ";
-    }
-    std::cout << '\n';
-  }
 }
 
 std::unordered_map<Vertex*, float> DeterministicPolicy::get_neighbor_scores(

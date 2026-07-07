@@ -19,9 +19,6 @@ class Policy {
   virtual ~Policy() = default;
   virtual std::unordered_map<Vertex*, float> get_neighbor_scores(
       const Config& C, uint agent_id, const Vertices& neighbors) = 0;
-  // Returns agent IDs ordered from smallest to largest priority value.
-  // Default implementation returns H->order unchanged.
-  virtual std::vector<uint> get_agents_order(HNode* H) const;
 };
 
 // Naive policy: all zeros (no preference, equivalent to vanilla PIBT random tie-breaking).
@@ -45,9 +42,6 @@ struct AgentScores {
   // Pre-computed random scores for vertices absent from vertex_scores.
   // Maps from-vertex -> (neighbor-vertex -> random score in [-0.9, 0]).
   std::unordered_map<Vertex*, std::unordered_map<Vertex*, float>> blind_score_map;
-
-  // Flat list of every execution order observed at a specific vertex (for CEM priority).
-  std::unordered_map<Vertex*, std::vector<uint>> priority_records;
 
   void record_move(Vertex* from, Vertex* to);
   // Populate blind_score_map for every vertex in the instance.
@@ -95,18 +89,11 @@ class ScorePolicy : public Policy {
 // CEM (Cross-Entropy Method) types
 // ---------------------------------------------------------------------------
 
-// Gaussian parameters for continuous execution-priority distribution.
-struct PriorityDist {
-  double mu;     // mean execution order
-  double sigma;  // exploration noise (standard deviation)
-};
-
 // Per-agent probability distribution over neighbor choices.
 // vertex_probs[v][u] = probability of choosing u when at vertex v.
 // Probabilities for each vertex v sum to 1.0.
 struct AgentProbabilityPolicy {
   std::unordered_map<Vertex*, std::unordered_map<Vertex*, double>> vertex_probs;
-  std::unordered_map<Vertex*, PriorityDist> priority_dist;
 };
 
 // Convert an AgentPolicy (integer move counts) to normalized probabilities.
@@ -151,7 +138,6 @@ class ProbabilityPolicy : public Policy {
 // valid neighbor. Scores are in [-0.9, 0], lower = more preferred.
 struct AgentDeterministicPolicy {
   std::unordered_map<Vertex*, std::unordered_map<Vertex*, float>> rankings;  // vertex -> (neighbor -> score)
-  std::vector<double> priority_grid;  // indexed by vertex->index (width*y+x), size = width*height
 };
 
 
@@ -160,9 +146,6 @@ struct AgentDeterministicPolicy {
 // `discrete` is public so callers can move it out after rollout.
 class DeterministicPolicy : public Policy {
  public:
-  // Override: orders agents by priority_grid value at their current vertex (ascending).
-  std::vector<uint> get_agents_order(HNode* H) const override;
-
   DeterministicPolicy(std::vector<AgentDeterministicPolicy> discrete_policies,
                       const Instance* ins,
                       std::mt19937* rng)
@@ -185,9 +168,8 @@ class DeterministicPolicy : public Policy {
 // of the resulting DeterministicPolicy, so each policy is independently seeded.
 class PolicyRandomizer {
  public:  PolicyRandomizer(const Graph* graph = nullptr,
-                   std::mt19937* rng = nullptr,
-                   double priority_temprature = 1.0)
-      : graph(graph), rng(rng), priority_temprature(priority_temprature) {}
+                   std::mt19937* rng = nullptr)
+      : graph(graph), rng(rng) {}
   std::vector<std::shared_ptr<DeterministicPolicy>> operator()(
       const ProbabilityPolicy& prob_policy,
       const Instance* ins,
@@ -195,12 +177,10 @@ class PolicyRandomizer {
       uint num_policies) const;
 
   AgentDeterministicPolicy sample_agent_policy(
-      const AgentProbabilityPolicy& prob_policy,
-      const std::vector<PriorityDist>& filled_dist) const;
+      const AgentProbabilityPolicy& prob_policy) const;
 
   const Graph* graph = nullptr;
   std::mt19937* rng = nullptr;
-  double priority_temprature;
 };
 
 void test_randomizer();

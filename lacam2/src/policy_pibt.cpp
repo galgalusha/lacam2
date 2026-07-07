@@ -73,7 +73,7 @@ bool PolicyPIBT::get_new_config(HNode* H, LNode* L, Config& C_new)
   }
 
   // perform PIBT
-  for (auto k : policy->get_agents_order(H)) {
+  for (auto k : H->order) {
     auto a = A[k];
     if (a->v_next == nullptr && !funcPIBT(a, H->C)) return false;
   }
@@ -85,7 +85,7 @@ bool PolicyPIBT::get_new_config(HNode* H, LNode* L, Config& C_new)
 
 RolloutResult PolicyPIBT::rollout(HNode* H)
 {
-  if (H == nullptr) return {false, 0, 0, {}, {}};
+  if (H == nullptr) return {false, 0, 0, {}};
   if (is_same_config(H->C, ins->goals)) return {true, 0, 0, {}};
 
   LNode unconstrained;
@@ -99,10 +99,8 @@ RolloutResult PolicyPIBT::rollout(HNode* H)
   auto current = H;
   std::vector<HNode*> rollout_nodes;
   std::vector<Config> rollout_configs;
-  std::vector<std::vector<uint>> rollout_orders;
 
   rollout_configs.push_back(H->C);
-  rollout_orders.push_back(policy->get_agents_order(H));
 
   auto cleanup = [&]() {
     for (auto node : rollout_nodes) delete node;
@@ -111,7 +109,7 @@ RolloutResult PolicyPIBT::rollout(HNode* H)
   while (true) {
     if (!get_new_config(current, &unconstrained, C_new)) {
       cleanup();
-      return {false, 0, 0, {}, {}};
+      return {false, 0, 0, {}};
     }
 
     total_cost += get_edge_cost(current->C, C_new);
@@ -120,18 +118,17 @@ RolloutResult PolicyPIBT::rollout(HNode* H)
 
     if (is_same_config(C_new, ins->goals)) {
       cleanup();
-      return {true, total_cost, rollout_depth, rollout_configs, rollout_orders};
+      return {true, total_cost, rollout_depth, rollout_configs};
     }
 
     const auto h = hasher(C_new);
     if (!visited.insert(h).second) {
       cleanup();
-      return {false, 0, 0, {}, {}};
+      return {false, 0, 0, {}};
     }
 
     auto next = new HNode(C_new, D, current, 0, 0);
     rollout_nodes.push_back(next);
-    rollout_orders.push_back(next->order);
     current = next;
   }
 }
