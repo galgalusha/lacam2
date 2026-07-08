@@ -3,6 +3,7 @@
 #include "../include/post_processing.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <climits>
 #include <future>
 #include <iomanip>
@@ -16,9 +17,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-static bool key_pressed_to_stop()
+// Returns the key pressed (or 0 if none). Non-blocking.
+static char read_key_nonblocking()
 {
-  // Non-blocking check for Space (0x20) or Escape (0x1B) on stdin.
   struct termios oldt, newt;
   tcgetattr(STDIN_FILENO, &oldt);
   newt = oldt;
@@ -29,23 +30,191 @@ static bool key_pressed_to_stop()
   fcntl(STDIN_FILENO, F_SETFL, old_flags | O_NONBLOCK);
 
   char c = 0;
-  bool stop = false;
-  if (read(STDIN_FILENO, &c, 1) == 1)
-    stop = (c == ' ' || c == 0x1B);
+  read(STDIN_FILENO, &c, 1);
 
   fcntl(STDIN_FILENO, F_SETFL, old_flags);
   tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-  return stop;
+  return c;
 }
 
 // Hyper Parameters
 
-static uint CEM_NUM_CANDIDATES   = 100;
-static int CEM_ELITE_COUNT       = 10;
-static double LAPLACE_SMOOTHING  = 2.0;
-static auto LEARNING_RATE_FUNC   = [](int gen) 
-                                   { return 0.2 * sqrt(100.0 / (100.0 + gen)); };
-static float LEARNING_RATE       = LEARNING_RATE_FUNC(0);
+static uint CEM_NUM_CANDIDATES        = 100;
+static int CEM_ELITE_COUNT            = 10;
+static double INIT_LAPLACE_SMOOTHING  = 2.0;
+static double GEN_LAPLACE_SMOOTHING   = 0.02;
+static double BASE_LEARNING_RATE      = 0.2;
+static auto LEARNING_RATE_FUNC   = [](int gen, float base) 
+                                   { return base * sqrt(100.0 / (100.0 + gen)); };
+static float LEARNING_RATE            = LEARNING_RATE_FUNC(0, BASE_LEARNING_RATE);
+
+// ---- Live status display -----------------------------------------------
+
+static uint g_status_lines = 0;  // how many lines the last status block occupied
+static int  g_probe_agent  = 0;  // agent whose entropy stats are shown
+
+static void draw_cem_status(uint gen, double elapsed_sec,
+                             int elite_size, int new_global_elite, uint best_cost,
+                             const ProbabilityPolicy& prob_policy, int num_agents)
+{
+  // Erase previous status block by moving cursor up and clearing to end.
+  if (g_status_lines > 0)
+    std::cout << "\033[" << g_status_lines << "A\033[J";
+
+  uint lines = 0;
+
+  const int mins = static_cast<int>(elapsed_sec / 60.0);
+  const double secs = elapsed_sec - mins * 60.0;
+
+  std::cout << "gen=" << std::setw(5) << gen
+            << "  time=" << mins << "m" << std::fixed << std::setprecision(1) << secs << "s"
+            << "  elite=" << elite_size
+            << "  new_global=" << new_global_elite
+            << "  best_SoC=";
+  if (best_cost == UINT_MAX) std::cout << "---";
+  else                       std::cout << best_cost;
+  std::cout << "  [press 'a': agent  'l'+'p': set smooth  'l'+'r': set lr_base+reset]\n";
+  ++lines;
+
+  // Hyper-parameters row.
+  std::cout << "  lr=" << std::fixed << std::setprecision(4) << LEARNING_RATE
+            << "  lr_base=" << BASE_LEARNING_RATE
+            << "  gen_smooth=" << GEN_LAPLACE_SMOOTHING << "\n";
+  ++lines;
+
+  // Entropy row for the probe agent.
+  const int pa = g_probe_agent;
+  if (pa < num_agents) {
+    const auto& agent_pol = prob_policy[pa];
+    const uint visited = static_cast<uint>(agent_pol.vertex_probs.size());
+    std::cout << "  [entropy] agent=" << pa << " visited=" << visited;
+    if (visited > 0) {
+      for (double thresh : {0.8, 0.9, 0.95, 0.99}) {
+        uint confident = 0;
+        for (const auto& [v, nb_probs] : agent_pol.vertex_probs) {
+          double best = 0.0;
+          for (const auto& [u, p] : nb_probs)
+            if (p > best) best = p;
+          if (best > thresh) ++confident;
+        }
+        std::cout << " p>" << thresh << "=" << std::fixed << std::setprecision(2)
+                  << (100.0 * confident / visited) << "%";
+      }
+    }
+    std::cout << "\n";
+    ++lines;
+  }
+
+  std::cout << std::flush;
+  g_status_lines = lines;
+}
+
+// Read a new probe-agent id from the user (blocking, restores terminal after).
+static void prompt_agent_id(int num_agents)
+{
+  // Restore canonical + echo mode for interactive input.
+  struct termios oldt;
+  tcgetattr(STDIN_FILENO, &oldt);
+  struct termios newt = oldt;
+  newt.c_lflag |= (ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+  int old_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+  fcntl(STDIN_FILENO, F_SETFL, old_flags & ~O_NONBLOCK);
+
+  // Print prompt below current status block (don't erase it).
+  std::cout << "Enter agent id [0-" << (num_agents - 1) << "]: " << std::flush;
+  std::string line;
+  if (std::getline(std::cin, line)) {
+    try {
+      int id = std::stoi(line);
+      if (id >= 0 && id < num_agents) {
+        g_probe_agent = id;
+        // The next draw_cem_status call will wipe the prompt line too;
+        // account for it by incrementing the line counter.
+        g_status_lines += 2; // prompt line + newline from getline
+      }
+    } catch (...) {}
+  }
+
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  fcntl(STDIN_FILENO, F_SETFL, old_flags);
+}
+
+// Read a new GEN_LAPLACE_SMOOTHING value from the user (blocking).
+static void prompt_gen_laplace()
+{
+  struct termios oldt;
+  tcgetattr(STDIN_FILENO, &oldt);
+  struct termios newt = oldt;
+  newt.c_lflag |= (ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+  int old_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+  fcntl(STDIN_FILENO, F_SETFL, old_flags & ~O_NONBLOCK);
+
+  std::cout << "Enter new gen_laplace_smoothing (current=" << GEN_LAPLACE_SMOOTHING << "): " << std::flush;
+  std::string line;
+  if (std::getline(std::cin, line)) {
+    try {
+      double v = std::stod(line);
+      if (v > 0.0) {
+        GEN_LAPLACE_SMOOTHING = v;
+        g_status_lines += 2;
+      }
+    } catch (...) {}
+  }
+
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  fcntl(STDIN_FILENO, F_SETFL, old_flags);
+}
+
+// Read a new BASE_LEARNING_RATE value from the user (blocking). Returns true if reset requested.
+static bool prompt_base_lr()
+{
+  struct termios oldt;
+  tcgetattr(STDIN_FILENO, &oldt);
+  struct termios newt = oldt;
+  newt.c_lflag |= (ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+  int old_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+  fcntl(STDIN_FILENO, F_SETFL, old_flags & ~O_NONBLOCK);
+
+  std::cout << "Enter new base_learning_rate (current=" << BASE_LEARNING_RATE << "): " << std::flush;
+  std::string line;
+  bool reset = false;
+  if (std::getline(std::cin, line)) {
+    try {
+      double v = std::stod(line);
+      if (v > 0.0 && v <= 1.0) {
+        BASE_LEARNING_RATE = v;
+        g_status_lines += 2;
+        reset = true;
+      }
+    } catch (...) {}
+  }
+
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  fcntl(STDIN_FILENO, F_SETFL, old_flags);
+  return reset;
+}
+
+// Blocking read of a single key (used for two-key sequences like 'l'+'p').
+static char read_key_blocking()
+{
+  struct termios oldt;
+  tcgetattr(STDIN_FILENO, &oldt);
+  struct termios newt = oldt;
+  newt.c_lflag &= ~(ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+  int old_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+  fcntl(STDIN_FILENO, F_SETFL, old_flags & ~O_NONBLOCK);
+
+  char c = 0;
+  read(STDIN_FILENO, &c, 1);
+
+  fcntl(STDIN_FILENO, F_SETFL, old_flags);
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  return c;
+}
 
 CEMPlanner::CEMPlanner(
     const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
@@ -255,7 +424,7 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
     auto& master_agent = prob_policy[a];
     if (a >= agent_scores.size()) continue;
 
-    const auto elite_prob = to_probability_policy(agent_scores[a], 0.02);
+    const auto elite_prob = to_probability_policy(agent_scores[a], GEN_LAPLACE_SMOOTHING);
 
     // Add newly seen vertices to the master policy.
     for (const auto& [v, nb_probs] : elite_prob.vertex_probs) {
@@ -282,6 +451,10 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
 
 Solution CEMPlanner::solve(std::string& additional_info)
 {
+  g_status_lines = 0;
+  g_probe_agent  = 0;
+  const auto solve_start = std::chrono::steady_clock::now();
+
   // 1. Build initial policy from random rollouts.
   std::vector<RolloutResult> global_elite;
   global_elite.reserve(CEM_ELITE_COUNT);
@@ -293,7 +466,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
   const auto& agent_pols = initial_nsp.get_policies();
   for (uint a = 0; a < static_cast<uint>(ins->N); ++a) {
     if (a < agent_pols.size())
-      prob_policy[a] = to_probability_policy(agent_pols[a], LAPLACE_SMOOTHING);
+      prob_policy[a] = to_probability_policy(agent_pols[a], INIT_LAPLACE_SMOOTHING);
   }
 
   uint best_cost = UINT_MAX;
@@ -305,11 +478,32 @@ Solution CEMPlanner::solve(std::string& additional_info)
   else
     for (uint i = 0; i < PRS_NUM_THREADS; ++i) thread_rngs[i].seed(i + 1);
 
-  for (uint gen = 0; !is_expired(deadline); ++gen) {
-    if (key_pressed_to_stop()) {
-      std::cout << "CEMPlanner: interrupted by user (Space/Escape)." << std::endl;
+  uint gen = 0;
+  while (!is_expired(deadline)) {
+    char key = read_key_nonblocking();
+    if (key == ' ' || key == 0x1B) {
+      // Finalise the status display before printing the stop message.
+      if (g_status_lines > 0) std::cout << "\033[" << g_status_lines << "A\033[J";
+      g_status_lines = 0;
+      std::cout << "CEMPlanner: interrupted by user (Space/Escape).\n" << std::flush;
       break;
     }
+    if (key == 'a' || key == 'A') {
+      prompt_agent_id(ins->N);
+    }
+    if (key == 'l' || key == 'L') {
+      char sub = read_key_blocking();
+      if (sub == 'p' || sub == 'P') {
+        prompt_gen_laplace();
+      } else if (sub == 'r' || sub == 'R') {
+        if (prompt_base_lr()) {
+          gen = 0;
+        }
+      }
+    }
+
+    LEARNING_RATE = LEARNING_RATE_FUNC(gen, BASE_LEARNING_RATE);
+
     // 3-4. Generate and evaluate candidates.
     auto eval_results = run_candidate_rollouts(
         prob_policy, randomizer, thread_rngs, CEM_NUM_CANDIDATES);
@@ -321,17 +515,17 @@ Solution CEMPlanner::solve(std::string& additional_info)
     // Update global_elite: replace worse entries with better new ones.
     int new_elite_count = update_global_elite(global_elite, eval_results);
 
-    std::cout << "CEMPlanner CEM gen=" << gen
-              << " elite=" << eval_results.size()
-              << " new_global_elite=" << new_elite_count
-              << " best_SoC=" << best_cost << std::endl;
-
-    print_model_entropy(prob_policy, gen);
+    const double elapsed = std::chrono::duration<double>(
+        std::chrono::steady_clock::now() - solve_start).count();
+    draw_cem_status(gen, elapsed,
+                    static_cast<int>(eval_results.size()), new_elite_count,
+                    best_cost, prob_policy, ins->N);
 
     // 6. Update probability policy from elite rollout moves.
     if (new_elite_count > 0)
       update_policy_with_elite(prob_policy, global_elite);
 
+    ++gen;
   }
 
   if (best_configs.empty()) return Solution{};
