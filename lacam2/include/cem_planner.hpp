@@ -68,6 +68,12 @@ class CEMPlanner : public Planner {
   void update_policy_with_elite(ProbabilityPolicy& prob_policy,
                                 const std::vector<RolloutResult>& elite);
 
+  // For a sample of agents, print per-agent statistics about how "confident"
+  // the learned probability policy is: the fraction of known vertices whose
+  // best neighbor probability exceeds each threshold (0.8, 0.9, 0.95, 0.99).
+  // Vertices unknown to the policy are excluded from the denominator.
+  void print_model_entropy(const ProbabilityPolicy& prob_policy, uint gen) const;
+
   // Interactive stall-simulation test. Loops until the user enters 'q' or empty
   // input. Each iteration: samples a discrete policy from prob_policy, lets the
   // user choose N agents to stall, simulates one PIBT step then tries to revert

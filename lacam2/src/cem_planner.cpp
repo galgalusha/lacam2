@@ -42,8 +42,9 @@ static bool key_pressed_to_stop()
 
 static uint CEM_NUM_CANDIDATES   = 100;
 static int CEM_ELITE_COUNT       = 10;
+static double LAPLACE_SMOOTHING  = 2.0;
 static auto LEARNING_RATE_FUNC   = [](int gen) 
-                                   { return 0.1 * sqrt(100.0 / (100.0 + gen)); };
+                                   { return 0.2 * sqrt(100.0 / (100.0 + gen)); };
 static float LEARNING_RATE       = LEARNING_RATE_FUNC(0);
 
 CEMPlanner::CEMPlanner(
@@ -254,7 +255,7 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
     auto& master_agent = prob_policy[a];
     if (a >= agent_scores.size()) continue;
 
-    const auto elite_prob = to_probability_policy(agent_scores[a]);
+    const auto elite_prob = to_probability_policy(agent_scores[a], 0.02);
 
     // Add newly seen vertices to the master policy.
     for (const auto& [v, nb_probs] : elite_prob.vertex_probs) {
@@ -284,7 +285,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
   // 1. Build initial policy from random rollouts.
   std::vector<RolloutResult> global_elite;
   global_elite.reserve(CEM_ELITE_COUNT);
-  auto initial_nsp = create_initial_policy(ins->N, global_elite, 1000, 100);
+  auto initial_nsp = create_initial_policy(ins->N, global_elite, 2000, 100);
 
   // 2. Translate to a ProbabilityPolicy.
   PolicyRandomizer randomizer(&ins->G, MT);
@@ -292,7 +293,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
   const auto& agent_pols = initial_nsp.get_policies();
   for (uint a = 0; a < static_cast<uint>(ins->N); ++a) {
     if (a < agent_pols.size())
-      prob_policy[a] = to_probability_policy(agent_pols[a]);
+      prob_policy[a] = to_probability_policy(agent_pols[a], LAPLACE_SMOOTHING);
   }
 
   uint best_cost = UINT_MAX;
@@ -325,6 +326,8 @@ Solution CEMPlanner::solve(std::string& additional_info)
               << " new_global_elite=" << new_elite_count
               << " best_SoC=" << best_cost << std::endl;
 
+    print_model_entropy(prob_policy, gen);
+
     // 6. Update probability policy from elite rollout moves.
     if (new_elite_count > 0)
       update_policy_with_elite(prob_policy, global_elite);
@@ -342,6 +345,41 @@ Solution CEMPlanner::solve(std::string& additional_info)
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Model-entropy diagnostic
+// ---------------------------------------------------------------------------
+
+void CEMPlanner::print_model_entropy(const ProbabilityPolicy& prob_policy, uint gen) const
+{
+  static const std::vector<double> THRESHOLDS = {0.8, 0.9, 0.95, 0.99};
+  // Pick representative agent indices; skip those out of range.
+  std::vector<int> probe_agents = {0};
+
+  for (int a : probe_agents) {
+    if (a >= ins->N) continue;
+    const auto& agent_pol = prob_policy[a];
+    const uint visited = static_cast<uint>(agent_pol.vertex_probs.size());
+    if (visited == 0) {
+      continue;
+    }
+
+    std::cout << "  [entropy] gen=" << gen << " agent=" << a
+              << " visited=" << visited;
+    for (double thresh : THRESHOLDS) {
+      uint confident = 0;
+      for (const auto& [v, nb_probs] : agent_pol.vertex_probs) {
+        double best = 0.0;
+        for (const auto& [u, p] : nb_probs)
+          if (p > best) best = p;
+        if (best > thresh) ++confident;
+      }
+      std::cout << " p>" << thresh << "=" << std::fixed << std::setprecision(2)
+                << (100.0 * confident / visited) << "%";
+    }
+    std::cout << std::endl;
+  }
+}
+
 // Interactive stall-simulation test
 // ---------------------------------------------------------------------------
 

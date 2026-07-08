@@ -187,18 +187,35 @@ std::unordered_map<Vertex*, float> ProbabilityPolicy::get_neighbor_scores(
 // CEM helpers
 // ---------------------------------------------------------------------------
 
-AgentProbabilityPolicy to_probability_policy(const AgentScores& ap)
+AgentProbabilityPolicy to_probability_policy(const AgentScores& ap, double laplace_factor)
 {
   AgentProbabilityPolicy result;
   result.vertex_probs.reserve(ap.vertex_scores.size());
-  
+
   for (const auto& [from, ns] : ap.vertex_scores) {
     if (ns.scores.empty()) continue;
+
+    // Full candidate set: neighbors + stay-in-place.
+    std::vector<Vertex*> candidates = from->neighbor;
+    candidates.push_back(from);
+    const double num_candidates = static_cast<double>(candidates.size());
+
     double total = 0.0;
     for (const auto& [nb, score] : ns.scores) total += score;
-    // total > 0: scores are positive integers from record_move increments.
+
     auto& dist = result.vertex_probs[from];
-    for (const auto& [nb, score] : ns.scores) dist[nb] = score / total;
+    if (laplace_factor <= 0.0) {
+      // Original behaviour: only visited neighbors get non-zero probability.
+      for (const auto& [nb, score] : ns.scores) dist[nb] = score / total;
+    } else {
+      // Laplace smoothing: P(u|v) = (count(u) + α) / (total + α * |candidates|)
+      const double denom = total + laplace_factor * num_candidates;
+      for (Vertex* u : candidates) {
+        auto it = ns.scores.find(u);
+        const double count = (it != ns.scores.end()) ? static_cast<double>(it->second) : 0.0;
+        dist[u] = (count + laplace_factor) / denom;
+      }
+    }
   }
   return result;
 }

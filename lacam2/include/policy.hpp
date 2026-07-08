@@ -99,7 +99,7 @@ struct AgentProbabilityPolicy {
 // Convert an AgentPolicy (integer move counts) to normalized probabilities.
 // Only vertices present in ap.vertex_scores are stored; blind-spot vertices
 // are handled lazily by CrossEntropyPolicy (returns 0.0 == no preference).
-AgentProbabilityPolicy to_probability_policy(const AgentScores& ap);
+AgentProbabilityPolicy to_probability_policy(const AgentScores& ap, double laplace_factor = 0.0);
 
 // Policy that samples a neighbor from per-agent probability distributions on every call.
 // The sampled neighbor gets score -0.9; all others get 0.
