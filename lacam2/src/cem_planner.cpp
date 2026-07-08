@@ -8,6 +8,7 @@
 #include <future>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <numeric>
 #include <queue>
 #include <unordered_map>
@@ -57,53 +58,129 @@ static void draw_cem_status(uint gen, double elapsed_sec,
                              int elite_size, int new_global_elite, uint best_cost,
                              const ProbabilityPolicy& prob_policy, int num_agents)
 {
-  // Erase previous status block by moving cursor up and clearing to end.
   if (g_status_lines > 0)
     std::cout << "\033[" << g_status_lines << "A\033[J";
-
-  uint lines = 0;
 
   const int mins = static_cast<int>(elapsed_sec / 60.0);
   const double secs = elapsed_sec - mins * 60.0;
 
-  std::cout << "gen=" << std::setw(5) << gen
-            << "  time=" << mins << "m" << std::fixed << std::setprecision(1) << secs << "s"
-            << "  elite=" << elite_size
-            << "  new_global=" << new_global_elite
-            << "  best_SoC=";
-  if (best_cost == UINT_MAX) std::cout << "---";
-  else                       std::cout << best_cost;
-  std::cout << "  [press 'a': agent  'l'+'p': set smooth  'l'+'r': set lr_base+reset]\n";
-  ++lines;
+  // ── Box geometry ────────────────────────────────────────────────
+  // Left panel inner width (LW), right panel inner width (RW).
+  // Every line is exactly LW+RW+7 visible chars wide.
+  constexpr int LW = 24;
+  constexpr int RW = 39;
+  constexpr int FW = LW + RW + 3;  // full inner width = 66
 
-  // Hyper-parameters row.
-  std::cout << "  lr=" << std::fixed << std::setprecision(4) << LEARNING_RATE
-            << "  lr_base=" << BASE_LEARNING_RATE
-            << "  gen_smooth=" << GEN_LAPLACE_SMOOTHING << "\n";
-  ++lines;
+  // Repeat a UTF-8 border glyph n times.
+  auto rep = [](const char* g, int n) -> std::string {
+    std::string s; for (int i = 0; i < n; ++i) s += g; return s;
+  };
+  // Pad/truncate a plain-ASCII string to exactly w chars.
+  auto pad = [](std::string s, int w) -> std::string {
+    if ((int)s.size() > w) s.resize(w);
+    else s.append(w - (int)s.size(), ' ');
+    return s;
+  };
 
-  // Entropy row for the probe agent.
-  const int pa = g_probe_agent;
-  if (pa < num_agents) {
-    const auto& agent_pol = prob_policy[pa];
-    const uint visited = static_cast<uint>(agent_pol.vertex_probs.size());
-    std::cout << "  [entropy] agent=" << pa << " visited=" << visited;
+  // Border lines (all LW+RW+7 wide).
+  const std::string full_top  = "\u2554" + rep("\u2550", FW+2)        + "\u2557";
+  const std::string split_sep = "\u2560" + rep("\u2550", LW+2) + "\u2566" + rep("\u2550", RW+2) + "\u2563";
+  const std::string bot       = "\u255a" + rep("\u2550", LW+2) + "\u2569" + rep("\u2550", RW+2) + "\u255d";
+
+  // Two-column content row (pure-ASCII content only — no UTF-8 in L or R).
+  auto row = [&](const std::string& L, const std::string& R) -> std::string {
+    return "\u2551 " + pad(L, LW) + " \u2551 " + pad(R, RW) + " \u2551";
+  };
+  // Right-panel internal horizontal separator; left panel stays open.
+  // L must be pure ASCII (pad() counts bytes).
+  auto rsep = [&](const std::string& L) -> std::string {
+    return "\u2551 " + pad(L, LW) + " \u2560" + rep("\u2550", RW+2) + "\u2563";
+  };
+
+  // ── Entropy data ─────────────────────────────────────────────────
+  static constexpr double THRESH[4] = {0.80, 0.90, 0.95, 0.99};
+  double cpct[4] = {};
+  uint visited = 0;
+  if (g_probe_agent < num_agents) {
+    const auto& apol = prob_policy[g_probe_agent];
+    visited = static_cast<uint>(apol.vertex_probs.size());
     if (visited > 0) {
-      for (double thresh : {0.8, 0.9, 0.95, 0.99}) {
-        uint confident = 0;
-        for (const auto& [v, nb_probs] : agent_pol.vertex_probs) {
+      for (int ti = 0; ti < 4; ++ti) {
+        uint cnt = 0;
+        for (const auto& [v, nb] : apol.vertex_probs) {
           double best = 0.0;
-          for (const auto& [u, p] : nb_probs)
-            if (p > best) best = p;
-          if (best > thresh) ++confident;
+          for (const auto& [u, p] : nb) if (p > best) best = p;
+          if (best > THRESH[ti]) ++cnt;
         }
-        std::cout << " p>" << thresh << "=" << std::fixed << std::setprecision(2)
-                  << (100.0 * confident / visited) << "%";
+        cpct[ti] = 100.0 * cnt / visited;
       }
     }
-    std::cout << "\n";
-    ++lines;
   }
+
+  // ── Format helpers (pure ASCII output) ───────────────────────────
+  auto fi = [](long long v, int w) -> std::string {
+    std::ostringstream s; s << std::setw(w) << v; return s.str();
+  };
+  auto fd = [](double v, int w, int p) -> std::string {
+    std::ostringstream s;
+    s << std::fixed << std::setprecision(p) << std::setw(w) << v;
+    return s.str();
+  };
+
+  // Entropy table row (pure ASCII, fits within LW).
+  auto erow = [&](int ti) -> std::string {
+    std::ostringstream s;
+    s << "  > " << std::fixed << std::setprecision(2) << THRESH[ti]
+      << "  |  " << std::setw(6) << std::fixed << std::setprecision(2) << cpct[ti] << "%";
+    return s.str();  // ~20 chars, LW=24
+  };
+
+  // ── Header: GEN (bold) + TIME + BEST SoC (bold), centred ─────────
+  std::string gen_str = fi((long long)gen, 6);
+  std::string soc_str = (best_cost == UINT_MAX) ? "      ---" : fi((long long)best_cost, 9);
+  std::string time_s;
+  {
+    std::ostringstream t;
+    t << mins << "m" << std::fixed << std::setprecision(1) << secs << "s";
+    time_s = t.str();
+  }
+  // Compute visible (no-ANSI) length to determine centering padding.
+  const std::string hdr_vis = "GEN: " + gen_str + "   TIME: " + time_s
+                             + "   BEST SoC: " + soc_str;
+  int vis_len  = static_cast<int>(hdr_vis.size());
+  int tot_pad  = FW - vis_len;
+  int lpad_n   = (tot_pad > 0) ? tot_pad / 2 : 0;
+  int rpad_n   = (tot_pad > 0) ? tot_pad - lpad_n : 0;
+  const std::string hdr_bold =
+      std::string(lpad_n, ' ')
+    + "GEN: \033[1m" + gen_str + "\033[0m"
+    + "   TIME: " + time_s
+    + "   BEST SoC: \033[1m" + soc_str + "\033[0m"
+    + std::string(rpad_n, ' ');
+
+  // ── Print ─────────────────────────────────────────────────────────
+  uint lines = 0;
+  auto pr = [&](const std::string& s) { std::cout << s << "\n"; ++lines; };
+
+  pr(full_top);
+  // Header row: ANSI bold values — output manually (pad() can't measure ANSI)
+  std::cout << "\u2551 " << hdr_bold << " \u2551\n"; ++lines;
+  pr(split_sep);
+  pr(row("  ENTROPY  [agent =" + fi(g_probe_agent,3) + " ]",
+         "  GEN STATS"));
+  pr(row("  visited =" + fi((long long)visited, 8),
+         "  elite_size  :" + fi(elite_size, 6)));
+  pr(row("",
+         "  new_elite   :" + fi(new_global_elite, 6)));
+  pr(rsep("  thresh   |  confident"));
+  pr(row("  " + std::string(20, '-'), "  HYPER PARAMS"));
+  pr(row(erow(0), "  lr         :" + fd(LEARNING_RATE,        9, 4)));
+  pr(row(erow(1), "  lr_base    :" + fd(BASE_LEARNING_RATE,   9, 4)));
+  pr(row(erow(2), "  gen_smooth :" + fd(GEN_LAPLACE_SMOOTHING,9, 4)));
+  pr(row(erow(3), ""));
+  pr(bot);
+  pr("  \033[2m[Spc/Esc]\033[0m stop  \033[2m[a]\033[0m agent  "
+     "\033[2m[l+p]\033[0m smooth  \033[2m[l+r]\033[0m lr_base+reset");
 
   std::cout << std::flush;
   g_status_lines = lines;
