@@ -13,6 +13,7 @@ PolicyPIBT::PolicyPIBT(const Instance* _ins, DistTable& _D,
       N(ins->N),
       V_size(ins->G.size()),
       C_next(N),
+      tie_breakers(V_size, 0.0f),
       A(N, nullptr),
       occupied_now(V_size, nullptr),
       occupied_next(V_size, nullptr)
@@ -75,7 +76,7 @@ bool PolicyPIBT::get_new_config(HNode* H, LNode* L, Config& C_new)
   // perform PIBT
   for (auto k : H->order) {
     auto a = A[k];
-    if (a->v_next == nullptr && !funcPIBT(a, H->C)) return false;
+    if (a->v_next == nullptr && !funcPIBT(a)) return false;
   }
 
   for (auto a : A) C_new[a->id] = a->v_next;
@@ -151,7 +152,7 @@ RolloutResult PolicyPIBT::rollout(HNode* H, uint max_cost)
   }
 }
 
-bool PolicyPIBT::funcPIBT(Agent* ai, const Config& C_current)
+bool PolicyPIBT::funcPIBT(Agent* ai)
 {
   const auto i = ai->id;
   const auto K = ai->v_now->neighbor.size();
@@ -160,17 +161,17 @@ bool PolicyPIBT::funcPIBT(Agent* ai, const Config& C_current)
   for (auto k = 0; k < K; ++k) C_next[i][k] = ai->v_now->neighbor[k];
   C_next[i][K] = ai->v_now;
 
-  // get tie-breakers in [-0.9, 0] for each neighbor
+  // set tie-breakers in [-0.9, 0] for each neighbor, written into tie_breakers[v->id]
   const Vertices neighbors(C_next[i].begin(), C_next[i].begin() + K + 1);
-  auto tie_breakers = policy->get_neighbor_scores(C_current, i, neighbors);
+  policy->set_tie_breakers(i, ai->v_now, neighbors, tie_breakers);
 
   // sort by D + tie_breaker (lower = preferred)
   std::sort(C_next[i].begin(), C_next[i].begin() + K + 1,
             [&](Vertex* const v, Vertex* const u) {
-              return D.get(i, v) + tie_breakers[v] < D.get(i, u) + tie_breakers[u];
+              return D.get(i, v) + tie_breakers[v->id] < D.get(i, u) + tie_breakers[u->id];
             });
 
-  Agent* swap_agent = swap_possible_and_required(ai, C_current);
+  Agent* swap_agent = swap_possible_and_required(ai);
   if (swap_agent != nullptr)
     std::reverse(C_next[i].begin(), C_next[i].begin() + K + 1);
 
@@ -188,7 +189,7 @@ bool PolicyPIBT::funcPIBT(Agent* ai, const Config& C_current)
     ai->v_next = u;
 
     if (ak != nullptr && ak != ai && ak->v_next == nullptr) {
-      if (!funcPIBT(ak, C_current)) {
+      if (!funcPIBT(ak)) {
         continue;
       }
     }
@@ -206,7 +207,7 @@ bool PolicyPIBT::funcPIBT(Agent* ai, const Config& C_current)
   return false;
 }
 
-Agent* PolicyPIBT::swap_possible_and_required(Agent* ai, const Config& C_current)
+Agent* PolicyPIBT::swap_possible_and_required(Agent* ai)
 {
   const auto i = ai->id;
   if (C_next[i][0] == ai->v_now) return nullptr;

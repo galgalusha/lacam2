@@ -11,14 +11,15 @@
 struct HNode;
 
 // Abstract base class for neighbor selection policy used in PolicyPIBT.
-// Given a config, an agent id, and all neighbor vertices (including self),
-// returns a score in [-0.9, 0] for each neighbor. -0.9 = most preferred.
-// PolicyPIBT adds these scores as tie-breakers to D values.
+// Writes tie-breaker scores (in [-0.9, 0]) directly into tie_breakers_by_id
+// indexed by vertex id. -0.9 = most preferred. Only the neighbor entries are
+// written; the caller is responsible for zeroing them beforehand if needed.
 class Policy {
  public:
   virtual ~Policy() = default;
-  virtual std::unordered_map<Vertex*, float> get_neighbor_scores(
-      const Config& C, uint agent_id, const Vertices& neighbors) = 0;
+  virtual void set_tie_breakers(uint agent_id, Vertex* current,
+                                const Vertices& neighbors,
+                                std::vector<float>& tie_breakers_by_id) = 0;
 };
 
 struct NeighborScores {
@@ -136,8 +137,9 @@ class DeterministicPolicy : public Policy {
         ins(ins),
         rng(rng) {}
 
-  std::unordered_map<Vertex*, float> get_neighbor_scores(
-      const Config& C, uint agent_id, const Vertices& neighbors) override;
+  void set_tie_breakers(uint agent_id, Vertex* current,
+                        const Vertices& neighbors,
+                        std::vector<float>& tie_breakers_by_id) override;
 
   std::vector<AgentDeterministicPolicy> discrete;
 

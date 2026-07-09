@@ -293,26 +293,24 @@ void test_randomizer()
   Vertex* v33 = G.U[3 * 4 + 3];  // index 15
 }
 
-std::unordered_map<Vertex*, float> DeterministicPolicy::get_neighbor_scores(
-    const Config& C, uint agent_id, const Vertices& neighbors)
+void DeterministicPolicy::set_tie_breakers(uint agent_id, Vertex* current,
+                                            const Vertices& neighbors,
+                                            std::vector<float>& tie_breakers_by_id)
 {
-  std::unordered_map<Vertex*, float> result;
-  result.reserve(neighbors.size());
-  for (Vertex* v : neighbors) result[v] = 0.0f;
+  // Zero out all neighbor entries first.
+  for (Vertex* v : neighbors) tie_breakers_by_id[v->id] = 0.0f;
 
-  if (agent_id >= discrete.size()) return result;
-  Vertex* current = C[agent_id];
+  if (agent_id >= discrete.size()) return;
   const auto& deterministic = discrete[agent_id];
 
   auto it = deterministic.rankings.find(current);
   if (it != deterministic.rankings.end()) {
     for (Vertex* v : neighbors) {
       auto sit = it->second.find(v);
-      result[v] = (sit != it->second.end()) ? sit->second : 0.0f;
+      if (sit != it->second.end()) tie_breakers_by_id[v->id] = sit->second;
     }
   } else {
     // Blind spot: assign random scores so PolicyPIBT gets varied tie-breaking.
-    for (Vertex* v : neighbors) result[v] = get_random_float(rng, -0.9f, 0.0f);
+    for (Vertex* v : neighbors) tie_breakers_by_id[v->id] = get_random_float(rng, -0.9f, 0.0f);
   }
-  return result;
 }
