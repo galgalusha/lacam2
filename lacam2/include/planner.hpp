@@ -100,8 +100,7 @@ struct Planner {
           const int _verbose = 0,
           // other parameters
           const Objective _objective = OBJ_NONE,
-          const float _restart_rate = 0.001,
-          std::shared_ptr<Policy> _policy = nullptr);
+          const float _restart_rate = 0.001);
   ~Planner();
   Solution solve(std::string& additional_info);
   void expand_lowlevel_tree(HNode* H, const std::shared_ptr<LNode>& L);
@@ -122,40 +121,40 @@ struct Planner {
   }
 };
 
-struct WPlanner : public Planner {
-  struct Successor {
-    HNode* node;
-    uint depth;
-    uint temp_cost;
-    std::vector<Config> rollout;
-  };
+// struct WPlanner : public Planner {
+//   struct Successor {
+//     HNode* node;
+//     uint depth;
+//     uint temp_cost;
+//     std::vector<Config> rollout;
+//   };
 
-  std::unordered_set<uint> seen_states;
+//   std::unordered_set<uint> seen_states;
 
-  WPlanner(const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
-           const int _verbose = 0,
-           const Objective _objective = OBJ_NONE,
-           const float _restart_rate = 0.001)
-      : Planner(_ins, _deadline, _MT, _verbose, _objective, _restart_rate)
-  {
-  }
+//   WPlanner(const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
+//            const int _verbose = 0,
+//            const Objective _objective = OBJ_NONE,
+//            const float _restart_rate = 0.001)
+//       : Planner(_ins, _deadline, _MT, _verbose, _objective, _restart_rate)
+//   {
+//   }
 
-  using PIBTFactory = std::function<std::unique_ptr<PIBTBase>(std::mt19937*)>;
+//   using PIBTFactory = std::function<std::unique_ptr<PIBTBase>(std::mt19937*)>;
 
-  std::vector<Successor> get_successors(HNode* H, uint& best_temp_cost,
-                                        uint64_t& num_node_gen,
-                                        const uint num_expansions,
-                                        const uint how_many,
-                                        const bool save_rollouts = false,
-                                        const PIBTFactory& pibt_factory = nullptr);
-  ScorePolicy create_policy(int num_agents);
-  ScorePolicy create_policy(const Config& start_config, int num_agents);
-  void test_policy(int agent_id);
-  Solution solve(std::string& additional_info);
+//   std::vector<Successor> get_successors(HNode* H, uint& best_temp_cost,
+//                                         uint64_t& num_node_gen,
+//                                         const uint num_expansions,
+//                                         const uint how_many,
+//                                         const bool save_rollouts = false,
+//                                         const PIBTFactory& pibt_factory = nullptr);
+//   ScorePolicy create_policy(int num_agents);
+//   ScorePolicy create_policy(const Config& start_config, int num_agents);
+//   void test_policy(int agent_id);
+//   Solution solve(std::string& additional_info);
 
-  // Returns the HNode at the given depth reachable from this successor.
-  // Walks up parents if depth <= successor.node->depth, or builds HNodes
-  // from the rollout if depth > successor.node->depth.
-  // Any newly created nodes are appended to `created_nodes` (caller owns them).
-  HNode* get_node_at_depth(const Successor& successor, uint depth);
-};
+//   // Returns the HNode at the given depth reachable from this successor.
+//   // Walks up parents if depth <= successor.node->depth, or builds HNodes
+//   // from the rollout if depth > successor.node->depth.
+//   // Any newly created nodes are appended to `created_nodes` (caller owns them).
+//   HNode* get_node_at_depth(const Successor& successor, uint depth);
+// };

@@ -21,17 +21,6 @@ class Policy {
       const Config& C, uint agent_id, const Vertices& neighbors) = 0;
 };
 
-// Naive policy: all zeros (no preference, equivalent to vanilla PIBT random tie-breaking).
-class RandomPolicy : public Policy {
- public:
-  explicit RandomPolicy(std::mt19937* _MT) : MT(_MT) {}
-  std::unordered_map<Vertex*, float> get_neighbor_scores(
-      const Config& C, uint agent_id, const Vertices& neighbors) override;
-
- private:
-  std::mt19937* MT;
-};
-
 struct NeighborScores {
   std::unordered_map<Vertex*, int> scores;  // neighbor vertex -> score
 };
@@ -52,14 +41,11 @@ struct AgentScores {
 };
 
 // Policy backed by learned neighbor scores.
-class ScorePolicy : public Policy {
+class ScorePolicy {
  public:
   explicit ScorePolicy(std::vector<AgentScores> agent_policies,
                                std::mt19937* _MT)
       : policies(std::move(agent_policies)), MT(_MT) {}
-
-  std::unordered_map<Vertex*, float> get_neighbor_scores(
-      const Config& C, uint agent_id, const Vertices& neighbors) override;
 
   // Call once after all rollouts are recorded to pre-compute blind scores.
   void finish_recording(const Instance* ins);
@@ -106,7 +92,7 @@ AgentProbabilityPolicy to_probability_policy(const AgentScores& ap, double lapla
 // Also serves as the plain container for per-agent probability data.
 // Used as the master policy in CEM; passed to PolicyRandomizer to sample
 // DeterministicPolicy instances for rollout evaluation.
-class ProbabilityPolicy : public Policy {
+class ProbabilityPolicy {
  public:
   // Default constructor (empty container; get_neighbor_scores must not be called).
   ProbabilityPolicy() : probs(), ins(nullptr), rng(nullptr) {}
@@ -119,9 +105,6 @@ class ProbabilityPolicy : public Policy {
                     const Instance* ins,
                     std::mt19937* rng)
       : probs(std::move(prob_policies)), ins(ins), rng(rng) {}
-
-  std::unordered_map<Vertex*, float> get_neighbor_scores(
-      const Config& C, uint agent_id, const Vertices& neighbors) override;
 
   AgentProbabilityPolicy& operator[](size_t i) { return probs[i]; }
   const AgentProbabilityPolicy& operator[](size_t i) const { return probs[i]; }

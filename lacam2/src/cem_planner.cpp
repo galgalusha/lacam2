@@ -548,6 +548,7 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
 
 Solution CEMPlanner::solve(std::string& additional_info)
 {
+  test_pibt_speed();
   g_status_lines = 0;
   g_probe_agent  = 0;
   const auto solve_start = std::chrono::steady_clock::now();

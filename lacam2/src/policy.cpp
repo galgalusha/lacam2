@@ -43,16 +43,8 @@ void AgentScores::randomize_scores(std::mt19937* rng)
   }
 }
 
-std::unordered_map<Vertex*, float> RandomPolicy::get_neighbor_scores(
-    const Config& /*C*/, uint /*agent_id*/, const Vertices& neighbors)
-{
-  std::unordered_map<Vertex*, float> result;
-  result.reserve(neighbors.size());
-  std::uniform_real_distribution<float> dist(-0.9f, 0.0f);
-  for (Vertex* v : neighbors) result[v] = dist(*MT);
-  return result;
-}
 
+/*
 std::unordered_map<Vertex*, float> ScorePolicy::get_neighbor_scores(
     const Config& C, uint agent_id, const Vertices& neighbors)
 {
@@ -113,7 +105,7 @@ std::unordered_map<Vertex*, float> ScorePolicy::get_neighbor_scores(
   }
   return result;
 }
-
+*/
 void ScorePolicy::finish_recording(const Instance* ins)
 {
   for (auto& ap : policies) {
@@ -149,6 +141,7 @@ void ScorePolicy::randomize_all_scores(std::mt19937* rng)
 // ProbabilityPolicy
 // ---------------------------------------------------------------------------
 
+/*
 std::unordered_map<Vertex*, float> ProbabilityPolicy::get_neighbor_scores(
     const Config& C, uint agent_id, const Vertices& neighbors)
 {
@@ -182,6 +175,7 @@ std::unordered_map<Vertex*, float> ProbabilityPolicy::get_neighbor_scores(
   result[chosen] = -0.9f;
   return result;
 }
+*/
 
 // ---------------------------------------------------------------------------
 // CEM helpers

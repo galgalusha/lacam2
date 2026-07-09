@@ -43,8 +43,7 @@ float Planner::max_ll_decay = 1.0f;
 
 Planner::Planner(const Instance* _ins, const Deadline* _deadline,
                  std::mt19937* _MT, const int _verbose,
-                 const Objective _objective, const float _restart_rate,
-                 std::shared_ptr<Policy> _policy)
+                 const Objective _objective, const float _restart_rate)
     : ins(_ins),
       deadline(_deadline),
       MT(_MT),
@@ -56,8 +55,7 @@ Planner::Planner(const Instance* _ins, const Deadline* _deadline,
       D(DistTable(ins)),
       loop_cnt(0),
       depth_visit_counts(1, 0),
-      pibt(_policy ? std::unique_ptr<PIBTBase>(std::make_unique<PolicyPIBT>(ins, D, std::move(_policy)))
-                   : std::unique_ptr<PIBTBase>(std::make_unique<PIBT>(ins, D, MT))),
+      pibt(std::unique_ptr<PIBTBase>(std::make_unique<PIBT>(ins, D, MT))),
       last_debug_print(std::chrono::steady_clock::now())
 {
 }

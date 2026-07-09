@@ -154,10 +154,6 @@ int main(int argc, char* argv[])
   program.add_argument("-r", "--restart_rate")
       .help("restart rate")
       .default_value(std::string("0.001"));
-  program.add_argument("-w", "--wplanner")
-      .help("use WPlanner rollout test mode")
-      .default_value(false)
-      .implicit_value(true);
   program.add_argument("-od", "--odplanner")
       .help("use ODPlanner (Operator Decomposition A*)")
       .default_value(false)
@@ -225,7 +221,6 @@ int main(int argc, char* argv[])
   const auto objective =
       static_cast<Objective>(std::stoi(program.get<std::string>("objective")));
   const auto restart_rate = std::stof(program.get<std::string>("restart_rate"));
-  const auto use_wplanner = program.get<bool>("wplanner");
   const auto use_odplanner = program.get<bool>("odplanner");
   const auto use_rand_planner = program.get<bool>("rand_planner");
   const auto use_cplanner = program.get<bool>("cplanner");
@@ -258,9 +253,6 @@ int main(int argc, char* argv[])
   } else if (use_odplanner) {
     ODPlanner od_planner(&ins, &deadline, &MT, verbose - 1);
     solution = od_planner.solve(additional_info);
-  } else if (use_wplanner) {
-    solution = solve_w(ins, additional_info, verbose - 1, &deadline, &MT,
-                       objective, restart_rate);
   } else {
     solution = solve(ins, additional_info, verbose - 1, &deadline, &MT,
                      objective, restart_rate);
