@@ -40,6 +40,7 @@ static char read_key_nonblocking()
 
 // Hyper Parameters
 
+static const uint PRS_NUM_THREADS     = 7;
 static uint CEM_NUM_CANDIDATES        = 100;
 static int CEM_ELITE_COUNT            = 10;
 static double INIT_LAPLACE_SMOOTHING  = 2.0;
@@ -300,8 +301,6 @@ CEMPlanner::CEMPlanner(
 {
 }
 
-static const uint PRS_NUM_THREADS = 7;
-
 std::vector<RolloutResult> CEMPlanner::get_rollouts(
     HNode* H, uint num_rollouts, uint keep)
 {
@@ -558,6 +557,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
 
   uint gen = 0;
   while (!is_expired(deadline)) {
+    ++gen;
     char key = read_key_nonblocking();
     if (key == ' ' || key == 0x1B) {
       // Finalise the status display before printing the stop message.
@@ -583,9 +583,9 @@ Solution CEMPlanner::solve(std::string& additional_info)
     LEARNING_RATE = LEARNING_RATE_FUNC(gen, BASE_LEARNING_RATE);
 
     // 3-4. Generate and evaluate candidates.
-    const uint elite_best = global_elite.empty() ? UINT_MAX : global_elite.front().cost;
+    const uint elite_lowest = global_elite.empty() ? UINT_MAX : global_elite.back().cost;
     auto eval_results = run_candidate_rollouts(
-        prob_policy, randomizer, thread_rngs, CEM_NUM_CANDIDATES, elite_best);
+        prob_policy, randomizer, thread_rngs, CEM_NUM_CANDIDATES, elite_lowest);
 
     // 5. Select elite.
     select_elite(eval_results, CEM_ELITE_COUNT, best_cost, best_configs);
@@ -604,7 +604,6 @@ Solution CEMPlanner::solve(std::string& additional_info)
     if (new_elite_count > 0)
       update_policy_with_elite(prob_policy, global_elite);
 
-    ++gen;
   }
 
   if (best_configs.empty()) return Solution{};
