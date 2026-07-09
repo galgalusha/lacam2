@@ -419,7 +419,8 @@ std::vector<RolloutResult> CEMPlanner::run_candidate_rollouts(
     const ProbabilityPolicy& prob_policy,
     PolicyRandomizer& randomizer,
     std::vector<std::mt19937>& thread_rngs,
-    uint num_candidates)
+    uint num_candidates,
+    uint max_cost)
 {
   // Generate all candidate policies upfront before spawning threads.
   auto policies = randomizer(prob_policy, ins, thread_rngs, num_candidates);
@@ -437,10 +438,10 @@ std::vector<RolloutResult> CEMPlanner::run_candidate_rollouts(
     for (uint i = 0; i < batch_size; ++i) {
       auto pol = policies[dispatched + i];
       futures.push_back(std::async(std::launch::async,
-          [this, pol]() -> RolloutResult {
+          [this, pol, max_cost]() -> RolloutResult {
             PolicyPIBT pp(ins, D, pol);
             auto* H = new HNode(ins->starts, D, nullptr, 0, 0);
-            auto res = pp.rollout(H);
+            auto res = pp.rollout(H, max_cost);
             delete H;
             return res;
           }));
@@ -582,8 +583,9 @@ Solution CEMPlanner::solve(std::string& additional_info)
     LEARNING_RATE = LEARNING_RATE_FUNC(gen, BASE_LEARNING_RATE);
 
     // 3-4. Generate and evaluate candidates.
+    const uint elite_best = global_elite.empty() ? UINT_MAX : global_elite.front().cost;
     auto eval_results = run_candidate_rollouts(
-        prob_policy, randomizer, thread_rngs, CEM_NUM_CANDIDATES);
+        prob_policy, randomizer, thread_rngs, CEM_NUM_CANDIDATES, elite_best);
 
     // 5. Select elite.
     select_elite(eval_results, CEM_ELITE_COUNT, best_cost, best_configs);

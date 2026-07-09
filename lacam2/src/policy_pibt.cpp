@@ -85,8 +85,20 @@ bool PolicyPIBT::get_new_config(HNode* H, LNode* L, Config& C_new)
 
 RolloutResult PolicyPIBT::rollout(HNode* H)
 {
+  return rollout(H, UINT_MAX);
+}
+
+RolloutResult PolicyPIBT::rollout(HNode* H, uint max_cost)
+{
   if (H == nullptr) return {false, 0, 0, {}};
   if (is_same_config(H->C, ins->goals)) return {true, 0, 0, {}};
+
+  // heuristic: sum of distances to goals
+  auto heuristic = [&](const Config& C) -> uint {
+    uint h = 0;
+    for (uint agent = 0; agent < N; ++agent) h += D.get(agent, C[agent]);
+    return h;
+  };
 
   LNode unconstrained;
   Config C_new(N, nullptr);
@@ -115,6 +127,12 @@ RolloutResult PolicyPIBT::rollout(HNode* H)
     total_cost += get_edge_cost(current->C, C_new);
     rollout_depth += 1;
     rollout_configs.push_back(C_new);
+
+    // Prune if cost already exceeds bound or can't possibly improve.
+    if (total_cost >= max_cost || total_cost + heuristic(C_new) >= max_cost) {
+      cleanup();
+      return {false, 0, 0, {}};
+    }
 
     if (is_same_config(C_new, ins->goals)) {
       cleanup();

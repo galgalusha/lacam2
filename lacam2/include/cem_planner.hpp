@@ -45,7 +45,8 @@ class CEMPlanner : public Planner {
       const ProbabilityPolicy& prob_policy,
       PolicyRandomizer& randomizer,
       std::vector<std::mt19937>& thread_rngs,
-      uint num_candidates);
+      uint num_candidates,
+      uint max_cost = UINT_MAX);
 
   // Merge new_results into global_elite (sorted ascending by cost, capped at
   // CEM_ELITE_COUNT). Returns the number of entries that were inserted or

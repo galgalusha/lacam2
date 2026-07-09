@@ -16,6 +16,7 @@ class PolicyPIBT : public PIBTBase {
   uint get_edge_cost(const Config& C1, const Config& C2) const override;
   bool get_new_config(HNode* H, LNode* L, Config& C_new) override;
   RolloutResult rollout(HNode* H) override;
+  RolloutResult rollout(HNode* H, uint max_cost);
   const Agents& agents() const { return A; }
 
  private:
