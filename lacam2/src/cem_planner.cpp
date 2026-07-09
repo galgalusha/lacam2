@@ -559,7 +559,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
   auto initial_nsp = create_initial_policy(ins->N, global_elite, 2000, 100);
 
   // 2. Translate to a ProbabilityPolicy.
-  PolicyRandomizer randomizer(&ins->G, MT);
+  PolicyRandomizer randomizer(&ins->G, MT, PRS_NUM_THREADS);
   ProbabilityPolicy prob_policy(ins->N);
   const auto& agent_pols = initial_nsp.get_policies();
   for (uint a = 0; a < static_cast<uint>(ins->N); ++a) {
@@ -683,7 +683,7 @@ void CEMPlanner::test_pibt_speed()
   PIBT bench_pibt(ins, D, &bench_rng);
 
   // Build a dummy ProbabilityPolicy (empty — randomizer will fall back to uniform).
-  PolicyRandomizer bench_randomizer(&ins->G, &bench_rng);
+  PolicyRandomizer bench_randomizer(&ins->G, &bench_rng, 1);
   ProbabilityPolicy dummy_prob_policy(ins->N);
   std::vector<std::mt19937> single_rng(1); single_rng[0].seed(42);
   auto bench_policies = bench_randomizer(dummy_prob_policy, ins, single_rng, 1);
@@ -730,9 +730,7 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
 {
   std::cout << "\n=== Stall-simulation test (q / empty Enter to quit) ===" << std::endl;
 
-  PolicyRandomizer randomizer(&ins->G, MT);
-
-  // Restore blocking terminal I/O for interactive use.
+  PolicyRandomizer randomizer(&ins->G, MT, PRS_NUM_THREADS);
   struct termios oldt;
   tcgetattr(STDIN_FILENO, &oldt);
   struct termios newt = oldt;

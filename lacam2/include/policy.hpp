@@ -154,8 +154,9 @@ class DeterministicPolicy : public Policy {
 // of the resulting DeterministicPolicy, so each policy is independently seeded.
 class PolicyRandomizer {
  public:  PolicyRandomizer(const Graph* graph = nullptr,
-                   std::mt19937* rng = nullptr)
-      : graph(graph), rng(rng) {}
+                   std::mt19937* rng = nullptr,
+                   uint num_threads = 1)
+      : graph(graph), rng(rng), num_threads(num_threads) {}
   std::vector<std::shared_ptr<DeterministicPolicy>> operator()(
       const ProbabilityPolicy& prob_policy,
       const Instance* ins,
@@ -167,6 +168,7 @@ class PolicyRandomizer {
 
   const Graph* graph = nullptr;
   std::mt19937* rng = nullptr;
+  uint num_threads = 1;
 };
 
 void test_randomizer();

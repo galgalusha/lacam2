@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <future>
 #include <iostream>
 #include <numeric>
 #include <queue>
@@ -259,20 +260,52 @@ std::vector<std::shared_ptr<DeterministicPolicy>> PolicyRandomizer::operator()(
     std::vector<std::mt19937>& rngs,
     uint num_policies) const
 {
-  const Graph& G = ins->G;
   const uint N = static_cast<uint>(prob_policy.size());
+  const uint T = std::max(1u, std::min(num_threads, num_policies));
+
+  // Build a chunk of policies [begin, end) using a dedicated rng.
+  auto build_chunk = [&](uint begin, uint end, std::mt19937* chunk_rng)
+      -> std::vector<std::shared_ptr<DeterministicPolicy>>
+  {
+    PolicyRandomizer local = *this;
+    local.graph = &ins->G;
+    local.rng   = chunk_rng;
+    std::vector<std::shared_ptr<DeterministicPolicy>> chunk;
+    chunk.reserve(end - begin);
+    for (uint p = begin; p < end; ++p) {
+      std::vector<AgentDeterministicPolicy> disc(N);
+      for (uint a = 0; a < N; ++a)
+        disc[a] = local.sample_agent_policy(prob_policy[a]);
+      chunk.push_back(
+          std::make_shared<DeterministicPolicy>(std::move(disc), ins, local.rng));
+    }
+    return chunk;
+  };
+
+  if (T == 1) {
+    return build_chunk(0, num_policies, &rngs[0]);
+  }
+
+  // Distribute policies evenly across T threads.
+  std::vector<std::future<std::vector<std::shared_ptr<DeterministicPolicy>>>> futures;
+  futures.reserve(T);
+  uint begin = 0;
+  for (uint t = 0; t < T; ++t) {
+    const uint chunk_size = (num_policies - begin) / (T - t);
+    const uint end = begin + chunk_size;
+    std::mt19937* chunk_rng = &rngs[t % rngs.size()];
+    futures.push_back(std::async(std::launch::async,
+        [build_chunk, begin, end, chunk_rng]() {
+          return build_chunk(begin, end, chunk_rng);
+        }));
+    begin = end;
+  }
 
   std::vector<std::shared_ptr<DeterministicPolicy>> policies;
   policies.reserve(num_policies);
-  PolicyRandomizer local_copy = *this;
-  local_copy.graph = &ins->G;
-  for (uint p = 0; p < num_policies; ++p) {
-    local_copy.rng = &rngs[p % rngs.size()];
-    std::vector<AgentDeterministicPolicy> disc(N);
-    for (uint a = 0; a < N; ++a)
-      disc[a] = local_copy.sample_agent_policy(prob_policy[a]);
-    policies.push_back(
-        std::make_shared<DeterministicPolicy>(std::move(disc), ins, local_copy.rng));
+  for (auto& f : futures) {
+    auto chunk = f.get();
+    for (auto& p : chunk) policies.push_back(std::move(p));
   }
   return policies;
 }
