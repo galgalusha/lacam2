@@ -54,11 +54,12 @@ static float LEARNING_RATE            = LEARNING_RATE_FUNC(0, BASE_LEARNING_RATE
 
 static uint g_status_lines = 0;  // how many lines the last status block occupied
 static int  g_probe_agent  = 0;  // agent whose entropy stats are shown
+static double g_last_randomizer_ms = 0.0;  // time spent in randomizer last gen
+static double g_last_rollouts_ms   = 0.0;  // time spent in rollout loop last gen
 
 static void draw_cem_status(uint gen, double elapsed_sec,
                              int elite_size, int new_global_elite, uint best_cost,
-                             const ProbabilityPolicy& prob_policy, int num_agents,
-                             double rollout_ms)
+                             const ProbabilityPolicy& prob_policy, int num_agents)
 {
   if (g_status_lines > 0)
     std::cout << "\033[" << g_status_lines << "A\033[J";
@@ -66,12 +67,13 @@ static void draw_cem_status(uint gen, double elapsed_sec,
   const int mins = static_cast<int>(elapsed_sec / 60.0);
   const double secs = elapsed_sec - mins * 60.0;
 
-  // ── Box geometry ────────────────────────────────────────────────
-  // Left panel inner width (LW), right panel inner width (RW).
-  // Every line is exactly LW+RW+7 visible chars wide.
-  constexpr int LW = 24;
-  constexpr int RW = 39;
-  constexpr int FW = LW + RW + 3;  // full inner width = 66
+  // ── Box geometry (100 cols wide) ─────────────────────────────────
+  // Three panels: LEFT=entropy, MIDDLE=gen stats/hyper, RIGHT=time stats.
+  // Total line = LW + MW + RW + 10 = 100.
+  constexpr int LW = 24;   // left panel inner width
+  constexpr int MW = 36;   // middle panel inner width
+  constexpr int RW = 30;   // right panel inner width
+  constexpr int FW = LW + MW + RW + 6;  // full header inner width = 96
 
   // Repeat a UTF-8 border glyph n times.
   auto rep = [](const char* g, int n) -> std::string {
@@ -84,19 +86,21 @@ static void draw_cem_status(uint gen, double elapsed_sec,
     return s;
   };
 
-  // Border lines (all LW+RW+7 wide).
-  const std::string full_top  = "\u2554" + rep("\u2550", FW+2)        + "\u2557";
-  const std::string split_sep = "\u2560" + rep("\u2550", LW+2) + "\u2566" + rep("\u2550", RW+2) + "\u2563";
-  const std::string bot       = "\u255a" + rep("\u2550", LW+2) + "\u2569" + rep("\u2550", RW+2) + "\u255d";
+  // Border lines (all 100 chars wide).
+  const std::string full_top  = "\u2554" + rep("\u2550", FW+2) + "\u2557";
+  const std::string split_sep = "\u2560" + rep("\u2550", LW+2)
+                              + "\u2566" + rep("\u2550", MW+2)
+                              + "\u2566" + rep("\u2550", RW+2) + "\u2563";
+  const std::string mid_sep   = "\u2560" + rep("\u2550", LW+2)
+                              + "\u256c" + rep("\u2550", MW+2)
+                              + "\u256c" + rep("\u2550", RW+2) + "\u2563";
+  const std::string bot       = "\u255a" + rep("\u2550", LW+2)
+                              + "\u2569" + rep("\u2550", MW+2)
+                              + "\u2569" + rep("\u2550", RW+2) + "\u255d";
 
-  // Two-column content row (pure-ASCII content only — no UTF-8 in L or R).
-  auto row = [&](const std::string& L, const std::string& R) -> std::string {
-    return "\u2551 " + pad(L, LW) + " \u2551 " + pad(R, RW) + " \u2551";
-  };
-  // Right-panel internal horizontal separator; left panel stays open.
-  // L must be pure ASCII (pad() counts bytes).
-  auto rsep = [&](const std::string& L) -> std::string {
-    return "\u2551 " + pad(L, LW) + " \u2560" + rep("\u2550", RW+2) + "\u2563";
+  // Three-column content row (pure-ASCII content only).
+  auto row = [&](const std::string& L, const std::string& M, const std::string& R) -> std::string {
+    return "\u2551 " + pad(L, LW) + " \u2551 " + pad(M, MW) + " \u2551 " + pad(R, RW) + " \u2551";
   };
 
   // ── Entropy data ─────────────────────────────────────────────────
@@ -129,12 +133,12 @@ static void draw_cem_status(uint gen, double elapsed_sec,
     return s.str();
   };
 
-  // Entropy table row (pure ASCII, fits within LW).
+  // Entropy table row (pure ASCII, fits within LW=24).
   auto erow = [&](int ti) -> std::string {
     std::ostringstream s;
     s << "  > " << std::fixed << std::setprecision(2) << THRESH[ti]
       << "  |  " << std::setw(6) << std::fixed << std::setprecision(2) << cpct[ti] << "%";
-    return s.str();  // ~20 chars, LW=24
+    return s.str();
   };
 
   // ── Header: GEN (bold) + TIME + BEST SoC (bold), centred ─────────
@@ -146,7 +150,6 @@ static void draw_cem_status(uint gen, double elapsed_sec,
     t << mins << "m" << std::fixed << std::setprecision(1) << secs << "s";
     time_s = t.str();
   }
-  // Compute visible (no-ANSI) length to determine centering padding.
   const std::string hdr_vis = "GEN: " + gen_str + "   TIME: " + time_s
                              + "   BEST SoC: " + soc_str;
   int vis_len  = static_cast<int>(hdr_vis.size());
@@ -165,21 +168,30 @@ static void draw_cem_status(uint gen, double elapsed_sec,
   auto pr = [&](const std::string& s) { std::cout << s << "\n"; ++lines; };
 
   pr(full_top);
-  // Header row: ANSI bold values — output manually (pad() can't measure ANSI)
   std::cout << "\u2551 " << hdr_bold << " \u2551\n"; ++lines;
   pr(split_sep);
-  pr(row("  ENTROPY  [agent =" + fi(g_probe_agent,3) + " ]",
-         "  GEN STATS"));
+  // ── Upper section: stats ──────────────────────────────────────────
+  pr(row("  ENTROPY  [agent =" + fi(g_probe_agent, 3) + " ]",
+         "  GEN STATS",
+         "  TIME STATS"));
   pr(row("  visited =" + fi((long long)visited, 8),
-         "  elite_size  :" + fi(elite_size, 6)));
+         "  elite_size  :" + fi(elite_size, 9),
+         "  rng_ms      :" + fd(g_last_randomizer_ms, 13, 1)));
   pr(row("",
-         "  new_elite   :" + fi(new_global_elite, 6)));
-  pr(rsep("  thresh   |  confident"));
-  pr(row("  " + std::string(20, '-'), "  HYPER PARAMS"));
-  pr(row(erow(0), "  lr         :" + fd(LEARNING_RATE,        9, 4)));
-  pr(row(erow(1), "  lr_base    :" + fd(BASE_LEARNING_RATE,   9, 4)));
-  pr(row(erow(2), "  gen_smooth :" + fd(GEN_LAPLACE_SMOOTHING,9, 4)));
-  pr(row(erow(3), "  rollout_ms :" + fd(rollout_ms,            9, 1)));
+         "  new_elite   :" + fi(new_global_elite, 9),
+         "  rollout_ms  :" + fd(g_last_rollouts_ms,   13, 1)));
+  pr(mid_sep);
+  // ── Lower section: entropy thresholds + hyper params ─────────────
+  pr(row("  thresh   |  confident",
+         "  HYPER PARAMS",
+         ""));
+  pr(row("  " + std::string(20, '-'),
+         "  lr          :" + fd(LEARNING_RATE,         13, 4),
+         ""));
+  pr(row(erow(0), "  lr_base     :" + fd(BASE_LEARNING_RATE,    13, 4), ""));
+  pr(row(erow(1), "  gen_smooth  :" + fd(GEN_LAPLACE_SMOOTHING, 13, 4), ""));
+  pr(row(erow(2), "", ""));
+  pr(row(erow(3), "", ""));
   pr(bot);
   pr("  \033[2m[Spc/Esc]\033[0m stop  \033[2m[a]\033[0m agent  "
      "\033[2m[l+p]\033[0m smooth  \033[2m[l+r]\033[0m lr_base+reset");
@@ -423,7 +435,12 @@ std::vector<RolloutResult> CEMPlanner::run_candidate_rollouts(
     uint max_cost)
 {
   // Generate all candidate policies upfront before spawning threads.
+  const auto t_rng_start = std::chrono::steady_clock::now();
   auto policies = randomizer(prob_policy, ins, thread_rngs, num_candidates);
+  g_last_randomizer_ms = std::chrono::duration<double, std::milli>(
+      std::chrono::steady_clock::now() - t_rng_start).count();
+
+  const auto t_rollouts_start = std::chrono::steady_clock::now();
 
   std::vector<RolloutResult> results;
   results.reserve(num_candidates);
@@ -453,6 +470,8 @@ std::vector<RolloutResult> CEMPlanner::run_candidate_rollouts(
     }
     dispatched += batch_size;
   }
+  g_last_rollouts_ms = std::chrono::duration<double, std::milli>(
+      std::chrono::steady_clock::now() - t_rollouts_start).count();
 
   return results;
 }
@@ -533,8 +552,6 @@ Solution CEMPlanner::solve(std::string& additional_info)
   g_probe_agent  = 0;
   const auto solve_start = std::chrono::steady_clock::now();
 
-  test_pibt_speed();
-
   // 1. Build initial policy from random rollouts.
   std::vector<RolloutResult> global_elite;
   global_elite.reserve(CEM_ELITE_COUNT);
@@ -587,11 +604,8 @@ Solution CEMPlanner::solve(std::string& additional_info)
 
     // 3-4. Generate and evaluate candidates.
     // const uint elite_lowest = global_elite.empty() ? UINT_MAX : global_elite.back().cost;
-    const auto t_rollout_start = std::chrono::steady_clock::now();
     auto eval_results = run_candidate_rollouts(
         prob_policy, randomizer, thread_rngs, CEM_NUM_CANDIDATES);
-    const double rollout_ms = std::chrono::duration<double, std::milli>(
-        std::chrono::steady_clock::now() - t_rollout_start).count();
 
     // 5. Select elite.
     select_elite(eval_results, CEM_ELITE_COUNT, best_cost, best_configs);
@@ -604,7 +618,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
         std::chrono::steady_clock::now() - solve_start).count();
     draw_cem_status(gen, elapsed,
                     static_cast<int>(eval_results.size()), new_elite_count,
-                    best_cost, prob_policy, ins->N, rollout_ms);
+                    best_cost, prob_policy, ins->N);
 
     // 6. Update probability policy from elite rollout moves.
     if (new_elite_count > 0)
