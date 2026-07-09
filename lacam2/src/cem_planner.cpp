@@ -57,7 +57,8 @@ static int  g_probe_agent  = 0;  // agent whose entropy stats are shown
 
 static void draw_cem_status(uint gen, double elapsed_sec,
                              int elite_size, int new_global_elite, uint best_cost,
-                             const ProbabilityPolicy& prob_policy, int num_agents)
+                             const ProbabilityPolicy& prob_policy, int num_agents,
+                             double rollout_ms)
 {
   if (g_status_lines > 0)
     std::cout << "\033[" << g_status_lines << "A\033[J";
@@ -178,7 +179,7 @@ static void draw_cem_status(uint gen, double elapsed_sec,
   pr(row(erow(0), "  lr         :" + fd(LEARNING_RATE,        9, 4)));
   pr(row(erow(1), "  lr_base    :" + fd(BASE_LEARNING_RATE,   9, 4)));
   pr(row(erow(2), "  gen_smooth :" + fd(GEN_LAPLACE_SMOOTHING,9, 4)));
-  pr(row(erow(3), ""));
+  pr(row(erow(3), "  rollout_ms :" + fd(rollout_ms,            9, 1)));
   pr(bot);
   pr("  \033[2m[Spc/Esc]\033[0m stop  \033[2m[a]\033[0m agent  "
      "\033[2m[l+p]\033[0m smooth  \033[2m[l+r]\033[0m lr_base+reset");
@@ -532,6 +533,8 @@ Solution CEMPlanner::solve(std::string& additional_info)
   g_probe_agent  = 0;
   const auto solve_start = std::chrono::steady_clock::now();
 
+  test_pibt_speed();
+
   // 1. Build initial policy from random rollouts.
   std::vector<RolloutResult> global_elite;
   global_elite.reserve(CEM_ELITE_COUNT);
@@ -583,9 +586,12 @@ Solution CEMPlanner::solve(std::string& additional_info)
     LEARNING_RATE = LEARNING_RATE_FUNC(gen, BASE_LEARNING_RATE);
 
     // 3-4. Generate and evaluate candidates.
-    const uint elite_lowest = global_elite.empty() ? UINT_MAX : global_elite.back().cost;
+    // const uint elite_lowest = global_elite.empty() ? UINT_MAX : global_elite.back().cost;
+    const auto t_rollout_start = std::chrono::steady_clock::now();
     auto eval_results = run_candidate_rollouts(
-        prob_policy, randomizer, thread_rngs, CEM_NUM_CANDIDATES, elite_lowest);
+        prob_policy, randomizer, thread_rngs, CEM_NUM_CANDIDATES);
+    const double rollout_ms = std::chrono::duration<double, std::milli>(
+        std::chrono::steady_clock::now() - t_rollout_start).count();
 
     // 5. Select elite.
     select_elite(eval_results, CEM_ELITE_COUNT, best_cost, best_configs);
@@ -598,7 +604,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
         std::chrono::steady_clock::now() - solve_start).count();
     draw_cem_status(gen, elapsed,
                     static_cast<int>(eval_results.size()), new_elite_count,
-                    best_cost, prob_policy, ins->N);
+                    best_cost, prob_policy, ins->N, rollout_ms);
 
     // 6. Update probability policy from elite rollout moves.
     if (new_elite_count > 0)
@@ -650,6 +656,56 @@ void CEMPlanner::print_model_entropy(const ProbabilityPolicy& prob_policy, uint 
     }
     std::cout << std::endl;
   }
+}
+
+// PIBT vs PolicyPIBT single-step speed benchmark
+// ---------------------------------------------------------------------------
+
+void CEMPlanner::test_pibt_speed()
+{
+  constexpr uint BENCH_N = 50000;
+  std::mt19937 bench_rng(42);
+  PIBT bench_pibt(ins, D, &bench_rng);
+
+  // Build a dummy ProbabilityPolicy (empty — randomizer will fall back to uniform).
+  PolicyRandomizer bench_randomizer(&ins->G, &bench_rng);
+  ProbabilityPolicy dummy_prob_policy(ins->N);
+  std::vector<std::mt19937> single_rng(1); single_rng[0].seed(42);
+  auto bench_policies = bench_randomizer(dummy_prob_policy, ins, single_rng, 1);
+  auto bench_pol = bench_policies[0];
+  PolicyPIBT bench_pp(ins, D, bench_pol);
+
+  auto* H_step = new HNode(ins->starts, D, nullptr, 0, 0);
+  LNode unconstrained;
+  uint pibt_ok = 0, pp_ok = 0;
+
+  auto t0 = std::chrono::steady_clock::now();
+  for (uint i = 0; i < BENCH_N; ++i) {
+    Config C_new(ins->N, nullptr);
+    if (bench_pibt.get_new_config(H_step, &unconstrained, C_new)) ++pibt_ok;
+  }
+  auto t1 = std::chrono::steady_clock::now();
+  double pibt_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+  std::cout << "[bench] PIBT       step: " << BENCH_N << " steps in "
+            << std::fixed << std::setprecision(1) << pibt_ms << " ms"
+            << "  (" << std::setprecision(3) << pibt_ms / BENCH_N << " ms/step)"
+            << "  ok=" << pibt_ok << "\n";
+
+  auto t2 = std::chrono::steady_clock::now();
+  for (uint i = 0; i < BENCH_N; ++i) {
+    Config C_new(ins->N, nullptr);
+    if (bench_pp.get_new_config(H_step, &unconstrained, C_new)) ++pp_ok;
+  }
+  auto t3 = std::chrono::steady_clock::now();
+  double pp_ms = std::chrono::duration<double, std::milli>(t3 - t2).count();
+  std::cout << "[bench] PolicyPIBT step: " << BENCH_N << " steps in "
+            << std::fixed << std::setprecision(1) << pp_ms << " ms"
+            << "  (" << std::setprecision(3) << pp_ms / BENCH_N << " ms/step)"
+            << "  ok=" << pp_ok << "\n";
+
+  std::cout << "[bench] PolicyPIBT/PIBT slowdown: "
+            << std::setprecision(2) << pp_ms / pibt_ms << "x\n\n";
+  delete H_step;
 }
 
 // Interactive stall-simulation test

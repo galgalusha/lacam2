@@ -81,4 +81,8 @@ class CEMPlanner : public Planner {
   // those agents, runs a rollout from the resulting config, and reports feasibility
   // and sum-of-loss.
   void run_stall_test(const ProbabilityPolicy& prob_policy);
+
+  // Benchmark: runs BENCH_N get_new_config calls for both PIBT and PolicyPIBT
+  // (single-threaded, same H node) and prints timing results.
+  void test_pibt_speed();
 };
