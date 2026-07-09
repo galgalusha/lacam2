@@ -4,6 +4,7 @@
 #include "instance.hpp"
 #include "utils.hpp"
 
+#include <array>
 #include <random>
 #include <unordered_map>
 #include <vector>
@@ -18,7 +19,7 @@ class Policy {
  public:
   virtual ~Policy() = default;
   virtual void set_tie_breakers(uint agent_id, Vertex* current,
-                                const Vertices& neighbors,
+                                const std::array<Vertex*, 5>& neighbors, size_t n,
                                 std::vector<float>& tie_breakers_by_id) = 0;
 };
 
@@ -138,7 +139,7 @@ class DeterministicPolicy : public Policy {
         rng(rng) {}
 
   void set_tie_breakers(uint agent_id, Vertex* current,
-                        const Vertices& neighbors,
+                        const std::array<Vertex*, 5>& neighbors, size_t n,
                         std::vector<float>& tie_breakers_by_id) override;
 
   std::vector<AgentDeterministicPolicy> discrete;

@@ -294,23 +294,24 @@ void test_randomizer()
 }
 
 void DeterministicPolicy::set_tie_breakers(uint agent_id, Vertex* current,
-                                            const Vertices& neighbors,
+                                            const std::array<Vertex*, 5>& neighbors, size_t n,
                                             std::vector<float>& tie_breakers_by_id)
 {
   // Zero out all neighbor entries first.
-  for (Vertex* v : neighbors) tie_breakers_by_id[v->id] = 0.0f;
+  for (size_t k = 0; k < n; ++k) tie_breakers_by_id[neighbors[k]->id] = 0.0f;
 
   if (agent_id >= discrete.size()) return;
   const auto& deterministic = discrete[agent_id];
 
   auto it = deterministic.rankings.find(current);
   if (it != deterministic.rankings.end()) {
-    for (Vertex* v : neighbors) {
+    for (size_t k = 0; k < n; ++k) {
+      Vertex* v = neighbors[k];
       auto sit = it->second.find(v);
       if (sit != it->second.end()) tie_breakers_by_id[v->id] = sit->second;
     }
   } else {
     // Blind spot: assign random scores so PolicyPIBT gets varied tie-breaking.
-    for (Vertex* v : neighbors) tie_breakers_by_id[v->id] = get_random_float(rng, -0.9f, 0.0f);
+    for (size_t k = 0; k < n; ++k) tie_breakers_by_id[neighbors[k]->id] = get_random_float(rng, -0.9f, 0.0f);
   }
 }

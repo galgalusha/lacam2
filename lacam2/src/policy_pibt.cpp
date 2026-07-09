@@ -162,8 +162,7 @@ bool PolicyPIBT::funcPIBT(Agent* ai)
   C_next[i][K] = ai->v_now;
 
   // set tie-breakers in [-0.9, 0] for each neighbor, written into tie_breakers[v->id]
-  const Vertices neighbors(C_next[i].begin(), C_next[i].begin() + K + 1);
-  policy->set_tie_breakers(i, ai->v_now, neighbors, tie_breakers);
+  policy->set_tie_breakers(i, ai->v_now, C_next[i], K + 1, tie_breakers);
 
   // sort by D + tie_breaker (lower = preferred)
   std::sort(C_next[i].begin(), C_next[i].begin() + K + 1,
