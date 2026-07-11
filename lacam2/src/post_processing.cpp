@@ -52,62 +52,7 @@ bool is_feasible_solution(const Instance& ins, const Solution& solution,
   return true;
 }
 
-int get_makespan(const Solution& solution)
-{
-  if (solution.empty()) return 0;
-  return solution.size() - 1;
-}
 
-int get_path_cost(const Solution& solution, uint i)
-{
-  const auto makespan = solution.size();
-  const auto g = solution.back()[i];
-  auto c = makespan;
-  while (c > 0 && solution[c - 1][i] == g) --c;
-  return c;
-}
-
-int get_sum_of_costs(const Solution& solution)
-{
-  if (solution.empty()) return 0;
-  int c = 0;
-  const auto N = solution.front().size();
-  for (size_t i = 0; i < N; ++i) c += get_path_cost(solution, i);
-  return c;
-}
-
-int get_sum_of_loss(const Solution& solution)
-{
-  if (solution.empty()) return 0;
-  int c = 0;
-  const auto N = solution.front().size();
-  const auto T = solution.size();
-  for (size_t i = 0; i < N; ++i) {
-    auto g = solution.back()[i];
-    for (size_t t = 1; t < T; ++t) {
-      if (solution[t - 1][i] != g || solution[t][i] != g) ++c;
-    }
-  }
-  return c;
-}
-
-int get_makespan_lower_bound(const Instance& ins, DistTable& dist_table)
-{
-  uint c = 0;
-  for (size_t i = 0; i < ins.N; ++i) {
-    c = std::max(c, dist_table.get(i, ins.starts[i]));
-  }
-  return c;
-}
-
-int get_sum_of_costs_lower_bound(const Instance& ins, DistTable& dist_table)
-{
-  int c = 0;
-  for (size_t i = 0; i < ins.N; ++i) {
-    c += dist_table.get(i, ins.starts[i]);
-  }
-  return c;
-}
 
 void print_stats(const int verbose, const Instance& ins,
                  const Solution& solution, const double comp_time_ms)

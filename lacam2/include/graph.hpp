@@ -27,6 +27,9 @@ struct Graph {
   uint size() const;  // the number of vertices
 };
 
+using Path = std::vector<Vertex *>;    // path
+using Paths = std::vector<Path>;
+
 bool is_same_config(
     const Config& C1,
     const Config& C2);  // check equivalence of two configurations

@@ -4,7 +4,7 @@
 #include "planner.hpp"
 #include "policy.hpp"
 #include "rollout_result.hpp"
-
+#include "scatter.hpp"
 #include <array>
 #include <memory>
 
@@ -18,6 +18,7 @@ class PolicyPIBT : public PIBTBase {
   RolloutResult rollout(HNode* H) override;
   RolloutResult rollout(HNode* H, uint max_cost);
   const Agents& agents() const { return A; }
+  Scatter *scatter;
 
  private:
   const Instance* ins;

@@ -3,6 +3,7 @@
 #include "pibt_base.hpp"
 #include "planner.hpp"
 #include "rollout_result.hpp"
+#include "scatter.hpp"
 
 #include <array>
 
@@ -15,6 +16,7 @@ class PIBT : public PIBTBase {
   bool get_new_config(HNode* H, LNode* L, Config& C_new) override;
   RolloutResult rollout(HNode* H) override;
   const Agents& agents() const { return A; }
+  Scatter *scatter;
 
  private:
   const Instance* ins;
