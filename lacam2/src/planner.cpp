@@ -229,7 +229,7 @@ void Planner::rewrite(HNode* H_from, HNode* H_to, HNode* H_goal,
       auto g_val = n_from->g + pibt->get_edge_cost(n_from->C, n_to->C);
       if (g_val < n_to->g) {
         if (n_to == H_goal)
-          solver_info(1, "depth(H): ", H_from->depth, ", depth(G): ",H_goal->depth, ", cost update: ", n_to->g, " -> ", g_val);
+          solver_info(1, "depth(H): ", H_from->depth, ", depth(G): ",H_goal->depth, ", cost update: ", n_to->g, " -> ", g_val, " from depth ", H_from->depth);
         n_to->g = g_val;
         n_to->f = n_to->g + n_to->h;
         n_to->parent = n_from;

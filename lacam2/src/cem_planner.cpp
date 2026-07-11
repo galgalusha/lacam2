@@ -41,8 +41,8 @@ static char read_key_nonblocking()
 // Hyper Parameters
 
 static const uint PRS_NUM_THREADS     = 7;
-static uint CEM_NUM_CANDIDATES        = 100;
-static int CEM_ELITE_COUNT            = 10;
+static uint CEM_NUM_CANDIDATES        = 20;
+static int CEM_ELITE_COUNT            = 20;
 static double INIT_LAPLACE_SMOOTHING  = 2.0;
 static double GEN_LAPLACE_SMOOTHING   = 0.02;
 static double BASE_LEARNING_RATE      = 0.2;
@@ -548,7 +548,7 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
 
 Solution CEMPlanner::solve(std::string& additional_info)
 {
-  test_pibt_speed();
+//  test_pibt_speed();
   g_status_lines = 0;
   g_probe_agent  = 0;
   const auto solve_start = std::chrono::steady_clock::now();
