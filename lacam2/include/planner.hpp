@@ -7,9 +7,12 @@
 #include "dist_table.hpp"
 #include "graph.hpp"
 #include "instance.hpp"
-#include "pibt_base.hpp"
+#include "pibt.hpp"
 #include "policy.hpp"
+#include "scatter.hpp"
 #include "utils.hpp"
+#include "agent.hpp"
+#include "node.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -23,57 +26,6 @@
 enum Objective { OBJ_NONE, OBJ_MAKESPAN, OBJ_SUM_OF_LOSS };
 std::ostream& operator<<(std::ostream& os, const Objective objective);
 
-// PIBT agent
-struct Agent {
-  const uint id;
-  Vertex* v_now;   // current location
-  Vertex* v_next;  // next location
-  Agent(uint _id) : id(_id), v_now(nullptr), v_next(nullptr) {}
-};
-using Agents = std::vector<Agent*>;
-
-// low-level node
-struct LNode {
-  std::shared_ptr<LNode> parent;
-  uint _who;
-  Vertex* _where;
-  const uint depth;
-  LNode(std::shared_ptr<LNode> parent = nullptr, uint i = 0,
-        Vertex* v = nullptr);  // who and where
-  virtual std::vector<uint> who() const;
-  virtual Vertices where() const;
-  virtual ~LNode() = default;
-};
-
-// high-level node
-struct HNode {
-  static uint HNODE_CNT;  // count #(high-level node)
-  const Config C;
-  int depth;
-
-  // tree
-  HNode* parent;
-  std::set<HNode*> neighbor;
-
-  // costs
-  uint g;        // g-value (might be updated)
-  uint h;        // h-value (might be updated)
-  uint f;        // g + h (might be updated)
-
-  // for low-level search
-  std::vector<float> priorities;
-  std::vector<uint> order;
-  std::queue<std::shared_ptr<LNode>> search_tree;
-  uint ll_search;
-  bool max_ll_already_decayed;
-  float max_ll;
-
-  HNode(const Config& _C, DistTable& D, HNode* _parent, const uint _g,
-        const uint _h);
-  ~HNode();
-  void initialize_order(DistTable& D);
-};
-using HNodes = std::vector<HNode*>;
 
 struct Planner {
   static int max_ll;
@@ -93,7 +45,8 @@ struct Planner {
   DistTable D;
   uint loop_cnt;      // auxiliary
   std::vector<uint64_t> depth_visit_counts;
-  std::unique_ptr<PIBTBase> pibt;
+  std::unique_ptr<PIBT> pibt;
+  Scatter* scatter;
   std::chrono::steady_clock::time_point last_debug_print;
 
   Planner(const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,

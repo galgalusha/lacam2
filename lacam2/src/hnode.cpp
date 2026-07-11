@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include "../include/node.hpp"
 
 uint HNode::HNODE_CNT = 0;
 

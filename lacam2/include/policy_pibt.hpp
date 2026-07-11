@@ -1,7 +1,6 @@
 #pragma once
 
 #include "pibt_base.hpp"
-#include "planner.hpp"
 #include "policy.hpp"
 #include "rollout_result.hpp"
 #include "scatter.hpp"
@@ -10,7 +9,7 @@
 
 class PolicyPIBT : public PIBTBase {
  public:
-  PolicyPIBT(const Instance* _ins, DistTable& _D, std::shared_ptr<Policy> _policy);
+  PolicyPIBT(const Instance* _ins, DistTable& _D, std::shared_ptr<Policy> _policy, Scatter* _scatter=nullptr);
   ~PolicyPIBT() override;
 
   uint get_edge_cost(const Config& C1, const Config& C2) const override;

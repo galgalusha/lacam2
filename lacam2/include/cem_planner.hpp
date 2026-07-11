@@ -8,7 +8,7 @@
 #include "policy.hpp"
 #include "policy_pibt.hpp"
 #include "rollout_result.hpp"
-
+#include "scatter.hpp"
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -33,6 +33,9 @@ class CEMPlanner : public Planner {
   std::shared_ptr<ScorePolicy> policy;
 
  private:
+  Scatter* scatter;
+
+  void set_Scatter();
   // Run up to num_rollouts random rollouts from H via this->pibt.
   // Returns the RolloutResults of the best `keep` rollouts (by cost).
   std::vector<RolloutResult> get_rollouts(HNode* H,

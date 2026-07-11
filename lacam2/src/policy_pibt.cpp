@@ -6,7 +6,7 @@
 
 
 PolicyPIBT::PolicyPIBT(const Instance* _ins, DistTable& _D,
-                       std::shared_ptr<Policy> _policy)
+                       std::shared_ptr<Policy> _policy, Scatter* _scatter)
     : ins(_ins),
       D(_D),
       policy(std::move(_policy)),
@@ -16,7 +16,8 @@ PolicyPIBT::PolicyPIBT(const Instance* _ins, DistTable& _D,
       tie_breakers(V_size, 0.0f),
       A(N, nullptr),
       occupied_now(V_size, nullptr),
-      occupied_next(V_size, nullptr)
+      occupied_next(V_size, nullptr),
+      scatter(_scatter)
 {
   for (auto i = 0; i < N; ++i) A[i] = new Agent(i);
 }

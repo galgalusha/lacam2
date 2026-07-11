@@ -5,7 +5,7 @@
 #include <unordered_set>
 
 
-PIBT::PIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT)
+PIBT::PIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT, Scatter* _scatter)
     : ins(_ins),
       D(_D),
       MT(_MT),
@@ -15,7 +15,8 @@ PIBT::PIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT)
       tie_breakers(V_size, 0),
       A(N, nullptr),
       occupied_now(V_size, nullptr),
-      occupied_next(V_size, nullptr)
+      occupied_next(V_size, nullptr),
+      scatter(_scatter)
 {
   for (auto i = 0; i < N; ++i) A[i] = new Agent(i);
 }

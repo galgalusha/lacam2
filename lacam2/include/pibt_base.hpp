@@ -2,6 +2,8 @@
 
 #include "graph.hpp"
 #include "rollout_result.hpp"
+#include "agent.hpp"
+#include "node.hpp"
 
 // Forward declarations
 struct HNode;

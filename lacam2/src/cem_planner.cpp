@@ -43,11 +43,11 @@ static char read_key_nonblocking()
 static const uint PRS_NUM_THREADS     = 7;
 static uint CEM_NUM_CANDIDATES        = 20;
 static int CEM_ELITE_COUNT            = 20;
-static double INIT_LAPLACE_SMOOTHING  = 2.0;
+static double INIT_LAPLACE_SMOOTHING  = 10.0;
 static double GEN_LAPLACE_SMOOTHING   = 0.02;
-static double BASE_LEARNING_RATE      = 0.2;
+static double BASE_LEARNING_RATE      = 0.3;
 static auto LEARNING_RATE_FUNC   = [](int gen, float base) 
-                                   { return base * sqrt(100.0 / (100.0 + gen)); };
+                                   { return base * sqrt(500.0 / (500.0 + gen)); };
 static float LEARNING_RATE            = LEARNING_RATE_FUNC(0, BASE_LEARNING_RATE);
 
 // ---- Live status display -----------------------------------------------
@@ -548,6 +548,7 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
 
 Solution CEMPlanner::solve(std::string& additional_info)
 {
+  set_Scatter();
 //  test_pibt_speed();
   g_status_lines = 0;
   g_probe_agent  = 0;
@@ -868,3 +869,21 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
   fcntl(STDIN_FILENO, F_SETFL, old_flags);
   std::cout << "=== Stall test finished ===" << std::endl;
 }
+
+void CEMPlanner::set_Scatter()
+{
+  info(1, verbose, deadline, "start computing SUO");
+  auto scatter_deadline =
+      Deadline(deadline == nullptr
+                   ? INT_MAX
+                   : (deadline->time_limit_ms - elapsed_ms(deadline)) / 2);
+  int SCATTER_MARGIN = 10;                 
+  scatter = new Scatter(ins, &D, &scatter_deadline, 3, verbose - 4, SCATTER_MARGIN);
+
+  scatter->construct();
+  info(1, verbose, deadline, "finish computing SUO",
+       ", collision count: ", scatter->CT.collision_cnt,
+       ", scatter margin: ", scatter->cost_margin,
+       ", sum_of_path_length: ", scatter->sum_of_path_length);
+}
+

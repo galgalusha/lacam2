@@ -55,7 +55,7 @@ Planner::Planner(const Instance* _ins, const Deadline* _deadline,
       D(DistTable(ins)),
       loop_cnt(0),
       depth_visit_counts(1, 0),
-      pibt(std::unique_ptr<PIBTBase>(std::make_unique<PIBT>(ins, D, MT))),
+      pibt(std::unique_ptr<PIBT>(std::make_unique<PIBT>(ins, D, MT))),
       last_debug_print(std::chrono::steady_clock::now())
 {
 }
@@ -65,6 +65,21 @@ Planner::~Planner() {}
 
 Solution Planner::solve(std::string& additional_info)
 {
+  info(1, verbose, deadline, "start computing SUO");
+  auto scatter_deadline =
+      Deadline(deadline == nullptr
+                   ? INT_MAX
+                   : (deadline->time_limit_ms - elapsed_ms(deadline)) / 2);
+  int SCATTER_MARGIN = 10;                 
+  scatter = new Scatter(ins, &D, &scatter_deadline, 3, verbose - 4, SCATTER_MARGIN);
+
+  scatter->construct();
+  info(1, verbose, deadline, "finish computing SUO",
+       ", collision count: ", scatter->CT.collision_cnt,
+       ", scatter margin: ", scatter->cost_margin,
+       ", sum_of_path_length: ", scatter->sum_of_path_length);
+  this->pibt->scatter = scatter;
+
   solver_info(1, "start search");
 
   // setup search
