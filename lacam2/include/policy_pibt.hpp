@@ -9,7 +9,7 @@
 
 class PolicyPIBT : public PIBTBase {
  public:
-  PolicyPIBT(const Instance* _ins, DistTable& _D, std::shared_ptr<Policy> _policy, Scatter* _scatter=nullptr);
+  PolicyPIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT, std::shared_ptr<Policy> _policy, Scatter* _scatter=nullptr);
   ~PolicyPIBT() override;
 
   uint get_edge_cost(const Config& C1, const Config& C2) const override;
@@ -20,6 +20,7 @@ class PolicyPIBT : public PIBTBase {
   Scatter *scatter;
 
  private:
+  std::mt19937* MT;
   const Instance* ins;
   DistTable& D;
   std::shared_ptr<Policy> policy;

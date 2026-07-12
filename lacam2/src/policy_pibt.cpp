@@ -5,7 +5,7 @@
 #include <unordered_set>
 
 
-PolicyPIBT::PolicyPIBT(const Instance* _ins, DistTable& _D,
+PolicyPIBT::PolicyPIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT,
                        std::shared_ptr<Policy> _policy, Scatter* _scatter)
     : ins(_ins),
       D(_D),
@@ -17,6 +17,7 @@ PolicyPIBT::PolicyPIBT(const Instance* _ins, DistTable& _D,
       A(N, nullptr),
       occupied_now(V_size, nullptr),
       occupied_next(V_size, nullptr),
+      MT(_MT),
       scatter(_scatter)
 {
   for (auto i = 0; i < N; ++i) A[i] = new Agent(i);
@@ -155,6 +156,14 @@ RolloutResult PolicyPIBT::rollout(HNode* H, uint max_cost)
 
 bool PolicyPIBT::funcPIBT(Agent* ai)
 {
+  // Vertex *prioritized_vertex = nullptr;
+  // if (scatter != nullptr) {
+  //   auto itr_s = scatter->scatter_data[ai->id].find(ai->v_now->id);
+  //   if (itr_s != scatter->scatter_data[ai->id].end()) {
+  //     prioritized_vertex = itr_s->second;
+  //   }
+  // }
+
   const auto i = ai->id;
   const auto K = ai->v_now->neighbor.size();
 
@@ -168,6 +177,8 @@ bool PolicyPIBT::funcPIBT(Agent* ai)
   // sort by D + tie_breaker (lower = preferred)
   std::sort(C_next[i].begin(), C_next[i].begin() + K + 1,
             [&](Vertex* const v, Vertex* const u) {
+              // if (v == prioritized_vertex) return true;
+              // if (u == prioritized_vertex) return false;
               return D.get(i, v) + tie_breakers[v->id] < D.get(i, u) + tie_breakers[u->id];
             });
 

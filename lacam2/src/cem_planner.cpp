@@ -1,311 +1,22 @@
 #include "../include/cem_planner.hpp"
+#include "../include/cem_ui.hpp"
 #include "../include/pibt.hpp"
 #include "../include/post_processing.hpp"
+#include "../include/cem_params.hpp"
 
 #include <algorithm>
 #include <chrono>
 #include <climits>
 #include <future>
-#include <iomanip>
 #include <iostream>
-#include <sstream>
 #include <numeric>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
 
+#include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
-#include <fcntl.h>
-
-// Returns the key pressed (or 0 if none). Non-blocking.
-static char read_key_nonblocking()
-{
-  struct termios oldt, newt;
-  tcgetattr(STDIN_FILENO, &oldt);
-  newt = oldt;
-  newt.c_lflag &= ~(ICANON | ECHO);
-  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-
-  int old_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-  fcntl(STDIN_FILENO, F_SETFL, old_flags | O_NONBLOCK);
-
-  char c = 0;
-  read(STDIN_FILENO, &c, 1);
-
-  fcntl(STDIN_FILENO, F_SETFL, old_flags);
-  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-  return c;
-}
-
-// Hyper Parameters
-
-static const uint PRS_NUM_THREADS     = 7;
-static uint CEM_NUM_CANDIDATES        = 20;
-static int CEM_ELITE_COUNT            = 20;
-static double INIT_LAPLACE_SMOOTHING  = 10.0;
-static double GEN_LAPLACE_SMOOTHING   = 0.02;
-static double BASE_LEARNING_RATE      = 0.3;
-static auto LEARNING_RATE_FUNC   = [](int gen, float base) 
-                                   { return base * sqrt(500.0 / (500.0 + gen)); };
-static float LEARNING_RATE            = LEARNING_RATE_FUNC(0, BASE_LEARNING_RATE);
-
-// ---- Live status display -----------------------------------------------
-
-static uint g_status_lines = 0;  // how many lines the last status block occupied
-static int  g_probe_agent  = 0;  // agent whose entropy stats are shown
-static double g_last_randomizer_ms = 0.0;  // time spent in randomizer last gen
-static double g_last_rollouts_ms   = 0.0;  // time spent in rollout loop last gen
-
-static void draw_cem_status(uint gen, double elapsed_sec,
-                             int elite_size, int new_global_elite, uint best_cost,
-                             const ProbabilityPolicy& prob_policy, int num_agents)
-{
-  if (g_status_lines > 0)
-    std::cout << "\033[" << g_status_lines << "A\033[J";
-
-  const int mins = static_cast<int>(elapsed_sec / 60.0);
-  const double secs = elapsed_sec - mins * 60.0;
-
-  // ── Box geometry (100 cols wide) ─────────────────────────────────
-  // Three panels: LEFT=entropy, MIDDLE=gen stats/hyper, RIGHT=time stats.
-  // Total line = LW + MW + RW + 10 = 100.
-  constexpr int LW = 24;   // left panel inner width
-  constexpr int MW = 36;   // middle panel inner width
-  constexpr int RW = 30;   // right panel inner width
-  constexpr int FW = LW + MW + RW + 6;  // full header inner width = 96
-
-  // Repeat a UTF-8 border glyph n times.
-  auto rep = [](const char* g, int n) -> std::string {
-    std::string s; for (int i = 0; i < n; ++i) s += g; return s;
-  };
-  // Pad/truncate a plain-ASCII string to exactly w chars.
-  auto pad = [](std::string s, int w) -> std::string {
-    if ((int)s.size() > w) s.resize(w);
-    else s.append(w - (int)s.size(), ' ');
-    return s;
-  };
-
-  // Border lines (all 100 chars wide).
-  const std::string full_top  = "\u2554" + rep("\u2550", FW+2) + "\u2557";
-  const std::string split_sep = "\u2560" + rep("\u2550", LW+2)
-                              + "\u2566" + rep("\u2550", MW+2)
-                              + "\u2566" + rep("\u2550", RW+2) + "\u2563";
-  const std::string mid_sep   = "\u2560" + rep("\u2550", LW+2)
-                              + "\u256c" + rep("\u2550", MW+2)
-                              + "\u256c" + rep("\u2550", RW+2) + "\u2563";
-  const std::string bot       = "\u255a" + rep("\u2550", LW+2)
-                              + "\u2569" + rep("\u2550", MW+2)
-                              + "\u2569" + rep("\u2550", RW+2) + "\u255d";
-
-  // Three-column content row (pure-ASCII content only).
-  auto row = [&](const std::string& L, const std::string& M, const std::string& R) -> std::string {
-    return "\u2551 " + pad(L, LW) + " \u2551 " + pad(M, MW) + " \u2551 " + pad(R, RW) + " \u2551";
-  };
-
-  // ── Entropy data ─────────────────────────────────────────────────
-  static constexpr double THRESH[4] = {0.80, 0.90, 0.95, 0.99};
-  double cpct[4] = {};
-  uint visited = 0;
-  if (g_probe_agent < num_agents) {
-    const auto& apol = prob_policy[g_probe_agent];
-    visited = static_cast<uint>(apol.vertex_probs.size());
-    if (visited > 0) {
-      for (int ti = 0; ti < 4; ++ti) {
-        uint cnt = 0;
-        for (const auto& [v, nb] : apol.vertex_probs) {
-          double best = 0.0;
-          for (const auto& [u, p] : nb) if (p > best) best = p;
-          if (best > THRESH[ti]) ++cnt;
-        }
-        cpct[ti] = 100.0 * cnt / visited;
-      }
-    }
-  }
-
-  // ── Format helpers (pure ASCII output) ───────────────────────────
-  auto fi = [](long long v, int w) -> std::string {
-    std::ostringstream s; s << std::setw(w) << v; return s.str();
-  };
-  auto fd = [](double v, int w, int p) -> std::string {
-    std::ostringstream s;
-    s << std::fixed << std::setprecision(p) << std::setw(w) << v;
-    return s.str();
-  };
-
-  // Entropy table row (pure ASCII, fits within LW=24).
-  auto erow = [&](int ti) -> std::string {
-    std::ostringstream s;
-    s << "  > " << std::fixed << std::setprecision(2) << THRESH[ti]
-      << "  |  " << std::setw(6) << std::fixed << std::setprecision(2) << cpct[ti] << "%";
-    return s.str();
-  };
-
-  // ── Header: GEN (bold) + TIME + BEST SoC (bold), centred ─────────
-  std::string gen_str = fi((long long)gen, 6);
-  std::string soc_str = (best_cost == UINT_MAX) ? "      ---" : fi((long long)best_cost, 9);
-  std::string time_s;
-  {
-    std::ostringstream t;
-    t << mins << "m" << std::fixed << std::setprecision(1) << secs << "s";
-    time_s = t.str();
-  }
-  const std::string hdr_vis = "GEN: " + gen_str + "   TIME: " + time_s
-                             + "   BEST SoC: " + soc_str;
-  int vis_len  = static_cast<int>(hdr_vis.size());
-  int tot_pad  = FW - vis_len;
-  int lpad_n   = (tot_pad > 0) ? tot_pad / 2 : 0;
-  int rpad_n   = (tot_pad > 0) ? tot_pad - lpad_n : 0;
-  const std::string hdr_bold =
-      std::string(lpad_n, ' ')
-    + "GEN: \033[1m" + gen_str + "\033[0m"
-    + "   TIME: " + time_s
-    + "   BEST SoC: \033[1m" + soc_str + "\033[0m"
-    + std::string(rpad_n, ' ');
-
-  // ── Print ─────────────────────────────────────────────────────────
-  uint lines = 0;
-  auto pr = [&](const std::string& s) { std::cout << s << "\n"; ++lines; };
-
-  pr(full_top);
-  std::cout << "\u2551 " << hdr_bold << " \u2551\n"; ++lines;
-  pr(split_sep);
-  // ── Upper section: stats ──────────────────────────────────────────
-  pr(row("  ENTROPY  [agent =" + fi(g_probe_agent, 3) + " ]",
-         "  GEN STATS",
-         "  TIME STATS"));
-  pr(row("  visited =" + fi((long long)visited, 8),
-         "  elite_size  :" + fi(elite_size, 9),
-         "  rng_ms      :" + fd(g_last_randomizer_ms, 13, 1)));
-  pr(row("",
-         "  new_elite   :" + fi(new_global_elite, 9),
-         "  rollout_ms  :" + fd(g_last_rollouts_ms,   13, 1)));
-  pr(mid_sep);
-  // ── Lower section: entropy thresholds + hyper params ─────────────
-  pr(row("  thresh   |  confident",
-         "  HYPER PARAMS",
-         ""));
-  pr(row("  " + std::string(20, '-'),
-         "  lr          :" + fd(LEARNING_RATE,         13, 4),
-         ""));
-  pr(row(erow(0), "  lr_base     :" + fd(BASE_LEARNING_RATE,    13, 4), ""));
-  pr(row(erow(1), "  gen_smooth  :" + fd(GEN_LAPLACE_SMOOTHING, 13, 4), ""));
-  pr(row(erow(2), "", ""));
-  pr(row(erow(3), "", ""));
-  pr(bot);
-  pr("  \033[2m[Spc/Esc]\033[0m stop  \033[2m[a]\033[0m agent  "
-     "\033[2m[l+p]\033[0m smooth  \033[2m[l+r]\033[0m lr_base+reset");
-
-  std::cout << std::flush;
-  g_status_lines = lines;
-}
-
-// Read a new probe-agent id from the user (blocking, restores terminal after).
-static void prompt_agent_id(int num_agents)
-{
-  // Restore canonical + echo mode for interactive input.
-  struct termios oldt;
-  tcgetattr(STDIN_FILENO, &oldt);
-  struct termios newt = oldt;
-  newt.c_lflag |= (ICANON | ECHO);
-  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-  int old_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-  fcntl(STDIN_FILENO, F_SETFL, old_flags & ~O_NONBLOCK);
-
-  // Print prompt below current status block (don't erase it).
-  std::cout << "Enter agent id [0-" << (num_agents - 1) << "]: " << std::flush;
-  std::string line;
-  if (std::getline(std::cin, line)) {
-    try {
-      int id = std::stoi(line);
-      if (id >= 0 && id < num_agents) {
-        g_probe_agent = id;
-        // The next draw_cem_status call will wipe the prompt line too;
-        // account for it by incrementing the line counter.
-        g_status_lines += 2; // prompt line + newline from getline
-      }
-    } catch (...) {}
-  }
-
-  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-  fcntl(STDIN_FILENO, F_SETFL, old_flags);
-}
-
-// Read a new GEN_LAPLACE_SMOOTHING value from the user (blocking).
-static void prompt_gen_laplace()
-{
-  struct termios oldt;
-  tcgetattr(STDIN_FILENO, &oldt);
-  struct termios newt = oldt;
-  newt.c_lflag |= (ICANON | ECHO);
-  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-  int old_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-  fcntl(STDIN_FILENO, F_SETFL, old_flags & ~O_NONBLOCK);
-
-  std::cout << "Enter new gen_laplace_smoothing (current=" << GEN_LAPLACE_SMOOTHING << "): " << std::flush;
-  std::string line;
-  if (std::getline(std::cin, line)) {
-    try {
-      double v = std::stod(line);
-      if (v > 0.0) {
-        GEN_LAPLACE_SMOOTHING = v;
-        g_status_lines += 2;
-      }
-    } catch (...) {}
-  }
-
-  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-  fcntl(STDIN_FILENO, F_SETFL, old_flags);
-}
-
-// Read a new BASE_LEARNING_RATE value from the user (blocking). Returns true if reset requested.
-static bool prompt_base_lr()
-{
-  struct termios oldt;
-  tcgetattr(STDIN_FILENO, &oldt);
-  struct termios newt = oldt;
-  newt.c_lflag |= (ICANON | ECHO);
-  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-  int old_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-  fcntl(STDIN_FILENO, F_SETFL, old_flags & ~O_NONBLOCK);
-
-  std::cout << "Enter new base_learning_rate (current=" << BASE_LEARNING_RATE << "): " << std::flush;
-  std::string line;
-  bool reset = false;
-  if (std::getline(std::cin, line)) {
-    try {
-      double v = std::stod(line);
-      if (v > 0.0 && v <= 1.0) {
-        BASE_LEARNING_RATE = v;
-        g_status_lines += 2;
-        reset = true;
-      }
-    } catch (...) {}
-  }
-
-  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-  fcntl(STDIN_FILENO, F_SETFL, old_flags);
-  return reset;
-}
-
-// Blocking read of a single key (used for two-key sequences like 'l'+'p').
-static char read_key_blocking()
-{
-  struct termios oldt;
-  tcgetattr(STDIN_FILENO, &oldt);
-  struct termios newt = oldt;
-  newt.c_lflag &= ~(ICANON | ECHO);
-  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-  int old_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-  fcntl(STDIN_FILENO, F_SETFL, old_flags & ~O_NONBLOCK);
-
-  char c = 0;
-  read(STDIN_FILENO, &c, 1);
-
-  fcntl(STDIN_FILENO, F_SETFL, old_flags);
-  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-  return c;
-}
 
 CEMPlanner::CEMPlanner(
     const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
@@ -333,7 +44,7 @@ std::vector<RolloutResult> CEMPlanner::get_rollouts(
   std::vector<std::unique_ptr<PIBTBase>> pibts;
   pibts.reserve(PRS_NUM_THREADS);
   for (uint i = 0; i < PRS_NUM_THREADS; ++i)
-    pibts.push_back(std::make_unique<PIBT>(ins, D, &rollout_rngs[i]));
+    pibts.push_back(std::make_unique<PIBT>(ins, D, &rollout_rngs[i], scatter));
 
   std::vector<RolloutEntry> results;
   results.reserve(num_rollouts);
@@ -456,7 +167,7 @@ std::vector<RolloutResult> CEMPlanner::run_candidate_rollouts(
       auto pol = policies[dispatched + i];
       futures.push_back(std::async(std::launch::async,
           [this, pol, max_cost]() -> RolloutResult {
-            PolicyPIBT pp(ins, D, pol);
+            PolicyPIBT pp(ins, D, MT, pol, scatter);
             auto* H = new HNode(ins->starts, D, nullptr, 0, 0);
             auto res = pp.rollout(H, max_cost);
             delete H;
@@ -558,6 +269,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
   std::vector<RolloutResult> global_elite;
   global_elite.reserve(CEM_ELITE_COUNT);
   auto initial_nsp = create_initial_policy(ins->N, global_elite, 2000, 100);
+  global_elite.clear();
 
   // 2. Translate to a ProbabilityPolicy.
   PolicyRandomizer randomizer(&ins->G, MT, PRS_NUM_THREADS);
@@ -580,24 +292,30 @@ Solution CEMPlanner::solve(std::string& additional_info)
   uint gen = 0;
   while (!is_expired(deadline)) {
     ++gen;
-    char key = read_key_nonblocking();
-    if (key == ' ' || key == 0x1B) {
+    auto key = read_key_event_nonblocking();
+    if (key.event == KeyEvent::Stop) {
       // Finalise the status display before printing the stop message.
       if (g_status_lines > 0) std::cout << "\033[" << g_status_lines << "A\033[J";
       g_status_lines = 0;
       std::cout << "CEMPlanner: interrupted by user (Space/Escape).\n" << std::flush;
       break;
     }
-    if (key == 'a' || key == 'A') {
-      prompt_agent_id(ins->N);
+    if (key.event == KeyEvent::ShiftUp    || key.event == KeyEvent::ShiftDown ||
+        key.event == KeyEvent::ShiftLeft  || key.event == KeyEvent::ShiftRight) {
+      cem_ui_handle_scroll(key.event);
     }
-    if (key == 'l' || key == 'L') {
-      char sub = read_key_blocking();
-      if (sub == 'p' || sub == 'P') {
-        prompt_gen_laplace();
-      } else if (sub == 'r' || sub == 'R') {
-        if (prompt_base_lr()) {
-          gen = 0;
+    if (key.event == KeyEvent::Char) {
+      if (key.ch == 'a' || key.ch == 'A') {
+        prompt_agent_id(ins->N);
+      }
+      if (key.ch == 'l' || key.ch == 'L') {
+        char sub = read_key_blocking();
+        if (sub == 'p' || sub == 'P') {
+          prompt_gen_laplace();
+        } else if (sub == 'r' || sub == 'R') {
+          if (prompt_base_lr()) {
+            gen = 0;
+          }
         }
       }
     }
@@ -620,7 +338,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
         std::chrono::steady_clock::now() - solve_start).count();
     draw_cem_status(gen, elapsed,
                     static_cast<int>(eval_results.size()), new_elite_count,
-                    best_cost, prob_policy, ins->N);
+                    best_cost, prob_policy, ins->N, ins);
 
     // 6. Update probability policy from elite rollout moves.
     if (new_elite_count > 0)
@@ -689,7 +407,7 @@ void CEMPlanner::test_pibt_speed()
   std::vector<std::mt19937> single_rng(1); single_rng[0].seed(42);
   auto bench_policies = bench_randomizer(dummy_prob_policy, ins, single_rng, 1);
   auto bench_pol = bench_policies[0];
-  PolicyPIBT bench_pp(ins, D, bench_pol);
+  PolicyPIBT bench_pp(ins, D, MT, bench_pol, scatter);
 
   auto* H_step = new HNode(ins->starts, D, nullptr, 0, 0);
   LNode unconstrained;
@@ -773,7 +491,7 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
     std::cout << std::endl;
 
     // --- 3. run one PIBT step from starts ---
-    PolicyPIBT pp_step(ins, D, ce_pol);
+    PolicyPIBT pp_step(ins, D, MT, ce_pol, scatter);
     auto* H_start = new HNode(ins->starts, D, nullptr, 0, 0);
     LNode unconstrained;
     Config C_step1(ins->N, nullptr);
@@ -824,7 +542,7 @@ void CEMPlanner::run_stall_test(const ProbabilityPolicy& prob_policy)
       auto pol = stall_policies[i];
       stall_futures.push_back(std::async(std::launch::async,
           [this, pol, &C_stalled]() -> StallResult {
-            PolicyPIBT pp(ins, D, pol);
+            PolicyPIBT pp(ins, D, MT, pol, scatter);
             auto* H = new HNode(C_stalled, D, nullptr, 0, 0);
             auto r = pp.rollout(H);
             delete H;
