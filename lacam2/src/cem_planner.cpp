@@ -307,7 +307,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
     Solution sol1(current_solution.begin(), current_solution.begin() + mid + 1);
     Solution sol2(current_solution.begin() + mid, current_solution.end());
 
-    uint soc1 = compute_soc(sol1, mid_config);
+    uint soc1 = compute_soc(sol1, ins->goals);
     uint soc2 = compute_soc(sol2, ins->goals);
 
     std::cout << "mid: " << mid << " out of " << total_steps << std::endl;
@@ -327,7 +327,8 @@ Solution CEMPlanner::solve(std::string& additional_info)
       CEMPlanner cem1(&sub_ins1, deadline, MT, verbose, objective, RESTART_RATE);
       g_status_lines = 0;
       Solution new_sol1 = cem1.solve_with_cem(additional_info, ctx1, &outer_stopped);
-      if (!new_sol1.empty()) {
+      uint new_soc1 = new_sol1.empty() ? UINT_MAX : compute_soc(new_sol1, ins->goals);
+      if (new_soc1 < soc1) {
         sol1 = std::move(new_sol1);
         soc1 = compute_soc(sol1, mid_config);
       }
@@ -346,7 +347,8 @@ Solution CEMPlanner::solve(std::string& additional_info)
       CEMPlanner cem2(&sub_ins2, deadline, MT, verbose, objective, RESTART_RATE);
       g_status_lines = 0;
       Solution new_sol2 = cem2.solve_with_cem(additional_info, ctx2, &outer_stopped);
-      if (!new_sol2.empty()) sol2 = std::move(new_sol2);
+      uint new_soc2 = new_sol2.empty() ? UINT_MAX : compute_soc(new_sol2, ins->goals);
+      if (new_soc2 < soc2) sol2 = std::move(new_sol2);
     }
     
     // Join the two halves (sol1 ends at mid_config; sol2 starts at mid_config).
