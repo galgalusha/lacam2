@@ -28,6 +28,9 @@ static int  s_map_off_x      = 0;
 static int  s_map_off_y      = 0;
 static auto s_last_map_time  = std::chrono::steady_clock::time_point{};
 
+static uint s_status_box_lines = 0;  // lines printed by the status box alone
+static uint s_map_lines        = 0;  // lines printed by the map alone
+
 // ── Terminal RAII guard ──────────────────────────────────────────────────────────────
 struct TermGuard {
   struct termios saved_term;
@@ -160,8 +163,11 @@ static uint draw_agent_map(const Instance* ins, const ProbabilityPolicy& prob_po
 
   const auto now = std::chrono::steady_clock::now();
   const double dt = std::chrono::duration<double>(now - s_last_map_time).count();
-//  if (dt < MAP_RENDER_INTERVAL) return 0;
+  if (dt < MAP_RENDER_INTERVAL) return 0;
   s_last_map_time = now;
+
+  // Erase the old map before drawing the new one.
+  std::cout << "\033[J";
 
   const int gw = static_cast<int>(ins->G.width);
   const int gh = static_cast<int>(ins->G.height);
@@ -281,8 +287,10 @@ void draw_cem_status(uint gen, double elapsed_sec,
                      const ProbabilityPolicy& prob_policy, int num_agents,
                      const Instance* ins)
 {
-  if (g_status_lines > 0)
-    std::cout << "\033[" << g_status_lines << "A\033[J";
+  // Move cursor to the top of the entire output region (status box + map).
+  const uint total_prev = s_status_box_lines + s_map_lines;
+  if (total_prev > 0)
+    std::cout << "\033[" << total_prev << "A";
 
   const int mins = static_cast<int>(elapsed_sec / 60.0);
   const double secs = elapsed_sec - mins * 60.0;
@@ -377,11 +385,13 @@ void draw_cem_status(uint gen, double elapsed_sec,
     + std::string(rpad_n, ' ');
 
   // ── Print status box ──────────────────────────────────────────────────────────────
+  // Each line is erased before printing so stale content from longer previous
+  // lines doesn't bleed through (\033[2K = erase entire current line).
   uint lines = 0;
-  auto pr = [&](const std::string& s) { std::cout << s << "\n"; ++lines; };
+  auto pr = [&](const std::string& s) { std::cout << "\033[2K" << s << "\n"; ++lines; };
 
   pr(full_top);
-  std::cout << "\u2551 " << hdr_bold << " \u2551\n"; ++lines;
+  std::cout << "\033[2K\u2551 " << hdr_bold << " \u2551\n"; ++lines;
   pr(split_sep);
   pr(row("  ENTROPY  [agent =" + fi(g_probe_agent, 3) + " ]",
          "  GEN STATS",
@@ -409,10 +419,20 @@ void draw_cem_status(uint gen, double elapsed_sec,
      "\033[2m[Shift+\u2190\u2192\u2191\u2193]\033[0m scroll map");
 
   std::cout << std::flush;
+  s_status_box_lines = lines;
 
   // ── Agent map (throttled to MAP_RENDER_INTERVAL) ──────────────────────────────────
-  lines += draw_agent_map(ins, prob_policy);
-  g_status_lines = lines;
+  // draw_agent_map returns 0 (skip) or N>0 (drew N lines after emitting \033[J).
+  const uint new_map_lines = draw_agent_map(ins, prob_policy);
+  if (new_map_lines > 0) {
+    s_map_lines = new_map_lines;
+  } else if (s_map_lines > 0) {
+    // Map unchanged: skip cursor past it so the next draw starts from below.
+    std::cout << "\033[" << s_map_lines << "B";
+  }
+  std::cout << std::flush;
+
+  g_status_lines = s_status_box_lines + s_map_lines;
 }
 
 // ── Interactive prompts ──────────────────────────────────────────────────────────────────
