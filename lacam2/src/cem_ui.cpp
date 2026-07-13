@@ -30,6 +30,7 @@ static auto s_last_map_time  = std::chrono::steady_clock::time_point{};
 
 static uint s_status_box_lines = 0;  // lines printed by the status box alone
 static uint s_map_lines        = 0;  // lines printed by the map alone
+static uint s_outer_lines      = 0;  // lines printed by the outer-loop panel
 
 // ── Terminal RAII guard ──────────────────────────────────────────────────────────────
 struct TermGuard {
@@ -69,7 +70,7 @@ KeyResult read_key_event_nonblocking()
     return res;  // KeyEvent::None
 
   if (c == ' ') {
-    res.event = KeyEvent::Stop;
+    res.event = KeyEvent::StopInner;
     res.ch    = ' ';
     return res;
   }
@@ -85,8 +86,8 @@ KeyResult read_key_event_nonblocking()
       buf[n++] = x;
     }
     if (n == 0) {
-      // Bare ESC → stop
-      res.event = KeyEvent::Stop;
+      // Bare ESC → stop outer loop
+      res.event = KeyEvent::StopOuter;
       res.ch    = 0x1B;
       return res;
     }
@@ -285,15 +286,66 @@ static uint draw_agent_map(const Instance* ins, const ProbabilityPolicy& prob_po
 void draw_cem_status(uint gen, double elapsed_sec,
                      int elite_size, int new_global_elite, uint best_cost,
                      const ProbabilityPolicy& prob_policy, int num_agents,
-                     const Instance* ins)
+                     const Instance* ins,
+                     const OuterContext& outer)
 {
-  // Move cursor to the top of the entire output region (status box + map).
-  const uint total_prev = s_status_box_lines + s_map_lines;
+  // Move cursor to the top of the entire output region (outer panel + status box + map).
+  const uint total_prev = s_outer_lines + s_status_box_lines + s_map_lines;
   if (total_prev > 0)
     std::cout << "\033[" << total_prev << "A";
 
   const int mins = static_cast<int>(elapsed_sec / 60.0);
   const double secs = elapsed_sec - mins * 60.0;
+
+  // ── Outer-loop panel (shown only when solve() is driving solve_with_cem()) ──────────
+  {
+    uint olines = 0;
+    auto opr = [&](const std::string& s) { std::cout << "\033[2K" << s << "\n"; ++olines; };
+    if (outer.gen != UINT_MAX) {
+      // ── Box geometry matches the main box (100 cols) ──────────────────────────────
+      constexpr int OFW = 24 + 36 + 30 + 6;  // same as FW below
+      auto orep = [](const char* g, int n) -> std::string {
+        std::string s; for (int i = 0; i < n; ++i) s += g; return s;
+      };
+      const std::string otop = "\u2554" + orep("\u2550", OFW + 2) + "\u2557";
+      const std::string obot = "\u255a" + orep("\u2550", OFW + 2) + "\u255d";
+
+      // Outer gen, global elapsed time, global best SoC
+      const int omins = static_cast<int>(
+          std::chrono::duration<double>(
+              std::chrono::steady_clock::now() - outer.start_time).count() / 60.0);
+      const double osecs = std::chrono::duration<double>(
+          std::chrono::steady_clock::now() - outer.start_time).count()
+          - omins * 60.0;
+      const uint global_soc = (best_cost == UINT_MAX) ? UINT_MAX
+                                                       : best_cost + outer.complementary_soc;
+
+      std::ostringstream ohdr;
+      ohdr << "OUTER GEN: \033[1m" << std::setw(4) << outer.gen << "\033[0m"
+           << "   GLOBAL TIME: " << omins << "m"
+           << std::fixed << std::setprecision(1) << osecs << "s"
+           << "   GLOBAL BEST SoC: \033[1m";
+      if (global_soc == UINT_MAX) ohdr << "      ---";
+      else                        ohdr << std::setw(9) << global_soc;
+      ohdr << "\033[0m";
+
+      const std::string ohdr_vis_approx = "OUTER GEN:      GLOBAL TIME:    GLOBAL BEST SoC:          ";
+      const int vis_len  = static_cast<int>(ohdr_vis_approx.size());
+      const int tot_pad  = OFW - vis_len;
+      const int lpad_n   = (tot_pad > 0) ? tot_pad / 2 : 0;
+      const int rpad_n   = (tot_pad > 0) ? tot_pad - lpad_n : 0;
+
+      opr(otop);
+      std::cout << "\033[2K\u2551 "
+                << std::string(lpad_n, ' ')
+                << ohdr.str()
+                << std::string(rpad_n, ' ')
+                << " \u2551\n";
+      ++olines;
+      opr(obot);
+    }
+    s_outer_lines = olines;
+  }
 
   // ── Box geometry (100 cols wide) ──────────────────────────────────────────────────
   constexpr int LW = 24;

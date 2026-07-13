@@ -260,7 +260,113 @@ void CEMPlanner::update_policy_with_elite(ProbabilityPolicy& prob_policy,
 Solution CEMPlanner::solve(std::string& additional_info)
 {
   set_Scatter();
-//  test_pibt_speed();
+  g_status_lines = 0;
+  g_probe_agent  = 0;
+  const auto solve_start = std::chrono::steady_clock::now();
+
+  // 1. Build initial solution from random rollouts.
+  std::vector<RolloutResult> global_elite;
+  global_elite.reserve(CEM_ELITE_COUNT);
+  auto initial_nsp = create_initial_policy(ins->N, global_elite, 2000, 100);
+
+  std::cout << "Best init cost: " << global_elite[0].cost << std::endl;
+  Solution current_solution;
+  for (auto& cfg : global_elite[0].configs) current_solution.push_back(cfg);
+
+  // Helper: compute sum-of-costs of a solution segment against given goals.
+  auto compute_soc = [&](const Solution& sol, const Config& goals) -> uint {
+    uint cost = 0;
+    const int N = static_cast<int>(ins->N);
+    for (size_t step = 0; step + 1 < sol.size(); ++step) {
+      for (int a = 0; a < N; ++a) {
+        if (sol[step][a] != goals[a] || sol[step + 1][a] != goals[a])
+          cost += 1;
+      }
+    }
+    return cost;
+  };
+
+  // Split ratios cycling: 0.5, 0.75, 0.25, 0.33, 0.66, then repeat.
+  static const double SPLIT_RATIOS[] = {0.15, 0.75, 0.25, 0.33, 0.66};
+  static const int    NUM_RATIOS     = 5;
+
+  uint outer_gen = 0;
+  bool outer_stopped = false;
+  while (!is_expired(deadline) && !outer_stopped) {
+    const double ratio = SPLIT_RATIOS[outer_gen % NUM_RATIOS];
+
+    // Determine split point.
+    const int total_steps = static_cast<int>(current_solution.size());
+    if (total_steps < 2) break;  // nothing to split
+    const int mid = std::max(1, std::min(total_steps - 1,
+                                         static_cast<int>(ratio * total_steps)));
+
+                                         const Config& mid_config = current_solution[mid];
+
+    // Slice initial solution into two halves.
+    Solution sol1(current_solution.begin(), current_solution.begin() + mid + 1);
+    Solution sol2(current_solution.begin() + mid, current_solution.end());
+
+    uint soc1 = compute_soc(sol1, mid_config);
+    uint soc2 = compute_soc(sol2, ins->goals);
+
+    std::cout << "mid: " << mid << " out of " << total_steps << std::endl;
+    std::cout << "soc1: " << soc1 << ", soc2: " << soc2 << std::endl;
+
+    // Sub-problem instances (deep-copy the graph, remap vertex pointers).
+    Instance sub_ins1(*ins, ins->starts, mid_config);
+    Instance sub_ins2(*ins, mid_config, ins->goals);
+
+    OuterContext ctx1;
+    ctx1.gen              = outer_gen;
+    ctx1.start_time       = solve_start;
+    ctx1.complementary_soc = soc2;
+
+    // Optimise the first half.
+    {
+      CEMPlanner cem1(&sub_ins1, deadline, MT, verbose, objective, RESTART_RATE);
+      g_status_lines = 0;
+      Solution new_sol1 = cem1.solve_with_cem(additional_info, ctx1, &outer_stopped);
+      if (!new_sol1.empty()) {
+        sol1 = std::move(new_sol1);
+        soc1 = compute_soc(sol1, mid_config);
+      }
+    }
+    if (outer_stopped) break;
+
+    OuterContext ctx2;
+    ctx2.gen               = outer_gen;
+    ctx2.start_time        = solve_start;
+    // complementary_soc must be the contribution of sol1 to the GLOBAL SoC,
+    // i.e. measured against ins->goals (not mid_config).
+    ctx2.complementary_soc = compute_soc(sol1, ins->goals);
+
+    // Optimise the second half.
+    {
+      CEMPlanner cem2(&sub_ins2, deadline, MT, verbose, objective, RESTART_RATE);
+      g_status_lines = 0;
+      Solution new_sol2 = cem2.solve_with_cem(additional_info, ctx2, &outer_stopped);
+      if (!new_sol2.empty()) sol2 = std::move(new_sol2);
+    }
+    
+    // Join the two halves (sol1 ends at mid_config; sol2 starts at mid_config).
+    // Avoid duplicating the mid config.
+    std::cout << "combining solutions...";
+    current_solution = sol1;
+    current_solution.insert(current_solution.end(), sol2.begin() + 1, sol2.end());
+    std::cout << "done" << std::endl;
+
+    ++outer_gen;
+  }
+
+  return current_solution;
+}
+
+Solution CEMPlanner::solve_with_cem(std::string& additional_info,
+                                    const OuterContext& outer,
+                                    bool* outer_stop)
+{
+  set_Scatter();
   g_status_lines = 0;
   g_probe_agent  = 0;
   const auto solve_start = std::chrono::steady_clock::now();
@@ -269,6 +375,8 @@ Solution CEMPlanner::solve(std::string& additional_info)
   std::vector<RolloutResult> global_elite;
   global_elite.reserve(CEM_ELITE_COUNT);
   auto initial_nsp = create_initial_policy(ins->N, global_elite, 2000, 100);
+
+  std::cout << "Best init cost: " << global_elite[0].cost << std::endl;
   global_elite.clear();
 
   // 2. Translate to a ProbabilityPolicy.
@@ -293,11 +401,15 @@ Solution CEMPlanner::solve(std::string& additional_info)
   while (!is_expired(deadline)) {
     ++gen;
     auto key = read_key_event_nonblocking();
-    if (key.event == KeyEvent::Stop) {
+    if (key.event == KeyEvent::StopInner || key.event == KeyEvent::StopOuter) {
       // Finalise the status display before printing the stop message.
       if (g_status_lines > 0) std::cout << "\033[" << g_status_lines << "A\033[J";
       g_status_lines = 0;
-      std::cout << "CEMPlanner: interrupted by user (Space/Escape).\n" << std::flush;
+      std::cout << "CEMPlanner: interrupted by user ("
+                << (key.event == KeyEvent::StopInner ? "Space" : "Escape")
+                << ").\n" << std::flush;
+      if (key.event == KeyEvent::StopOuter && outer_stop != nullptr)
+        *outer_stop = true;
       break;
     }
     if (key.event == KeyEvent::ShiftUp    || key.event == KeyEvent::ShiftDown ||
@@ -338,7 +450,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
         std::chrono::steady_clock::now() - solve_start).count();
     draw_cem_status(gen, elapsed,
                     static_cast<int>(eval_results.size()), new_elite_count,
-                    best_cost, prob_policy, ins->N, ins);
+                    best_cost, prob_policy, ins->N, ins, outer);
 
     // 6. Update probability policy from elite rollout moves.
     if (new_elite_count > 0)

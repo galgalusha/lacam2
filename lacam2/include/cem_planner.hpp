@@ -9,6 +9,7 @@
 #include "policy_pibt.hpp"
 #include "rollout_result.hpp"
 #include "scatter.hpp"
+#include "cem_ui.hpp"
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -28,6 +29,9 @@ class CEMPlanner : public Planner {
                                             uint keep = 100);
 
   Solution solve(std::string& additional_info);
+  Solution solve_with_cem(std::string& additional_info,
+                          const OuterContext& outer = OuterContext{},
+                          bool* outer_stop = nullptr);
 
   // The best policy found during solve(). Set after solve() returns.
   std::shared_ptr<ScorePolicy> policy;

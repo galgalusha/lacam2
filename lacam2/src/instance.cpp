@@ -5,22 +5,27 @@
 Instance::Instance(const std::string& map_filename,
                    const std::vector<uint>& start_indexes,
                    const std::vector<uint>& goal_indexes)
-    : G(map_filename),
-      starts(Config()),
-      goals(Config()),
+    : G_owned(std::make_unique<Graph>(map_filename)),
+      G(*G_owned),
+      starts(),
+      goals(),
       N(start_indexes.size())
 {
   for (auto k : start_indexes) starts.push_back(G.U[k]);
-  for (auto k : goal_indexes) goals.push_back(G.U[k]);
+  for (auto k : goal_indexes)  goals.push_back(G.U[k]);
 }
 
 Instance::Instance(const std::vector<std::string>& grid,
                    const std::vector<uint>& start_indexes,
                    const std::vector<uint>& goal_indexes)
-    : G(grid), starts(Config()), goals(Config()), N(start_indexes.size())
+    : G_owned(std::make_unique<Graph>(grid)),
+      G(*G_owned),
+      starts(),
+      goals(),
+      N(start_indexes.size())
 {
   for (auto k : start_indexes) starts.push_back(G.U[k]);
-  for (auto k : goal_indexes) goals.push_back(G.U[k]);
+  for (auto k : goal_indexes)  goals.push_back(G.U[k]);
 }
 
 // for load instance
@@ -29,7 +34,11 @@ static const std::regex r_instance =
 
 Instance::Instance(const std::string& scen_filename,
                    const std::string& map_filename, const uint _N)
-    : G(Graph(map_filename)), starts(Config()), goals(Config()), N(_N)
+    : G_owned(std::make_unique<Graph>(map_filename)),
+      G(*G_owned),
+      starts(),
+      goals(),
+      N(_N)
 {
   // load start-goal pairs
   std::ifstream file(scen_filename);
@@ -64,7 +73,11 @@ Instance::Instance(const std::string& scen_filename,
 
 Instance::Instance(const std::string& map_filename, std::mt19937* MT,
                    const uint _N)
-    : G(Graph(map_filename)), starts(Config()), goals(Config()), N(_N)
+    : G_owned(std::make_unique<Graph>(map_filename)),
+      G(*G_owned),
+      starts(),
+      goals(),
+      N(_N)
 {
   // random assignment
   const auto V_size = G.size();
@@ -92,6 +105,16 @@ Instance::Instance(const std::string& map_filename, std::mt19937* MT,
     if (goals.size() == N) break;
     ++j;
   }
+}
+
+Instance::Instance(const Instance& parent, const Config& new_starts, const Config& new_goals)
+    : G_owned(nullptr),
+      G(parent.G),
+      starts(new_starts),
+      goals(new_goals),
+      N(new_starts.size())
+{
+  // Borrows parent.G — vertex pointers in starts/goals are already from parent.G.
 }
 
 Instance Instance::multiply(int n) const
