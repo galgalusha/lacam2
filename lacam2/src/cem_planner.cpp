@@ -276,9 +276,9 @@ Solution CEMPlanner::solve(std::string& additional_info)
   // Helper: compute sum-of-costs of a solution segment against given goals.
   auto compute_soc = [&](const Solution& sol, const Config& goals) -> uint {
     uint cost = 0;
-    const int N = static_cast<int>(ins->N);
+    const int nag = static_cast<int>(ins->N);
     for (size_t step = 0; step + 1 < sol.size(); ++step) {
-      for (int a = 0; a < N; ++a) {
+      for (int a = 0; a < nag; ++a) {
         if (sol[step][a] != goals[a] || sol[step + 1][a] != goals[a])
           cost += 1;
       }
@@ -286,77 +286,85 @@ Solution CEMPlanner::solve(std::string& additional_info)
     return cost;
   };
 
-  // Split ratios cycling: 0.5, 0.75, 0.25, 0.33, 0.66, then repeat.
-  static const double SPLIT_RATIOS[] = {0.15, 0.75, 0.25, 0.33, 0.66};
-  static const int    NUM_RATIOS     = 5;
+  // Refiner interval widths cycling: 0.15 → 0.25 → 0.33 → repeat.
+  static const double WIDTHS[]  = {0.15, 0.25, 0.33};
+  static const int    NUM_W     = 3;
 
-  uint outer_gen = 0;
+  uint outer_gen    = 0;
   bool outer_stopped = false;
+
   while (!is_expired(deadline) && !outer_stopped) {
-    const double ratio = SPLIT_RATIOS[outer_gen % NUM_RATIOS];
+    const double width       = WIDTHS[outer_gen % NUM_W];
+    const int    total_steps = static_cast<int>(current_solution.size());
+    if (total_steps < 2) break;
 
-    // Determine split point.
-    const int total_steps = static_cast<int>(current_solution.size());
-    if (total_steps < 2) break;  // nothing to split
-    const int mid = std::max(1, std::min(total_steps - 1,
-                                         static_cast<int>(ratio * total_steps)));
+    // Number of steps in each refiner interval (at least 1).
+    const int interval_steps = std::max(3, static_cast<int>(width * total_steps));
 
-                                         const Config& mid_config = current_solution[mid];
+    // ── Slide the refiner interval across the full solution ─────────────────
+    int mid1_idx = 0;
+    while (!outer_stopped && !is_expired(deadline)) {
+      const int cur_total = static_cast<int>(current_solution.size());
+      if (mid1_idx >= cur_total - 1) break;
 
-    // Slice initial solution into two halves.
-    Solution sol1(current_solution.begin(), current_solution.begin() + mid + 1);
-    Solution sol2(current_solution.begin() + mid, current_solution.end());
+      const int mid2_idx = std::min(mid1_idx + interval_steps, cur_total - 1);
 
-    uint soc1 = compute_soc(sol1, ins->goals);
-    uint soc2 = compute_soc(sol2, ins->goals);
+      const Config& mid1_config = current_solution[mid1_idx];
+      const Config& mid2_config = current_solution[mid2_idx];
 
-    std::cout << "mid: " << mid << " out of " << total_steps << std::endl;
-    std::cout << "soc1: " << soc1 << ", soc2: " << soc2 << std::endl;
+      // The three parts (part1 and part3 are kept fixed).
+      Solution part1 = mid1_idx == 0 ? Solution() : Solution(current_solution.begin(),
+                    current_solution.begin() + mid1_idx);
 
-    // Sub-problem instances (deep-copy the graph, remap vertex pointers).
-    Instance sub_ins1(*ins, ins->starts, mid_config);
-    Instance sub_ins2(*ins, mid_config, ins->goals);
+      Solution interval(current_solution.begin() + mid1_idx,
+                        current_solution.begin() + mid2_idx);
 
-    OuterContext ctx1;
-    ctx1.gen              = outer_gen;
-    ctx1.start_time       = solve_start;
-    ctx1.complementary_soc = soc2;
+      Solution part3(current_solution.begin() + mid2_idx,
+                    current_solution.end());
+      
+      // SoC of the interval against its own sub-goal (what CEM minimises).
+      const uint soc_interval_before = compute_soc(interval, ins->goals);
 
-    // Optimise the first half.
-    {
-      CEMPlanner cem1(&sub_ins1, deadline, MT, verbose, objective, RESTART_RATE);
+      // Complementary cost: parts not being optimised, measured against global goal.
+      const uint soc_complement = compute_soc(part1, ins->goals)
+                                + compute_soc(part3, ins->goals);
+
+      // Sub-problem: mid1_config → mid2_config, borrowing ins->G.
+      Instance sub_ins(*ins, mid1_config, mid2_config);
+
+      OuterContext ctx;
+      ctx.gen               = outer_gen;
+      ctx.start_time        = solve_start;
+      ctx.complementary_soc = soc_complement;
+
+      CEMPlanner cem_ref(&sub_ins, deadline, MT, verbose, objective, RESTART_RATE);
       g_status_lines = 0;
-      Solution new_sol1 = cem1.solve_with_cem(additional_info, ctx1, &outer_stopped);
-      uint new_soc1 = new_sol1.empty() ? UINT_MAX : compute_soc(new_sol1, ins->goals);
-      if (new_soc1 < soc1) {
-        sol1 = std::move(new_sol1);
-        soc1 = compute_soc(sol1, mid_config);
+      Solution new_interval =
+          cem_ref.solve_with_cem(additional_info, ctx, &outer_stopped);
+
+      // Replace the interval only if the refined SoC improved.
+      int next_mid1 = mid2_idx;
+      if (!new_interval.empty()) {
+        const uint soc_interval_after = compute_soc(new_interval, ins->goals);
+        if (soc_interval_after < soc_interval_before) {
+          Solution new_sol;
+          // The total size is just the sum of the parts
+          new_sol.reserve(part1.size() + new_interval.size() + part3.size());
+
+          // Append them sequentially without any offsets
+          new_sol.insert(new_sol.end(), part1.begin(), part1.end());
+          new_sol.insert(new_sol.end(), new_interval.begin(), new_interval.end());
+          new_sol.insert(new_sol.end(), part3.begin(), part3.end());
+
+          current_solution = std::move(new_sol);
+
+          // Next interval starts right after the new interval.
+          next_mid1 = mid1_idx + static_cast<int>(new_interval.size()) - 1;
+        }
       }
-    }
-    if (outer_stopped) break;
 
-    OuterContext ctx2;
-    ctx2.gen               = outer_gen;
-    ctx2.start_time        = solve_start;
-    // complementary_soc must be the contribution of sol1 to the GLOBAL SoC,
-    // i.e. measured against ins->goals (not mid_config).
-    ctx2.complementary_soc = compute_soc(sol1, ins->goals);
-
-    // Optimise the second half.
-    {
-      CEMPlanner cem2(&sub_ins2, deadline, MT, verbose, objective, RESTART_RATE);
-      g_status_lines = 0;
-      Solution new_sol2 = cem2.solve_with_cem(additional_info, ctx2, &outer_stopped);
-      uint new_soc2 = new_sol2.empty() ? UINT_MAX : compute_soc(new_sol2, ins->goals);
-      if (new_soc2 < soc2) sol2 = std::move(new_sol2);
+      mid1_idx = next_mid1;
     }
-    
-    // Join the two halves (sol1 ends at mid_config; sol2 starts at mid_config).
-    // Avoid duplicating the mid config.
-    std::cout << "combining solutions...";
-    current_solution = sol1;
-    current_solution.insert(current_solution.end(), sol2.begin() + 1, sol2.end());
-    std::cout << "done" << std::endl;
 
     ++outer_gen;
   }
