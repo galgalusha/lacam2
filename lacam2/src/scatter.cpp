@@ -19,21 +19,27 @@ Scatter::Scatter(const Instance *_ins, DistTable *_D, const Deadline *_deadline,
 {
 }
 
+// vertex, cost-to-come, cost-to-go, collision, parent
+using ScatterNode = std::tuple<Vertex *, int, int, int, Vertex *>;
+
+inline Vertex* vertex(ScatterNode &a)   { return std::get<0>(a); }
+inline int cost_to_come(ScatterNode &a) { return std::get<1>(a); }
+inline int cost_to_go(ScatterNode &a)   { return std::get<2>(a); }
+inline int collision(ScatterNode &a)    { return std::get<3>(a); }
+inline Vertex* parent(ScatterNode &a)   { return std::get<4>(a); }
+
 void Scatter::construct()
 {
   info(0, verbose, deadline, "scatter", "\tinvoked");
 
   // define path finding utilities
-  // vertex, cost-to-come, cost-to-go, collision, parent
-  using ScatterNode = std::tuple<Vertex *, int, int, int, Vertex *>;
   auto cmp = [&](ScatterNode &a, ScatterNode &b) {
     // collision
-    if (std::get<3>(a) != std::get<3>(b))
-      return std::get<3>(a) > std::get<3>(b);
-    auto f_a = std::get<1>(a) + std::get<2>(a);
-    auto f_b = std::get<1>(b) + std::get<2>(b);
+    if (collision(a) != collision(b)) return collision(a) > collision(b);
+    auto f_a = cost_to_come(a) + cost_to_go(a);
+    auto f_b = cost_to_come(b) + cost_to_go(b);
     if (f_a != f_b) return f_a > f_b;
-    return std::get<0>(a)->id < std::get<0>(b)->id;
+    return vertex(a)->id < vertex(b)->id;
   };
   auto CLOSED = std::vector<Vertex *>(V_size, nullptr);  // parent
 
@@ -80,11 +86,11 @@ void Scatter::construct()
         OPEN.pop();
 
         // check CLOSED list
-        const auto v = std::get<0>(node);
-        const auto g_v = std::get<1>(node);  // cost-to-come
-        const auto c_v = std::get<3>(node);  // collision
+        const auto v = vertex(node);
+        const auto g_v = cost_to_come(node);  // cost-to-come
+        const auto c_v = collision(node);  // collision
         if (CLOSED[v->id] != nullptr) continue;
-        CLOSED[v->id] = std::get<4>(node);  // parent
+        CLOSED[v->id] = parent(node);  // parent
         USED.push_back(v->id);
 
         // check goal condition
@@ -144,3 +150,4 @@ void Scatter::construct()
 
   info(0, verbose, deadline, "scatter", "\tcompleted");
 }
+
