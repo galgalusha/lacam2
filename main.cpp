@@ -9,6 +9,7 @@
 #include <cassert>
 #include <cluster_detection_pibt.hpp>
 #include <cem_planner.hpp>
+#include <pibt_planner.hpp>
 
 static void test_clusters()
 {
@@ -170,6 +171,10 @@ int main(int argc, char* argv[])
       .help("use CEMPlanner (build policy from random rollouts, then run one PolicyPIBT rollout)")
       .default_value(false)
       .implicit_value(true);
+  program.add_argument("-pibt_planner", "--pibt_planner")
+      .help("use PIBTPlanner (10 Scatter seeds x 10 PIBT rollouts, returns global best)")
+      .default_value(false)
+      .implicit_value(true);
     program.add_argument("-max_ll")
       .help("max allowed low-level search; -1 disables cutoff")
       .default_value(std::string("-1"));
@@ -225,6 +230,7 @@ int main(int argc, char* argv[])
   const auto use_rand_planner = program.get<bool>("rand_planner");
   const auto use_cplanner = program.get<bool>("cplanner");
   const auto use_cem = program.get<bool>("cem");
+  const auto use_pibt_planner = program.get<bool>("pibt_planner");
   const auto max_ll_decay = std::clamp(std::stof(program.get<std::string>("max_ll_decay")), 0.0f, 1.0f);
   Planner::max_ll = std::stoi(program.get<std::string>("max_ll"));
   Planner::max_ll_decay = max_ll_decay;
@@ -239,7 +245,10 @@ int main(int argc, char* argv[])
   auto additional_info = std::string("");
   const auto deadline = Deadline(time_limit_sec * 1000);
   Solution solution;
-  if (use_cem) {
+  if (use_pibt_planner) {
+    PIBTPlanner pibt_planner(&ins, &deadline, &MT, verbose);
+    solution = pibt_planner.solve(additional_info);
+  } else if (use_cem) {
     CEMPlanner prs_planner(&ins, &deadline, &MT, verbose);
     solution = prs_planner.solve(additional_info);
   } else if (use_cplanner) {

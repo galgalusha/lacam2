@@ -718,7 +718,7 @@ void CEMPlanner::set_Scatter()
                    ? INT_MAX
                    : (deadline->time_limit_ms - elapsed_ms(deadline)) / 2);
   int SCATTER_MARGIN = 10;                 
-  scatter = new Scatter(ins, &D, &scatter_deadline, 3, verbose - 4, SCATTER_MARGIN);
+  scatter = new Scatter(ins, &D, &scatter_deadline, 3, verbose, SCATTER_MARGIN);
 
   scatter->construct();
   info(1, verbose, deadline, "finish computing SUO",

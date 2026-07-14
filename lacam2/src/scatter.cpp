@@ -20,13 +20,14 @@ Scatter::Scatter(const Instance *_ins, DistTable *_D, const Deadline *_deadline,
 }
 
 // vertex, cost-to-come, cost-to-go, collision, parent
-using ScatterNode = std::tuple<Vertex *, int, int, int, Vertex *>;
+using ScatterNode = std::tuple<Vertex *, int, int, int, Vertex *, uint32_t>;
 
-inline Vertex* vertex(ScatterNode &a)   { return std::get<0>(a); }
-inline int cost_to_come(ScatterNode &a) { return std::get<1>(a); }
-inline int cost_to_go(ScatterNode &a)   { return std::get<2>(a); }
-inline int collision(ScatterNode &a)    { return std::get<3>(a); }
-inline Vertex* parent(ScatterNode &a)   { return std::get<4>(a); }
+inline Vertex* vertex(ScatterNode &a)       { return std::get<0>(a); }
+inline int cost_to_come(ScatterNode &a)     { return std::get<1>(a); }
+inline int cost_to_go(ScatterNode &a)       { return std::get<2>(a); }
+inline int collision(ScatterNode &a)        { return std::get<3>(a); }
+inline Vertex* parent(ScatterNode &a)       { return std::get<4>(a); }
+inline uint32_t tie_breaker(ScatterNode &a) { return std::get<5>(a); }
 
 void Scatter::construct()
 {
@@ -39,7 +40,7 @@ void Scatter::construct()
     auto f_a = cost_to_come(a) + cost_to_go(a);
     auto f_b = cost_to_come(b) + cost_to_go(b);
     if (f_a != f_b) return f_a > f_b;
-    return vertex(a)->id < vertex(b)->id;
+    return tie_breaker(a) < tie_breaker(b);
   };
   auto CLOSED = std::vector<Vertex *>(V_size, nullptr);  // parent
 
@@ -49,7 +50,8 @@ void Scatter::construct()
 
   // main loop
   auto loop = 0;
-  while (loop < 2 || CT.collision_cnt < collision_cnt_last) {
+//  while (loop < 2 || CT.collision_cnt < collision_cnt_last) {
+  while (loop < 25) {
     ++loop;
     collision_cnt_last = CT.collision_cnt;
 
@@ -75,7 +77,7 @@ void Scatter::construct()
                                       decltype(cmp)>(cmp);
       // used with CLOSED, vertex-id list
       const auto s_i = ins->starts[i];
-      OPEN.push(std::make_tuple(s_i, 0, D->get(i, s_i), 0, nullptr));
+      OPEN.push(std::make_tuple(s_i, 0, D->get(i, s_i), 0, nullptr, MT()));
       auto USED = std::vector<int>();
 
       // A*
@@ -105,8 +107,9 @@ void Scatter::construct()
           if (u != s_i && CLOSED[u->id] == nullptr &&
               d_u + g_v + 1 <= cost_ub) {
             // insert new node
-            OPEN.push(std::make_tuple(u, g_v + 1, d_u,
-                                      CT.getCollisionCost(v, u, g_v) + c_v, v));
+            OPEN.push(std::make_tuple(
+              u, g_v + 1, d_u,
+              CT.getCollisionCost(v, u, g_v) + c_v, v, MT()));
           }
         }
       }
@@ -128,7 +131,8 @@ void Scatter::construct()
 
       // memory management
       for (auto k : USED) CLOSED[k] = nullptr;
-    }
+
+    } // agent loop
 
     paths_prev = paths;
     info(1, verbose, deadline, "scatter", "\titer:", loop,
@@ -136,7 +140,8 @@ void Scatter::construct()
 
     if (CT.collision_cnt == 0) break;
     if (is_expired(deadline)) break;
-  }
+
+  } // epoch loop
 
   paths = paths_prev;
 
