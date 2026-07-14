@@ -310,7 +310,7 @@ Solution CEMPlanner::solve(std::string& additional_info)
       const int mid2_idx = std::min(mid1_idx + interval_steps, cur_total - 1);
 
       const Config& mid1_config = current_solution[mid1_idx];
-      const Config& mid2_config = current_solution[mid2_idx];
+      const Config& mid2_config = current_solution[mid2_idx - 1];
 
       // The three parts (part1 and part3 are kept fixed).
       Solution part1 = mid1_idx == 0 ? Solution() : Solution(current_solution.begin(),
