@@ -7,14 +7,14 @@
 
 class PIBT : public PIBTBase {
  public:
-  PIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT, Scatter* _scatter=nullptr);
+  PIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT, IScatter* _scatter=nullptr);
   ~PIBT() override;
 
   uint get_edge_cost(const Config& C1, const Config& C2) const override;
   bool get_new_config(HNode* H, LNode* L, Config& C_new) override;
   RolloutResult rollout(HNode* H) override;
   const Agents& agents() const { return A; }
-  Scatter *scatter;
+  IScatter *scatter;
 
  private:
   const Instance* ins;

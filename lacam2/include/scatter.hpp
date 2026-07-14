@@ -14,7 +14,13 @@
 #include "graph.hpp"
 #include "utils.hpp"
 
-struct Scatter {
+struct IScatter {
+  // agent index -> (vertex-id -> next vertex)
+  virtual const std::unordered_map<int, Vertex *>& operator[](int agent_id) const = 0;
+  virtual ~IScatter() = default;
+};
+
+struct Scatter : IScatter {
   const Instance *ins;
   const Deadline *deadline;
   std::mt19937 MT;
@@ -30,6 +36,11 @@ struct Scatter {
   std::vector<Path> paths;
   // agent, vertex-id, next vertex
   std::vector<std::unordered_map<int, Vertex *>> scatter_data;
+
+  const std::unordered_map<int, Vertex *>& operator[](int agent_id) const override
+  {
+    return scatter_data[agent_id];
+  }
 
   // collision data
   CollisionTable CT;

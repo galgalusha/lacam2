@@ -6,7 +6,7 @@
 
 
 PolicyPIBT::PolicyPIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT,
-                       std::shared_ptr<Policy> _policy, Scatter* _scatter)
+                       std::shared_ptr<Policy> _policy, IScatter* _scatter)
     : ins(_ins),
       D(_D),
       policy(std::move(_policy)),

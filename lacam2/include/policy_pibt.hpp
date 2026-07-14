@@ -9,7 +9,7 @@
 
 class PolicyPIBT : public PIBTBase {
  public:
-  PolicyPIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT, std::shared_ptr<Policy> _policy, Scatter* _scatter=nullptr);
+  PolicyPIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT, std::shared_ptr<Policy> _policy, IScatter* _scatter=nullptr);
   ~PolicyPIBT() override;
 
   uint get_edge_cost(const Config& C1, const Config& C2) const override;
@@ -17,7 +17,7 @@ class PolicyPIBT : public PIBTBase {
   RolloutResult rollout(HNode* H) override;
   RolloutResult rollout(HNode* H, uint max_cost);
   const Agents& agents() const { return A; }
-  Scatter *scatter;
+  IScatter *scatter;
 
  private:
   std::mt19937* MT;

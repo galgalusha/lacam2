@@ -5,7 +5,7 @@
 #include <unordered_set>
 
 
-PIBT::PIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT, Scatter* _scatter)
+PIBT::PIBT(const Instance* _ins, DistTable& _D, std::mt19937* _MT, IScatter* _scatter)
     : ins(_ins),
       D(_D),
       MT(_MT),
@@ -143,8 +143,8 @@ bool PIBT::funcPIBT(Agent* ai)
 {
   Vertex *prioritized_vertex = nullptr;
   if (scatter != nullptr) {
-    auto itr_s = scatter->scatter_data[ai->id].find(ai->v_now->id);
-    if (itr_s != scatter->scatter_data[ai->id].end()) {
+    auto itr_s = (*scatter)[ai->id].find(ai->v_now->id);
+    if (itr_s != (*scatter)[ai->id].end()) {
       prioritized_vertex = itr_s->second;
     }
   }

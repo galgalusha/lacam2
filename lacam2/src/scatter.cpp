@@ -153,6 +153,6 @@ void Scatter::construct()
     }
   }
 
-  info(0, verbose, deadline, "scatter", "\tcompleted");
+  info(0, verbose, "scatter", "\tcompleted");
 }
 
