@@ -7,6 +7,27 @@
 
 #include <iostream>
 #include <limits>
+#include <chrono>
+#include <termios.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+static bool kbhit()
+{
+  struct termios oldt, newt;
+  tcgetattr(STDIN_FILENO, &oldt);
+  newt = oldt;
+  newt.c_lflag &= ~(ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+  int oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+  fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+  int ch = getchar();
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  fcntl(STDIN_FILENO, F_SETFL, oldf);
+  // Character is already consumed; do not put it back so subsequent calls
+  // don't see a stale keypress.
+  return ch != EOF;
+}
 
 PIBTPlanner::PIBTPlanner(
     const Instance* _ins, const Deadline* _deadline, std::mt19937* _MT,
@@ -15,37 +36,106 @@ PIBTPlanner::PIBTPlanner(
 {
 }
 
-Solution PIBTPlanner::create_initial_solution()
+// Hierarchical search for the best scatter margin.
+// Uses `rng` for all rollouts to ensure reproducibility.
+int PIBTPlanner::find_scatter_margin(const Instance* target_ins, HNode* H_init, std::mt19937& rng)
+{
+  constexpr int MARGIN_ROLLOUTS = 25;
+
+  // Evaluate a given margin: run MARGIN_ROLLOUTS rollouts, return best cost.
+  auto eval_margin = [&](int margin) -> uint {
+    Scatter sc(target_ins, &D, deadline, 0 /*seed unused*/, 0, margin);
+    sc.construct();
+    PIBT pibt_inst(target_ins, D, &rng, &sc);
+    uint best = std::numeric_limits<uint>::max();
+    for (int r = 0; r < MARGIN_ROLLOUTS; ++r) {
+      if (is_expired(deadline)) break;
+      auto res = pibt_inst.rollout(H_init);
+      if (res.success && res.cost < best) best = res.cost;
+    }
+    return best;
+  };
+
+  // One round of search: given candidates, return the best margin value.
+  auto best_of = [&](const std::vector<int>& candidates) -> int {
+    int best_margin = candidates[0];
+    uint best_cost = std::numeric_limits<uint>::max();
+    for (int m : candidates) {
+      uint cost = eval_margin(m);
+      if (cost < best_cost) { best_cost = cost; best_margin = m; }
+    }
+    return best_margin;
+  };
+
+  // Round 1: coarse search 0..100 step 20
+  std::vector<int> coarse;
+  for (int m = 0; m <= 100; m += 20) coarse.push_back(m);
+  int winner = best_of(coarse);
+
+  // Round 2: step 10 around winner
+  {
+    std::vector<int> mid;
+    for (int m = std::max(0, winner - 10); m <= std::min(100, winner + 10); m += 10)
+      mid.push_back(m);
+    winner = best_of(mid);
+  }
+
+  // Round 3: step 5 around winner
+  {
+    std::vector<int> fine;
+    for (int m = std::max(0, winner - 5); m <= std::min(100, winner + 5); m += 5)
+      fine.push_back(m);
+    winner = best_of(fine);
+  }
+
+  // Round 4: step 2 around winner
+  {
+    std::vector<int> finest;
+    for (int m = std::max(0, winner - 2); m <= std::min(100, winner + 2); m += 2)
+      finest.push_back(m);
+    winner = best_of(finest);
+  }
+
+  return winner;
+}
+
+Solution PIBTPlanner::create_initial_solution(const Instance* target_ins, int prefix_cost, int step_offset)
 {
   RolloutResult best;
   best.success = false;
   best.cost = std::numeric_limits<uint>::max();
 
-  auto H_init = new HNode(ins->starts, D, nullptr, 0, 0);
+  auto H_init = new HNode(target_ins->starts, D, nullptr, 0, 0);
 
-  for (int s = 0; s < NUM_SCATTERS; ++s) {
-    std::cout << "[PIBTPlanner] Running PIBT " << s+1 << " out of " << NUM_SCATTERS << std::endl;
-    const int seed = (MT != nullptr) ? static_cast<int>((*MT)()) : (s + 1);
+  // Shared RNG for all phases (margin search + rollouts) for reproducibility.
+  const int base_seed = (MT != nullptr) ? static_cast<int>((*MT)()) : 1;
+  std::mt19937 rng(base_seed);
 
-    Scatter scatter_inst(ins, &D, deadline, seed, 4, 10);
-    scatter_inst.construct();
+  const int best_margin = find_scatter_margin(target_ins, H_init, rng);
+  std::cout << "[PIBTPlanner] offset=" << step_offset
+            << " best_margin=" << best_margin << std::endl;
 
-    std::mt19937 rng(seed);
-    PIBT pibt_inst(ins, D, &rng, &scatter_inst);
+  Scatter scatter_inst(target_ins, &D, deadline, 0, 0, best_margin);
+  scatter_inst.construct();
+  PIBT pibt_inst(target_ins, D, &rng, &scatter_inst);
 
-    for (int r = 0; r < NUM_ROLLOUTS; ++r) {
-      if (is_expired(deadline)) break;
+  for (int r = 0; r < NUM_ROLLOUTS; ++r) {
+    if (is_expired(deadline)) break;
 
-      auto result = pibt_inst.rollout(H_init);
+    auto result = pibt_inst.rollout(H_init);
 
-      if (result.success && result.cost < best.cost) {
-        std::cout << "[PIBTPlanner] Cost update " << best.cost << "->" << result.cost << std::endl;
-        best = std::move(result);
-      }
+    if (result.success && result.cost < best.cost) {
+      best = std::move(result);
     }
 
-    if (is_expired(deadline)) break;
+    int pct = (r + 1) * 100 / NUM_ROLLOUTS;
+    int displayed_cost = best.success ? (prefix_cost + static_cast<int>(best.cost)) : -1;
+    std::cout << "[PIBTPlanner] offset=" << step_offset
+              << " progress=" << pct << "%"
+              << " best_cost=" << (best.success ? std::to_string(displayed_cost) : "n/a")
+              << "    " << std::endl;
   }
+  std::cout << std::endl;
 
   delete H_init;
 
@@ -53,24 +143,37 @@ Solution PIBTPlanner::create_initial_solution()
   return best.configs;
 }
 
-Solution PIBTPlanner::refine_loop(Solution solution)
+Solution PIBTPlanner::refine_loop(Solution solution, int prefix_cost, const Instance* target_ins)
 {
   if (solution.empty()) return solution;
+  if (target_ins == nullptr) target_ins = ins;
 
-  auto best_cost = get_sum_of_loss(solution);
-  std::cout << "[PIBTPlanner] Starting refinement, initial cost: " << best_cost << std::endl;
+  auto best_cost = get_sum_of_loss(solution, ins->goals);
+  std::cout << "[PIBTPlanner] Starting refinement, initial cost: " << (prefix_cost + best_cost) << std::endl;
 
   auto seed = 0;
+  auto last_print = std::chrono::steady_clock::now();
+
   while (!is_expired(deadline)) {
+    if (kbhit()) {
+      std::cout << "[PIBTPlanner] Key pressed, stopping refinement." << std::endl;
+      break;
+    }
+
     const int refine_seed = (MT != nullptr) ? static_cast<int>((*MT)()) : (++seed);
-    auto refined = refine(ins, deadline, solution, &D, refine_seed, verbose);
+    auto refined = refine(target_ins, deadline, solution, &D, refine_seed, -1);
     if (refined.empty()) continue;
 
-    auto new_cost = get_sum_of_loss(refined);
+    auto new_cost = get_sum_of_loss(refined, ins->goals);
     if (new_cost < best_cost) {
-      std::cout << "[PIBTPlanner] Refinement cost update " << best_cost << "->" << new_cost << std::endl;
       best_cost = new_cost;
       solution = std::move(refined);
+
+      auto now = std::chrono::steady_clock::now();
+      if (std::chrono::duration_cast<std::chrono::seconds>(now - last_print).count() >= 1) {
+        std::cout << "[PIBTPlanner] Refinement cost update -> " << (prefix_cost + best_cost) << std::endl;
+        last_print = now;
+      }
     }
   }
 
@@ -79,9 +182,7 @@ Solution PIBTPlanner::refine_loop(Solution solution)
 
 Solution PIBTPlanner::solve(std::string& additional_info)
 {
-  auto solution = create_initial_solution();
-  solution = refine_loop(std::move(solution));
-
-  additional_info = "pibt_planner";
+  auto solution = create_initial_solution(ins, 0, 0);
+  solution = refine_loop(std::move(solution), 0);
   return solution;
 }

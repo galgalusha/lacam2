@@ -51,7 +51,7 @@ void Scatter::construct()
   // main loop
   auto loop = 0;
 //  while (loop < 2 || CT.collision_cnt < collision_cnt_last) {
-  while (loop < 25) {
+  while (loop < 50) {
     ++loop;
     collision_cnt_last = CT.collision_cnt;
 
@@ -135,7 +135,7 @@ void Scatter::construct()
     } // agent loop
 
     paths_prev = paths;
-    info(1, verbose, deadline, "scatter", "\titer:", loop,
+    info(4, verbose, deadline, "scatter", "\titer:", loop,
          "\tcollision_cnt:", CT.collision_cnt);
 
     if (CT.collision_cnt == 0) break;

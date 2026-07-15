@@ -88,6 +88,22 @@ int get_sum_of_loss(const Solution &solution)
   return c;
 }
 
+int get_sum_of_loss(const Solution &sol, const Config& goals) {
+  if (sol.empty()) return 0;
+  int c = 0;
+  const auto N = sol.front().size();
+  const auto T = sol.size();
+  
+  for (size_t i = 0; i < N; ++i) {
+    auto g = goals[i];
+    // Start at t = 0 instead of t = 1, checking each individual state
+    for (size_t t = 0; t < T; ++t) {
+       if (sol[t][i] != g) ++c;
+    }
+  }
+  return c;
+}
+
 int get_sum_of_loss_paths(const std::vector<Path> &solution)
 {
   auto c = 0;
