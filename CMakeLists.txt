@@ -3,6 +3,8 @@ project(lacam2-project CXX)
 
 option(LACAM2_BUILD_TESTS "Build test targets" OFF)
 
+find_package(Threads REQUIRED)
+
 add_subdirectory(./lacam2)
 add_subdirectory(./third_party/argparse)
 if(LACAM2_BUILD_TESTS)
@@ -25,8 +27,8 @@ target_include_directories(main PRIVATE
 target_link_libraries(main
     lacam2
     argparse
+  Threads::Threads
     sfml-graphics sfml-window sfml-system
-    /home/galko/.local/lib/libCBSH2.so
 )
 
 # test

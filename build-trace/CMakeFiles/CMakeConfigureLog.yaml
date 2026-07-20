@@ -1,0 +1,2414 @@
+
+---
+events:
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineSystem.cmake:12 (find_program)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_UNAME"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "uname"
+    candidate_directories:
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/usr/bin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/uname"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/uname"
+      - "/usr/local/sbin/uname"
+      - "/usr/local/bin/uname"
+      - "/usr/sbin/uname"
+      - "/usr/bin/uname"
+      - "/sbin/uname"
+    found: "/bin/uname"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineSystem.cmake:218 (message)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      The system is: Linux - 5.4.0-150-generic - x86_64
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeUnixFindMake.cmake:5 (find_program)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_MAKE_PROGRAM"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "gmake"
+      - "make"
+      - "smake"
+    candidate_directories:
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/usr/bin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/gmake"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/gmake"
+      - "/usr/local/sbin/gmake"
+      - "/usr/local/bin/gmake"
+      - "/usr/sbin/gmake"
+      - "/usr/bin/gmake"
+      - "/sbin/gmake"
+      - "/bin/gmake"
+      - "/usr/games/gmake"
+      - "/usr/local/games/gmake"
+      - "/snap/bin/gmake"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/make"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/make"
+      - "/usr/local/sbin/make"
+      - "/usr/local/bin/make"
+      - "/usr/sbin/make"
+    found: "/usr/bin/make"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompiler.cmake:115 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:71 (_cmake_find_compiler_path)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_CXX_COMPILER_WITH_PATH"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "g++-9"
+    candidate_directories:
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/usr/bin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/g++-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/g++-9"
+      - "/usr/local/sbin/g++-9"
+      - "/usr/local/bin/g++-9"
+      - "/usr/sbin/g++-9"
+    found: "/usr/bin/g++-9"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:501 (find_file)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:538 (CMAKE_DETERMINE_COMPILER_ID_WRITE)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:8 (CMAKE_DETERMINE_COMPILER_ID_BUILD)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:125 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "file"
+    variable: "src_in"
+    description: "Path to a file."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "CMakeCXXCompilerId.cpp.in"
+    candidate_directories:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/"
+    found: "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeCXXCompilerId.cpp.in"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:125 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+      Compiler: /usr/bin/g++-9 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "a.out"
+      
+      The CXX compiler identification is GNU, found in:
+        /home/galk/dev/lacam2/build-trace/CMakeFiles/4.4.0/CompilerIdCXX/a.out
+      
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_AR"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "ar-9"
+      - "ar"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/usr/bin/ar-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/ar-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/ar-9"
+      - "/usr/local/sbin/ar-9"
+      - "/usr/local/bin/ar-9"
+      - "/usr/sbin/ar-9"
+      - "/sbin/ar-9"
+      - "/bin/ar-9"
+      - "/usr/games/ar-9"
+      - "/usr/local/games/ar-9"
+      - "/snap/bin/ar-9"
+    found: "/usr/bin/ar"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_RANLIB"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "ranlib-9"
+      - "ranlib"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/usr/bin/ranlib-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/ranlib-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/ranlib-9"
+      - "/usr/local/sbin/ranlib-9"
+      - "/usr/local/bin/ranlib-9"
+      - "/usr/sbin/ranlib-9"
+      - "/sbin/ranlib-9"
+      - "/bin/ranlib-9"
+      - "/usr/games/ranlib-9"
+      - "/usr/local/games/ranlib-9"
+      - "/snap/bin/ranlib-9"
+    found: "/usr/bin/ranlib"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_STRIP"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "strip-9"
+      - "strip"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/usr/bin/strip-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/strip-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/strip-9"
+      - "/usr/local/sbin/strip-9"
+      - "/usr/local/bin/strip-9"
+      - "/usr/sbin/strip-9"
+      - "/sbin/strip-9"
+      - "/bin/strip-9"
+      - "/usr/games/strip-9"
+      - "/usr/local/games/strip-9"
+      - "/snap/bin/strip-9"
+    found: "/usr/bin/strip"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_LINKER"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "ld-9"
+      - "ld"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/usr/bin/ld-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/ld-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/ld-9"
+      - "/usr/local/sbin/ld-9"
+      - "/usr/local/bin/ld-9"
+      - "/usr/sbin/ld-9"
+      - "/sbin/ld-9"
+      - "/bin/ld-9"
+      - "/usr/games/ld-9"
+      - "/usr/local/games/ld-9"
+      - "/snap/bin/ld-9"
+    found: "/usr/bin/ld"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_NM"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "nm-9"
+      - "nm"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/usr/bin/nm-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/nm-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/nm-9"
+      - "/usr/local/sbin/nm-9"
+      - "/usr/local/bin/nm-9"
+      - "/usr/sbin/nm-9"
+      - "/sbin/nm-9"
+      - "/bin/nm-9"
+      - "/usr/games/nm-9"
+      - "/usr/local/games/nm-9"
+      - "/snap/bin/nm-9"
+    found: "/usr/bin/nm"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_OBJDUMP"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "objdump-9"
+      - "objdump"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/usr/bin/objdump-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/objdump-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/objdump-9"
+      - "/usr/local/sbin/objdump-9"
+      - "/usr/local/bin/objdump-9"
+      - "/usr/sbin/objdump-9"
+      - "/sbin/objdump-9"
+      - "/bin/objdump-9"
+      - "/usr/games/objdump-9"
+      - "/usr/local/games/objdump-9"
+      - "/snap/bin/objdump-9"
+    found: "/usr/bin/objdump"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_OBJCOPY"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "objcopy-9"
+      - "objcopy"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/usr/bin/objcopy-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/objcopy-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/objcopy-9"
+      - "/usr/local/sbin/objcopy-9"
+      - "/usr/local/bin/objcopy-9"
+      - "/usr/sbin/objcopy-9"
+      - "/sbin/objcopy-9"
+      - "/bin/objcopy-9"
+      - "/usr/games/objcopy-9"
+      - "/usr/local/games/objcopy-9"
+      - "/snap/bin/objcopy-9"
+    found: "/usr/bin/objcopy"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_READELF"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "readelf-9"
+      - "readelf"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/usr/bin/readelf-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/readelf-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/readelf-9"
+      - "/usr/local/sbin/readelf-9"
+      - "/usr/local/bin/readelf-9"
+      - "/usr/sbin/readelf-9"
+      - "/sbin/readelf-9"
+      - "/bin/readelf-9"
+      - "/usr/games/readelf-9"
+      - "/usr/local/games/readelf-9"
+      - "/snap/bin/readelf-9"
+    found: "/usr/bin/readelf"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_DLLTOOL"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "dlltool-9"
+      - "dlltool"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/usr/bin/dlltool-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/dlltool-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/dlltool-9"
+      - "/usr/local/sbin/dlltool-9"
+      - "/usr/local/bin/dlltool-9"
+      - "/usr/sbin/dlltool-9"
+      - "/sbin/dlltool-9"
+      - "/bin/dlltool-9"
+      - "/usr/games/dlltool-9"
+      - "/usr/local/games/dlltool-9"
+      - "/snap/bin/dlltool-9"
+      - "/usr/bin/dlltool"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/dlltool"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/dlltool"
+      - "/usr/local/sbin/dlltool"
+      - "/usr/local/bin/dlltool"
+      - "/usr/sbin/dlltool"
+      - "/sbin/dlltool"
+      - "/bin/dlltool"
+      - "/usr/games/dlltool"
+      - "/usr/local/games/dlltool"
+      - "/snap/bin/dlltool"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_ADDR2LINE"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "addr2line-9"
+      - "addr2line"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/usr/bin/addr2line-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/addr2line-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/addr2line-9"
+      - "/usr/local/sbin/addr2line-9"
+      - "/usr/local/bin/addr2line-9"
+      - "/usr/sbin/addr2line-9"
+      - "/sbin/addr2line-9"
+      - "/bin/addr2line-9"
+      - "/usr/games/addr2line-9"
+      - "/usr/local/games/addr2line-9"
+      - "/snap/bin/addr2line-9"
+    found: "/usr/bin/addr2line"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:206 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_TAPI"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "tapi-9"
+      - "tapi"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/usr/bin/tapi-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/tapi-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/tapi-9"
+      - "/usr/local/sbin/tapi-9"
+      - "/usr/local/bin/tapi-9"
+      - "/usr/sbin/tapi-9"
+      - "/sbin/tapi-9"
+      - "/bin/tapi-9"
+      - "/usr/games/tapi-9"
+      - "/usr/local/games/tapi-9"
+      - "/snap/bin/tapi-9"
+      - "/usr/bin/tapi"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/tapi"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/tapi"
+      - "/usr/local/sbin/tapi"
+      - "/usr/local/bin/tapi"
+      - "/usr/sbin/tapi"
+      - "/sbin/tapi"
+      - "/bin/tapi"
+      - "/usr/games/tapi"
+      - "/usr/local/games/tapi"
+      - "/snap/bin/tapi"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/Compiler/GNU-FindBinUtils.cmake:18 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:207 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_CXX_COMPILER_AR"
+    description: "A wrapper around 'ar' adding the appropriate '--plugin' option for the GCC compiler"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "gcc-ar-9.4"
+      - "gcc-ar-9"
+      - "gcc-ar9"
+      - "gcc-ar"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/usr/bin/gcc-ar-9.4"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/gcc-ar-9.4"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/gcc-ar-9.4"
+      - "/usr/local/sbin/gcc-ar-9.4"
+      - "/usr/local/bin/gcc-ar-9.4"
+      - "/usr/sbin/gcc-ar-9.4"
+      - "/sbin/gcc-ar-9.4"
+      - "/bin/gcc-ar-9.4"
+      - "/usr/games/gcc-ar-9.4"
+      - "/usr/local/games/gcc-ar-9.4"
+      - "/snap/bin/gcc-ar-9.4"
+    found: "/usr/bin/gcc-ar-9"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/Compiler/GNU-FindBinUtils.cmake:30 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCXXCompiler.cmake:207 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_CXX_COMPILER_RANLIB"
+    description: "A wrapper around 'ranlib' adding the appropriate '--plugin' option for the GCC compiler"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "gcc-ranlib-9.4"
+      - "gcc-ranlib-9"
+      - "gcc-ranlib9"
+      - "gcc-ranlib"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+    searched_directories:
+      - "/usr/bin/gcc-ranlib-9.4"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/gcc-ranlib-9.4"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/gcc-ranlib-9.4"
+      - "/usr/local/sbin/gcc-ranlib-9.4"
+      - "/usr/local/bin/gcc-ranlib-9.4"
+      - "/usr/sbin/gcc-ranlib-9.4"
+      - "/sbin/gcc-ranlib-9.4"
+      - "/bin/gcc-ranlib-9.4"
+      - "/usr/games/gcc-ranlib-9.4"
+      - "/usr/local/games/gcc-ranlib-9.4"
+      - "/snap/bin/gcc-ranlib-9.4"
+    found: "/usr/bin/gcc-ranlib-9"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerABI.cmake:123 (try_compile)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    checks:
+      - "Detecting CXX compiler ABI info"
+    directories:
+      source: "/home/galk/dev/lacam2/build-trace/CMakeFiles/CMakeScratch/TryCompile-iyDY7d"
+      binary: "/home/galk/dev/lacam2/build-trace/CMakeFiles/CMakeScratch/TryCompile-iyDY7d"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_CXX_SCAN_FOR_MODULES: "OFF"
+      CMAKE_CXX_STDLIB_MODULES_JSON: ""
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_CXX_ABI_COMPILED"
+      cached: false
+      stdout: |
+        Change Dir: '/home/galk/dev/lacam2/build-trace/CMakeFiles/CMakeScratch/TryCompile-iyDY7d'
+        
+        Run Build Command(s): /snap/cmake/1556/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_d71b7/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_d71b7.dir/build.make CMakeFiles/cmTC_d71b7.dir/build
+        make[1]: Entering directory '/home/galk/dev/lacam2/build-trace/CMakeFiles/CMakeScratch/TryCompile-iyDY7d'
+        Building CXX object CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o
+        /usr/bin/g++-9   -v -o CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o -c /snap/cmake/1556/share/cmake-4.4/Modules/CMakeCXXCompilerABI.cpp
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/g++-9
+        OFFLOAD_TARGET_NAMES=nvptx-none:hsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-linux-gnu
+        Configured with: ../src/configure -v --with-pkgversion='Ubuntu 9.4.0-1ubuntu1~18.04' --with-bugurl=file:///usr/share/doc/gcc-9/README.Bugs --enable-languages=c,ada,c++,go,brig,d,fortran,objc,obj-c++,gm2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-9 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/lib --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-9-nrQql7/gcc-9-9.4.0/debian/tmp-nvptx/usr,hsa --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu
+        Thread model: posix
+        gcc version 9.4.0 (Ubuntu 9.4.0-1ubuntu1~18.04) 
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+         /usr/lib/gcc/x86_64-linux-gnu/9/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE /snap/cmake/1556/share/cmake-4.4/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpbase CMakeCXXCompilerABI.cpp -mtune=generic -march=x86-64 -auxbase-strip CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -o /tmp/ccjnmaJp.s
+        GNU C++14 (Ubuntu 9.4.0-1ubuntu1~18.04) version 9.4.0 (x86_64-linux-gnu)
+        	compiled by GNU C version 9.4.0, GMP version 6.1.2, MPFR version 4.0.1, MPC version 1.1.0, isl version isl-0.19-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        ignoring duplicate directory "/usr/include/x86_64-linux-gnu/c++/9"
+        ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/9/include-fixed"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/9/../../../../x86_64-linux-gnu/include"
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /usr/include/c++/9
+         /usr/include/x86_64-linux-gnu/c++/9
+         /usr/include/c++/9/backward
+         /usr/lib/gcc/x86_64-linux-gnu/9/include
+         /usr/local/include
+         /usr/include/x86_64-linux-gnu
+         /usr/include
+        End of search list.
+        GNU C++14 (Ubuntu 9.4.0-1ubuntu1~18.04) version 9.4.0 (x86_64-linux-gnu)
+        	compiled by GNU C version 9.4.0, GMP version 6.1.2, MPFR version 4.0.1, MPC version 1.1.0, isl version isl-0.19-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        Compiler executable checksum: 306847ad22fd9e2a7a49ad7f5781968e
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+         as -v --64 -o CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccjnmaJp.s
+        GNU assembler version 2.30 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.30
+        COMPILER_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/
+        LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+        Linking CXX executable cmTC_d71b7
+        /snap/cmake/1556/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d71b7.dir/link.txt --verbose=1
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/g++-9
+        COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper
+        OFFLOAD_TARGET_NAMES=nvptx-none:hsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-linux-gnu
+        Configured with: ../src/configure -v --with-pkgversion='Ubuntu 9.4.0-1ubuntu1~18.04' --with-bugurl=file:///usr/share/doc/gcc-9/README.Bugs --enable-languages=c,ada,c++,go,brig,d,fortran,objc,obj-c++,gm2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-9 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/lib --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-9-nrQql7/gcc-9-9.4.0/debian/tmp-nvptx/usr,hsa --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu
+        Thread model: posix
+        gcc version 9.4.0 (Ubuntu 9.4.0-1ubuntu1~18.04) 
+        COMPILER_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/
+        LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_d71b7' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+         /usr/lib/gcc/x86_64-linux-gnu/9/collect2 -plugin /usr/lib/gcc/x86_64-linux-gnu/9/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper -plugin-opt=-fresolution=/tmp/cc4u4yFu.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_d71b7 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/9 -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/9/../../.. -v CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o
+        collect2 version 9.4.0
+        /usr/bin/ld -plugin /usr/lib/gcc/x86_64-linux-gnu/9/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper -plugin-opt=-fresolution=/tmp/cc4u4yFu.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_d71b7 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/9 -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/9/../../.. -v CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o
+        GNU ld (GNU Binutils for Ubuntu) 2.30
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_d71b7' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+        /usr/bin/g++-9  -v -Wl,-v CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_d71b7
+        make[1]: Leaving directory '/home/galk/dev/lacam2/build-trace/CMakeFiles/CMakeScratch/TryCompile-iyDY7d'
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerABI.cmake:255 (message)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Parsed CXX implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [/usr/include/c++/9]
+          add: [/usr/include/x86_64-linux-gnu/c++/9]
+          add: [/usr/include/c++/9/backward]
+          add: [/usr/lib/gcc/x86_64-linux-gnu/9/include]
+          add: [/usr/local/include]
+          add: [/usr/include/x86_64-linux-gnu]
+          add: [/usr/include]
+        end of search list found
+        collapse include dir [/usr/include/c++/9] ==> [/usr/include/c++/9]
+        collapse include dir [/usr/include/x86_64-linux-gnu/c++/9] ==> [/usr/include/x86_64-linux-gnu/c++/9]
+        collapse include dir [/usr/include/c++/9/backward] ==> [/usr/include/c++/9/backward]
+        collapse include dir [/usr/lib/gcc/x86_64-linux-gnu/9/include] ==> [/usr/lib/gcc/x86_64-linux-gnu/9/include]
+        collapse include dir [/usr/local/include] ==> [/usr/local/include]
+        collapse include dir [/usr/include/x86_64-linux-gnu] ==> [/usr/include/x86_64-linux-gnu]
+        collapse include dir [/usr/include] ==> [/usr/include]
+        implicit include dirs: [/usr/include/c++/9;/usr/include/x86_64-linux-gnu/c++/9;/usr/include/c++/9/backward;/usr/lib/gcc/x86_64-linux-gnu/9/include;/usr/local/include;/usr/include/x86_64-linux-gnu;/usr/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerABI.cmake:291 (message)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Parsed CXX implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|wild|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|"|[0-9]+>[ 	-]*Build:[ 	0-9]+ ms[ 	]*)?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|wild))("|,| |$)]
+        ignore line: [Change Dir: '/home/galk/dev/lacam2/build-trace/CMakeFiles/CMakeScratch/TryCompile-iyDY7d']
+        ignore line: []
+        ignore line: [Run Build Command(s): /snap/cmake/1556/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_d71b7/fast]
+        ignore line: [/usr/bin/make  -f CMakeFiles/cmTC_d71b7.dir/build.make CMakeFiles/cmTC_d71b7.dir/build]
+        ignore line: [make[1]: Entering directory '/home/galk/dev/lacam2/build-trace/CMakeFiles/CMakeScratch/TryCompile-iyDY7d']
+        ignore line: [Building CXX object CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o]
+        ignore line: [/usr/bin/g++-9   -v -o CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o -c /snap/cmake/1556/share/cmake-4.4/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/g++-9]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:hsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-linux-gnu]
+        ignore line: [Configured with: ../src/configure -v --with-pkgversion='Ubuntu 9.4.0-1ubuntu1~18.04' --with-bugurl=file:///usr/share/doc/gcc-9/README.Bugs --enable-languages=c ada c++ go brig d fortran objc obj-c++ gm2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-9 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/lib --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32 m64 mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-9-nrQql7/gcc-9-9.4.0/debian/tmp-nvptx/usr hsa --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu]
+        ignore line: [Thread model: posix]
+        ignore line: [gcc version 9.4.0 (Ubuntu 9.4.0-1ubuntu1~18.04) ]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64']
+        ignore line: [ /usr/lib/gcc/x86_64-linux-gnu/9/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE /snap/cmake/1556/share/cmake-4.4/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpbase CMakeCXXCompilerABI.cpp -mtune=generic -march=x86-64 -auxbase-strip CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -o /tmp/ccjnmaJp.s]
+        ignore line: [GNU C++14 (Ubuntu 9.4.0-1ubuntu1~18.04) version 9.4.0 (x86_64-linux-gnu)]
+        ignore line: [	compiled by GNU C version 9.4.0  GMP version 6.1.2  MPFR version 4.0.1  MPC version 1.1.0  isl version isl-0.19-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [ignoring duplicate directory "/usr/include/x86_64-linux-gnu/c++/9"]
+        ignore line: [ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/9/include-fixed"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/9/../../../../x86_64-linux-gnu/include"]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /usr/include/c++/9]
+        ignore line: [ /usr/include/x86_64-linux-gnu/c++/9]
+        ignore line: [ /usr/include/c++/9/backward]
+        ignore line: [ /usr/lib/gcc/x86_64-linux-gnu/9/include]
+        ignore line: [ /usr/local/include]
+        ignore line: [ /usr/include/x86_64-linux-gnu]
+        ignore line: [ /usr/include]
+        ignore line: [End of search list.]
+        ignore line: [GNU C++14 (Ubuntu 9.4.0-1ubuntu1~18.04) version 9.4.0 (x86_64-linux-gnu)]
+        ignore line: [	compiled by GNU C version 9.4.0  GMP version 6.1.2  MPFR version 4.0.1  MPC version 1.1.0  isl version isl-0.19-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [Compiler executable checksum: 306847ad22fd9e2a7a49ad7f5781968e]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64']
+        ignore line: [ as -v --64 -o CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccjnmaJp.s]
+        ignore line: [GNU assembler version 2.30 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.30]
+        ignore line: [COMPILER_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/]
+        ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64']
+        ignore line: [Linking CXX executable cmTC_d71b7]
+        ignore line: [/snap/cmake/1556/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d71b7.dir/link.txt --verbose=1]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/g++-9]
+        ignore line: [COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:hsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-linux-gnu]
+        ignore line: [Configured with: ../src/configure -v --with-pkgversion='Ubuntu 9.4.0-1ubuntu1~18.04' --with-bugurl=file:///usr/share/doc/gcc-9/README.Bugs --enable-languages=c ada c++ go brig d fortran objc obj-c++ gm2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-9 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/lib --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32 m64 mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-9-nrQql7/gcc-9-9.4.0/debian/tmp-nvptx/usr hsa --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu]
+        ignore line: [Thread model: posix]
+        ignore line: [gcc version 9.4.0 (Ubuntu 9.4.0-1ubuntu1~18.04) ]
+        ignore line: [COMPILER_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/]
+        ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_d71b7' '-shared-libgcc' '-mtune=generic' '-march=x86-64']
+        link line: [ /usr/lib/gcc/x86_64-linux-gnu/9/collect2 -plugin /usr/lib/gcc/x86_64-linux-gnu/9/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper -plugin-opt=-fresolution=/tmp/cc4u4yFu.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_d71b7 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/9 -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/9/../../.. -v CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/9/collect2] ==> ignore
+          arg [-plugin] ==> ignore
+          arg [/usr/lib/gcc/x86_64-linux-gnu/9/liblto_plugin.so] ==> ignore
+          arg [-plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/cc4u4yFu.res] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [--build-id] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [-m] ==> ignore
+          arg [elf_x86_64] ==> ignore
+          arg [--hash-style=gnu] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-dynamic-linker] ==> ignore
+          arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+          arg [-pie] ==> ignore
+          arg [-znow] ==> ignore
+          arg [-zrelro] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_d71b7] ==> ignore
+          arg [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/9] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/9]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib]
+          arg [-L/lib/x86_64-linux-gnu] ==> dir [/lib/x86_64-linux-gnu]
+          arg [-L/lib/../lib] ==> dir [/lib/../lib]
+          arg [-L/usr/lib/x86_64-linux-gnu] ==> dir [/usr/lib/x86_64-linux-gnu]
+          arg [-L/usr/lib/../lib] ==> dir [/usr/lib/../lib]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/9/../../..] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/9/../../..]
+          arg [-v] ==> ignore
+          arg [CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
+          arg [-lstdc++] ==> lib [stdc++]
+          arg [-lm] ==> lib [m]
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [-lgcc] ==> lib [gcc]
+          arg [-lc] ==> lib [c]
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [-lgcc] ==> lib [gcc]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o]
+        ignore line: [collect2 version 9.4.0]
+        link line: [/usr/bin/ld -plugin /usr/lib/gcc/x86_64-linux-gnu/9/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper -plugin-opt=-fresolution=/tmp/cc4u4yFu.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_d71b7 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/9 -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/9/../../.. -v CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o] ==> linker [/usr/bin/ld]
+        link line: [/usr/bin/ld -plugin /usr/lib/gcc/x86_64-linux-gnu/9/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper -plugin-opt=-fresolution=/tmp/cc4u4yFu.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_d71b7 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/9 -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/9/../../.. -v CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o] ==> linker architecture flags [-m;elf]
+        ignore line: [/usr/bin/ld -plugin /usr/lib/gcc/x86_64-linux-gnu/9/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper -plugin-opt=-fresolution=/tmp/cc4u4yFu.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_d71b7 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/9 -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/9/../../.. -v CMakeFiles/cmTC_d71b7.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o]
+        linker tool for 'CXX': /usr/bin/ld -m;elf
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o] ==> [/usr/lib/x86_64-linux-gnu/Scrt1.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o] ==> [/usr/lib/x86_64-linux-gnu/crti.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o] ==> [/usr/lib/x86_64-linux-gnu/crtn.o]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/9] ==> [/usr/lib/gcc/x86_64-linux-gnu/9]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib] ==> [/usr/lib]
+        collapse library dir [/lib/x86_64-linux-gnu] ==> [/lib/x86_64-linux-gnu]
+        collapse library dir [/lib/../lib] ==> [/lib]
+        collapse library dir [/usr/lib/x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+        collapse library dir [/usr/lib/../lib] ==> [/usr/lib]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/9/../../..] ==> [/usr/lib]
+        implicit libs: [stdc++;m;gcc_s;gcc;c;gcc_s;gcc]
+        implicit objs: [/usr/lib/x86_64-linux-gnu/Scrt1.o;/usr/lib/x86_64-linux-gnu/crti.o;/usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o;/usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o;/usr/lib/x86_64-linux-gnu/crtn.o]
+        implicit dirs: [/usr/lib/gcc/x86_64-linux-gnu/9;/usr/lib/x86_64-linux-gnu;/usr/lib;/lib/x86_64-linux-gnu;/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/Internal/CMakeDetermineLinkerId.cmake:41 (message)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerABI.cmake:337 (cmake_determine_linker_id)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Running the CXX compiler's linker: "/usr/bin/ld" "-v"
+      GNU ld (GNU Binutils for Ubuntu) 2.30
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompiler.cmake:115 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:67 (_cmake_find_compiler_path)"
+      - "lacam2/CMakeLists.txt:3 (project)"
+    mode: "program"
+    variable: "CMAKE_C_COMPILER_WITH_PATH"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "gcc-9"
+    candidate_directories:
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/usr/bin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/usr/local/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/"
+      - "/usr/bin/"
+      - "/usr/sbin/"
+      - "/usr/"
+      - "/bin/"
+      - "/sbin/"
+      - "/snap/cmake/1556/bin/"
+      - "/snap/cmake/1556/sbin/"
+      - "/snap/cmake/1556/"
+      - "/usr/X11R6/bin/"
+      - "/usr/X11R6/sbin/"
+      - "/usr/X11R6/"
+      - "/usr/pkg/bin/"
+      - "/usr/pkg/sbin/"
+      - "/usr/pkg/"
+      - "/opt/bin/"
+      - "/opt/sbin/"
+      - "/opt/"
+    searched_directories:
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/gcc-9"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/gcc-9"
+      - "/usr/local/sbin/gcc-9"
+      - "/usr/local/bin/gcc-9"
+      - "/usr/sbin/gcc-9"
+    found: "/usr/bin/gcc-9"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/snap/cmake/1556"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:501 (find_file)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:538 (CMAKE_DETERMINE_COMPILER_ID_WRITE)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:8 (CMAKE_DETERMINE_COMPILER_ID_BUILD)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:122 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "lacam2/CMakeLists.txt:3 (project)"
+    mode: "file"
+    variable: "src_in"
+    description: "Path to a file."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "CMakeCCompilerId.c.in"
+    candidate_directories:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/"
+    found: "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeCCompilerId.c.in"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/snap/cmake/1556"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+      CMAKE_SYSTEM_INCLUDE_PATH:
+        - "/usr/include/X11"
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:122 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "lacam2/CMakeLists.txt:3 (project)"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+      Compiler: /usr/bin/gcc-9 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "a.out"
+      
+      The C compiler identification is GNU, found in:
+        /home/galk/dev/lacam2/build-trace/CMakeFiles/4.4.0/CompilerIdC/a.out
+      
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/Compiler/GNU-FindBinUtils.cmake:18 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:201 (include)"
+      - "lacam2/CMakeLists.txt:3 (project)"
+    mode: "program"
+    variable: "CMAKE_C_COMPILER_AR"
+    description: "A wrapper around 'ar' adding the appropriate '--plugin' option for the GCC compiler"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "gcc-ar-9.4"
+      - "gcc-ar-9"
+      - "gcc-ar9"
+      - "gcc-ar"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/usr/local/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/"
+      - "/usr/bin/"
+      - "/usr/sbin/"
+      - "/usr/"
+      - "/bin/"
+      - "/sbin/"
+      - "/snap/cmake/1556/bin/"
+      - "/snap/cmake/1556/sbin/"
+      - "/snap/cmake/1556/"
+      - "/usr/X11R6/bin/"
+      - "/usr/X11R6/sbin/"
+      - "/usr/X11R6/"
+      - "/usr/pkg/bin/"
+      - "/usr/pkg/sbin/"
+      - "/usr/pkg/"
+      - "/opt/bin/"
+      - "/opt/sbin/"
+      - "/opt/"
+    searched_directories:
+      - "/usr/bin/gcc-ar-9.4"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/gcc-ar-9.4"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/gcc-ar-9.4"
+      - "/usr/local/sbin/gcc-ar-9.4"
+      - "/usr/local/bin/gcc-ar-9.4"
+      - "/usr/sbin/gcc-ar-9.4"
+      - "/sbin/gcc-ar-9.4"
+      - "/bin/gcc-ar-9.4"
+      - "/usr/games/gcc-ar-9.4"
+      - "/usr/local/games/gcc-ar-9.4"
+      - "/snap/bin/gcc-ar-9.4"
+      - "/usr/local/bin/gcc-ar-9.4"
+      - "/usr/local/sbin/gcc-ar-9.4"
+      - "/usr/local/gcc-ar-9.4"
+      - "/usr/bin/gcc-ar-9.4"
+      - "/usr/sbin/gcc-ar-9.4"
+      - "/usr/gcc-ar-9.4"
+      - "/bin/gcc-ar-9.4"
+      - "/sbin/gcc-ar-9.4"
+      - "/snap/cmake/1556/bin/gcc-ar-9.4"
+      - "/snap/cmake/1556/sbin/gcc-ar-9.4"
+      - "/snap/cmake/1556/gcc-ar-9.4"
+      - "/usr/X11R6/bin/gcc-ar-9.4"
+      - "/usr/X11R6/sbin/gcc-ar-9.4"
+      - "/usr/X11R6/gcc-ar-9.4"
+      - "/usr/pkg/bin/gcc-ar-9.4"
+      - "/usr/pkg/sbin/gcc-ar-9.4"
+      - "/usr/pkg/gcc-ar-9.4"
+      - "/opt/bin/gcc-ar-9.4"
+      - "/opt/sbin/gcc-ar-9.4"
+      - "/opt/gcc-ar-9.4"
+    found: "/usr/bin/gcc-ar-9"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/snap/cmake/1556"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/Compiler/GNU-FindBinUtils.cmake:30 (find_program)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:201 (include)"
+      - "lacam2/CMakeLists.txt:3 (project)"
+    mode: "program"
+    variable: "CMAKE_C_COMPILER_RANLIB"
+    description: "A wrapper around 'ranlib' adding the appropriate '--plugin' option for the GCC compiler"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "gcc-ranlib-9.4"
+      - "gcc-ranlib-9"
+      - "gcc-ranlib9"
+      - "gcc-ranlib"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/usr/local/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/"
+      - "/usr/bin/"
+      - "/usr/sbin/"
+      - "/usr/"
+      - "/bin/"
+      - "/sbin/"
+      - "/snap/cmake/1556/bin/"
+      - "/snap/cmake/1556/sbin/"
+      - "/snap/cmake/1556/"
+      - "/usr/X11R6/bin/"
+      - "/usr/X11R6/sbin/"
+      - "/usr/X11R6/"
+      - "/usr/pkg/bin/"
+      - "/usr/pkg/sbin/"
+      - "/usr/pkg/"
+      - "/opt/bin/"
+      - "/opt/sbin/"
+      - "/opt/"
+    searched_directories:
+      - "/usr/bin/gcc-ranlib-9.4"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/gcc-ranlib-9.4"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/gcc-ranlib-9.4"
+      - "/usr/local/sbin/gcc-ranlib-9.4"
+      - "/usr/local/bin/gcc-ranlib-9.4"
+      - "/usr/sbin/gcc-ranlib-9.4"
+      - "/sbin/gcc-ranlib-9.4"
+      - "/bin/gcc-ranlib-9.4"
+      - "/usr/games/gcc-ranlib-9.4"
+      - "/usr/local/games/gcc-ranlib-9.4"
+      - "/snap/bin/gcc-ranlib-9.4"
+      - "/usr/local/bin/gcc-ranlib-9.4"
+      - "/usr/local/sbin/gcc-ranlib-9.4"
+      - "/usr/local/gcc-ranlib-9.4"
+      - "/usr/bin/gcc-ranlib-9.4"
+      - "/usr/sbin/gcc-ranlib-9.4"
+      - "/usr/gcc-ranlib-9.4"
+      - "/bin/gcc-ranlib-9.4"
+      - "/sbin/gcc-ranlib-9.4"
+      - "/snap/cmake/1556/bin/gcc-ranlib-9.4"
+      - "/snap/cmake/1556/sbin/gcc-ranlib-9.4"
+      - "/snap/cmake/1556/gcc-ranlib-9.4"
+      - "/usr/X11R6/bin/gcc-ranlib-9.4"
+      - "/usr/X11R6/sbin/gcc-ranlib-9.4"
+      - "/usr/X11R6/gcc-ranlib-9.4"
+      - "/usr/pkg/bin/gcc-ranlib-9.4"
+      - "/usr/pkg/sbin/gcc-ranlib-9.4"
+      - "/usr/pkg/gcc-ranlib-9.4"
+      - "/opt/bin/gcc-ranlib-9.4"
+      - "/opt/sbin/gcc-ranlib-9.4"
+      - "/opt/gcc-ranlib-9.4"
+    found: "/usr/bin/gcc-ranlib-9"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/snap/cmake/1556"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerABI.cmake:123 (try_compile)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "lacam2/CMakeLists.txt:3 (project)"
+    checks:
+      - "Detecting C compiler ABI info"
+    directories:
+      source: "/home/galk/dev/lacam2/build-trace/CMakeFiles/CMakeScratch/TryCompile-4TZhNp"
+      binary: "/home/galk/dev/lacam2/build-trace/CMakeFiles/CMakeScratch/TryCompile-4TZhNp"
+    cmakeVariables:
+      CMAKE_CXX_STDLIB_MODULES_JSON: ""
+      CMAKE_C_FLAGS: ""
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_C_ABI_COMPILED"
+      cached: false
+      stdout: |
+        Change Dir: '/home/galk/dev/lacam2/build-trace/CMakeFiles/CMakeScratch/TryCompile-4TZhNp'
+        
+        Run Build Command(s): /snap/cmake/1556/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_32f80/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_32f80.dir/build.make CMakeFiles/cmTC_32f80.dir/build
+        make[1]: Entering directory '/home/galk/dev/lacam2/build-trace/CMakeFiles/CMakeScratch/TryCompile-4TZhNp'
+        Building C object CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o
+        /usr/bin/gcc-9   -v -o CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o -c /snap/cmake/1556/share/cmake-4.4/Modules/CMakeCCompilerABI.c
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/gcc-9
+        OFFLOAD_TARGET_NAMES=nvptx-none:hsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-linux-gnu
+        Configured with: ../src/configure -v --with-pkgversion='Ubuntu 9.4.0-1ubuntu1~18.04' --with-bugurl=file:///usr/share/doc/gcc-9/README.Bugs --enable-languages=c,ada,c++,go,brig,d,fortran,objc,obj-c++,gm2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-9 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/lib --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-9-nrQql7/gcc-9-9.4.0/debian/tmp-nvptx/usr,hsa --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu
+        Thread model: posix
+        gcc version 9.4.0 (Ubuntu 9.4.0-1ubuntu1~18.04) 
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64'
+         /usr/lib/gcc/x86_64-linux-gnu/9/cc1 -quiet -v -imultiarch x86_64-linux-gnu /snap/cmake/1556/share/cmake-4.4/Modules/CMakeCCompilerABI.c -quiet -dumpbase CMakeCCompilerABI.c -mtune=generic -march=x86-64 -auxbase-strip CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -o /tmp/ccltuqBR.s
+        GNU C17 (Ubuntu 9.4.0-1ubuntu1~18.04) version 9.4.0 (x86_64-linux-gnu)
+        	compiled by GNU C version 9.4.0, GMP version 6.1.2, MPFR version 4.0.1, MPC version 1.1.0, isl version isl-0.19-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/9/include-fixed"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/9/../../../../x86_64-linux-gnu/include"
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /usr/lib/gcc/x86_64-linux-gnu/9/include
+         /usr/local/include
+         /usr/include/x86_64-linux-gnu
+         /usr/include
+        End of search list.
+        GNU C17 (Ubuntu 9.4.0-1ubuntu1~18.04) version 9.4.0 (x86_64-linux-gnu)
+        	compiled by GNU C version 9.4.0, GMP version 6.1.2, MPFR version 4.0.1, MPC version 1.1.0, isl version isl-0.19-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        Compiler executable checksum: 2d9575fa907299cba529616286f8f3bc
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64'
+         as -v --64 -o CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o /tmp/ccltuqBR.s
+        GNU assembler version 2.30 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.30
+        COMPILER_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/
+        LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64'
+        Linking C executable cmTC_32f80
+        /snap/cmake/1556/bin/cmake -E cmake_link_script CMakeFiles/cmTC_32f80.dir/link.txt --verbose=1
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/gcc-9
+        COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper
+        OFFLOAD_TARGET_NAMES=nvptx-none:hsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-linux-gnu
+        Configured with: ../src/configure -v --with-pkgversion='Ubuntu 9.4.0-1ubuntu1~18.04' --with-bugurl=file:///usr/share/doc/gcc-9/README.Bugs --enable-languages=c,ada,c++,go,brig,d,fortran,objc,obj-c++,gm2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-9 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/lib --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-9-nrQql7/gcc-9-9.4.0/debian/tmp-nvptx/usr,hsa --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu
+        Thread model: posix
+        gcc version 9.4.0 (Ubuntu 9.4.0-1ubuntu1~18.04) 
+        COMPILER_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/
+        LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_32f80' '-mtune=generic' '-march=x86-64'
+         /usr/lib/gcc/x86_64-linux-gnu/9/collect2 -plugin /usr/lib/gcc/x86_64-linux-gnu/9/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper -plugin-opt=-fresolution=/tmp/cc3EiCEW.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_32f80 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/9 -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/9/../../.. -v CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o
+        collect2 version 9.4.0
+        /usr/bin/ld -plugin /usr/lib/gcc/x86_64-linux-gnu/9/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper -plugin-opt=-fresolution=/tmp/cc3EiCEW.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_32f80 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/9 -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/9/../../.. -v CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o
+        GNU ld (GNU Binutils for Ubuntu) 2.30
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_32f80' '-mtune=generic' '-march=x86-64'
+        /usr/bin/gcc-9  -v -Wl,-v CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o -o cmTC_32f80
+        make[1]: Leaving directory '/home/galk/dev/lacam2/build-trace/CMakeFiles/CMakeScratch/TryCompile-4TZhNp'
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerABI.cmake:255 (message)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "lacam2/CMakeLists.txt:3 (project)"
+    message: |
+      Parsed C implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [/usr/lib/gcc/x86_64-linux-gnu/9/include]
+          add: [/usr/local/include]
+          add: [/usr/include/x86_64-linux-gnu]
+          add: [/usr/include]
+        end of search list found
+        collapse include dir [/usr/lib/gcc/x86_64-linux-gnu/9/include] ==> [/usr/lib/gcc/x86_64-linux-gnu/9/include]
+        collapse include dir [/usr/local/include] ==> [/usr/local/include]
+        collapse include dir [/usr/include/x86_64-linux-gnu] ==> [/usr/include/x86_64-linux-gnu]
+        collapse include dir [/usr/include] ==> [/usr/include]
+        implicit include dirs: [/usr/lib/gcc/x86_64-linux-gnu/9/include;/usr/local/include;/usr/include/x86_64-linux-gnu;/usr/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerABI.cmake:291 (message)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "lacam2/CMakeLists.txt:3 (project)"
+    message: |
+      Parsed C implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|wild|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|"|[0-9]+>[ 	-]*Build:[ 	0-9]+ ms[ 	]*)?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|wild))("|,| |$)]
+        ignore line: [Change Dir: '/home/galk/dev/lacam2/build-trace/CMakeFiles/CMakeScratch/TryCompile-4TZhNp']
+        ignore line: []
+        ignore line: [Run Build Command(s): /snap/cmake/1556/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_32f80/fast]
+        ignore line: [/usr/bin/make  -f CMakeFiles/cmTC_32f80.dir/build.make CMakeFiles/cmTC_32f80.dir/build]
+        ignore line: [make[1]: Entering directory '/home/galk/dev/lacam2/build-trace/CMakeFiles/CMakeScratch/TryCompile-4TZhNp']
+        ignore line: [Building C object CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o]
+        ignore line: [/usr/bin/gcc-9   -v -o CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o -c /snap/cmake/1556/share/cmake-4.4/Modules/CMakeCCompilerABI.c]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/gcc-9]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:hsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-linux-gnu]
+        ignore line: [Configured with: ../src/configure -v --with-pkgversion='Ubuntu 9.4.0-1ubuntu1~18.04' --with-bugurl=file:///usr/share/doc/gcc-9/README.Bugs --enable-languages=c ada c++ go brig d fortran objc obj-c++ gm2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-9 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/lib --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32 m64 mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-9-nrQql7/gcc-9-9.4.0/debian/tmp-nvptx/usr hsa --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu]
+        ignore line: [Thread model: posix]
+        ignore line: [gcc version 9.4.0 (Ubuntu 9.4.0-1ubuntu1~18.04) ]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64']
+        ignore line: [ /usr/lib/gcc/x86_64-linux-gnu/9/cc1 -quiet -v -imultiarch x86_64-linux-gnu /snap/cmake/1556/share/cmake-4.4/Modules/CMakeCCompilerABI.c -quiet -dumpbase CMakeCCompilerABI.c -mtune=generic -march=x86-64 -auxbase-strip CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -o /tmp/ccltuqBR.s]
+        ignore line: [GNU C17 (Ubuntu 9.4.0-1ubuntu1~18.04) version 9.4.0 (x86_64-linux-gnu)]
+        ignore line: [	compiled by GNU C version 9.4.0  GMP version 6.1.2  MPFR version 4.0.1  MPC version 1.1.0  isl version isl-0.19-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/9/include-fixed"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/9/../../../../x86_64-linux-gnu/include"]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /usr/lib/gcc/x86_64-linux-gnu/9/include]
+        ignore line: [ /usr/local/include]
+        ignore line: [ /usr/include/x86_64-linux-gnu]
+        ignore line: [ /usr/include]
+        ignore line: [End of search list.]
+        ignore line: [GNU C17 (Ubuntu 9.4.0-1ubuntu1~18.04) version 9.4.0 (x86_64-linux-gnu)]
+        ignore line: [	compiled by GNU C version 9.4.0  GMP version 6.1.2  MPFR version 4.0.1  MPC version 1.1.0  isl version isl-0.19-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [Compiler executable checksum: 2d9575fa907299cba529616286f8f3bc]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64']
+        ignore line: [ as -v --64 -o CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o /tmp/ccltuqBR.s]
+        ignore line: [GNU assembler version 2.30 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.30]
+        ignore line: [COMPILER_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/]
+        ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64']
+        ignore line: [Linking C executable cmTC_32f80]
+        ignore line: [/snap/cmake/1556/bin/cmake -E cmake_link_script CMakeFiles/cmTC_32f80.dir/link.txt --verbose=1]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/gcc-9]
+        ignore line: [COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:hsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-linux-gnu]
+        ignore line: [Configured with: ../src/configure -v --with-pkgversion='Ubuntu 9.4.0-1ubuntu1~18.04' --with-bugurl=file:///usr/share/doc/gcc-9/README.Bugs --enable-languages=c ada c++ go brig d fortran objc obj-c++ gm2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-9 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/lib --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32 m64 mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-9-nrQql7/gcc-9-9.4.0/debian/tmp-nvptx/usr hsa --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu]
+        ignore line: [Thread model: posix]
+        ignore line: [gcc version 9.4.0 (Ubuntu 9.4.0-1ubuntu1~18.04) ]
+        ignore line: [COMPILER_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/]
+        ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/9/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/9/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_32f80' '-mtune=generic' '-march=x86-64']
+        link line: [ /usr/lib/gcc/x86_64-linux-gnu/9/collect2 -plugin /usr/lib/gcc/x86_64-linux-gnu/9/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper -plugin-opt=-fresolution=/tmp/cc3EiCEW.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_32f80 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/9 -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/9/../../.. -v CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/9/collect2] ==> ignore
+          arg [-plugin] ==> ignore
+          arg [/usr/lib/gcc/x86_64-linux-gnu/9/liblto_plugin.so] ==> ignore
+          arg [-plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/cc3EiCEW.res] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [-plugin-opt=-pass-through=-lc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [--build-id] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [-m] ==> ignore
+          arg [elf_x86_64] ==> ignore
+          arg [--hash-style=gnu] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-dynamic-linker] ==> ignore
+          arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+          arg [-pie] ==> ignore
+          arg [-znow] ==> ignore
+          arg [-zrelro] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_32f80] ==> ignore
+          arg [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/9] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/9]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib]
+          arg [-L/lib/x86_64-linux-gnu] ==> dir [/lib/x86_64-linux-gnu]
+          arg [-L/lib/../lib] ==> dir [/lib/../lib]
+          arg [-L/usr/lib/x86_64-linux-gnu] ==> dir [/usr/lib/x86_64-linux-gnu]
+          arg [-L/usr/lib/../lib] ==> dir [/usr/lib/../lib]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/9/../../..] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/9/../../..]
+          arg [-v] ==> ignore
+          arg [CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o] ==> ignore
+          arg [-lgcc] ==> lib [gcc]
+          arg [--push-state] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [--pop-state] ==> ignore
+          arg [-lc] ==> lib [c]
+          arg [-lgcc] ==> lib [gcc]
+          arg [--push-state] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [--pop-state] ==> ignore
+          arg [/usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o]
+        ignore line: [collect2 version 9.4.0]
+        link line: [/usr/bin/ld -plugin /usr/lib/gcc/x86_64-linux-gnu/9/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper -plugin-opt=-fresolution=/tmp/cc3EiCEW.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_32f80 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/9 -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/9/../../.. -v CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o] ==> linker [/usr/bin/ld]
+        link line: [/usr/bin/ld -plugin /usr/lib/gcc/x86_64-linux-gnu/9/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper -plugin-opt=-fresolution=/tmp/cc3EiCEW.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_32f80 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/9 -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/9/../../.. -v CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o] ==> linker architecture flags [-m;elf]
+        ignore line: [/usr/bin/ld -plugin /usr/lib/gcc/x86_64-linux-gnu/9/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-linux-gnu/9/lto-wrapper -plugin-opt=-fresolution=/tmp/cc3EiCEW.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_32f80 /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/9 -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/9/../../.. -v CMakeFiles/cmTC_32f80.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o]
+        linker tool for 'C': /usr/bin/ld -m;elf
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o] ==> [/usr/lib/x86_64-linux-gnu/Scrt1.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crti.o] ==> [/usr/lib/x86_64-linux-gnu/crti.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/crtn.o] ==> [/usr/lib/x86_64-linux-gnu/crtn.o]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/9] ==> [/usr/lib/gcc/x86_64-linux-gnu/9]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/9/../../../../lib] ==> [/usr/lib]
+        collapse library dir [/lib/x86_64-linux-gnu] ==> [/lib/x86_64-linux-gnu]
+        collapse library dir [/lib/../lib] ==> [/lib]
+        collapse library dir [/usr/lib/x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+        collapse library dir [/usr/lib/../lib] ==> [/usr/lib]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/9/../../..] ==> [/usr/lib]
+        implicit libs: [gcc;gcc_s;c;gcc;gcc_s]
+        implicit objs: [/usr/lib/x86_64-linux-gnu/Scrt1.o;/usr/lib/x86_64-linux-gnu/crti.o;/usr/lib/gcc/x86_64-linux-gnu/9/crtbeginS.o;/usr/lib/gcc/x86_64-linux-gnu/9/crtendS.o;/usr/lib/x86_64-linux-gnu/crtn.o]
+        implicit dirs: [/usr/lib/gcc/x86_64-linux-gnu/9;/usr/lib/x86_64-linux-gnu;/usr/lib;/lib/x86_64-linux-gnu;/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/Internal/CMakeDetermineLinkerId.cmake:41 (message)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeDetermineCompilerABI.cmake:337 (cmake_determine_linker_id)"
+      - "/snap/cmake/1556/share/cmake-4.4/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "lacam2/CMakeLists.txt:3 (project)"
+    message: |
+      Running the C compiler's linker: "/usr/bin/ld" "-v"
+      GNU ld (GNU Binutils for Ubuntu) 2.30
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/local/lib/cmake/SFML/SFMLConfig.cmake:79 (find_path)"
+      - "CMakeLists.txt:13 (find_package)"
+    mode: "path"
+    variable: "SFML_DOC_DIR"
+    description: "Path to a file."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "SFML.tag"
+    candidate_directories:
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/SFML/doc/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/share/doc/SFML/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/SFML/doc/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/share/doc/SFML/"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "/usr/local/sbin/SFML/doc/"
+      - "/usr/local/sbin/share/doc/SFML/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/SFML/doc/"
+      - "/usr/local/bin/share/doc/SFML/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/SFML/doc/"
+      - "/usr/sbin/share/doc/SFML/"
+      - "/usr/sbin/"
+      - "/usr/bin/SFML/doc/"
+      - "/usr/bin/share/doc/SFML/"
+      - "/usr/bin/"
+      - "/sbin/SFML/doc/"
+      - "/sbin/share/doc/SFML/"
+      - "/sbin/"
+      - "/bin/SFML/doc/"
+      - "/bin/share/doc/SFML/"
+      - "/bin/"
+      - "/usr/games/SFML/doc/"
+      - "/usr/games/share/doc/SFML/"
+      - "/usr/games/"
+      - "/usr/local/games/SFML/doc/"
+      - "/usr/local/games/share/doc/SFML/"
+      - "/usr/local/games/"
+      - "/snap/bin/SFML/doc/"
+      - "/snap/bin/share/doc/SFML/"
+      - "/snap/bin/"
+      - "/usr/local/include/x86_64-linux-gnu/SFML/doc/"
+      - "/usr/local/include/x86_64-linux-gnu/share/doc/SFML/"
+      - "/usr/local/include/x86_64-linux-gnu/"
+      - "/usr/local/include/SFML/doc/"
+      - "/usr/local/include/share/doc/SFML/"
+      - "/usr/local/include/"
+      - "/usr/local/SFML/doc/"
+      - "/usr/local/share/doc/SFML/"
+      - "/usr/local/"
+      - "/usr/include/x86_64-linux-gnu/SFML/doc/"
+      - "/usr/include/x86_64-linux-gnu/share/doc/SFML/"
+      - "/usr/include/x86_64-linux-gnu/"
+      - "/usr/include/SFML/doc/"
+      - "/usr/include/share/doc/SFML/"
+      - "/usr/include/"
+      - "/usr/SFML/doc/"
+      - "/usr/share/doc/SFML/"
+      - "/usr/"
+      - "/include/x86_64-linux-gnu/SFML/doc/"
+      - "/include/x86_64-linux-gnu/share/doc/SFML/"
+      - "/include/x86_64-linux-gnu/"
+      - "/include/SFML/doc/"
+      - "/include/share/doc/SFML/"
+      - "/include/"
+      - "/snap/cmake/1556/include/x86_64-linux-gnu/SFML/doc/"
+      - "/snap/cmake/1556/include/x86_64-linux-gnu/share/doc/SFML/"
+      - "/snap/cmake/1556/include/x86_64-linux-gnu/"
+      - "/snap/cmake/1556/include/SFML/doc/"
+      - "/snap/cmake/1556/include/share/doc/SFML/"
+      - "/snap/cmake/1556/include/"
+      - "/snap/cmake/1556/SFML/doc/"
+      - "/snap/cmake/1556/share/doc/SFML/"
+      - "/snap/cmake/1556/"
+      - "/usr/X11R6/include/x86_64-linux-gnu/SFML/doc/"
+      - "/usr/X11R6/include/x86_64-linux-gnu/share/doc/SFML/"
+      - "/usr/X11R6/include/x86_64-linux-gnu/"
+      - "/usr/X11R6/include/SFML/doc/"
+      - "/usr/X11R6/include/share/doc/SFML/"
+      - "/usr/X11R6/include/"
+      - "/usr/X11R6/SFML/doc/"
+      - "/usr/X11R6/share/doc/SFML/"
+      - "/usr/X11R6/"
+      - "/usr/pkg/include/x86_64-linux-gnu/SFML/doc/"
+      - "/usr/pkg/include/x86_64-linux-gnu/share/doc/SFML/"
+      - "/usr/pkg/include/x86_64-linux-gnu/"
+      - "/usr/pkg/include/SFML/doc/"
+      - "/usr/pkg/include/share/doc/SFML/"
+      - "/usr/pkg/include/"
+      - "/usr/pkg/SFML/doc/"
+      - "/usr/pkg/share/doc/SFML/"
+      - "/usr/pkg/"
+      - "/opt/include/x86_64-linux-gnu/SFML/doc/"
+      - "/opt/include/x86_64-linux-gnu/share/doc/SFML/"
+      - "/opt/include/x86_64-linux-gnu/"
+      - "/opt/include/SFML/doc/"
+      - "/opt/include/share/doc/SFML/"
+      - "/opt/include/"
+      - "/opt/SFML/doc/"
+      - "/opt/share/doc/SFML/"
+      - "/opt/"
+      - "/usr/include/X11/SFML/doc/"
+      - "/usr/include/X11/share/doc/SFML/"
+      - "/usr/include/X11/"
+      - "/usr/local/lib/SFML/doc/"
+      - "/usr/local/lib/share/doc/SFML/"
+      - "/usr/local/lib/"
+      - "/home/galk/Library/Frameworks/SFML/doc/"
+      - "/home/galk/Library/Frameworks/share/doc/SFML/"
+      - "/home/galk/Library/Frameworks/"
+      - "/Library/Frameworks/SFML/doc/"
+      - "/Library/Frameworks/share/doc/SFML/"
+      - "/Library/Frameworks/"
+      - "/usr/local/SFML/doc/"
+      - "/usr/local/share/doc/SFML/"
+      - "/usr/local/"
+      - "/usr/SFML/doc/"
+      - "/usr/share/doc/SFML/"
+      - "/usr/"
+      - "/sw/SFML/doc/"
+      - "/sw/share/doc/SFML/"
+      - "/sw/"
+      - "/opt/local/SFML/doc/"
+      - "/opt/local/share/doc/SFML/"
+      - "/opt/local/"
+      - "/opt/csw/SFML/doc/"
+      - "/opt/csw/share/doc/SFML/"
+      - "/opt/csw/"
+      - "/opt/SFML/doc/"
+      - "/opt/share/doc/SFML/"
+      - "/opt/"
+    searched_directories:
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/SFML/doc/SFML.tag"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/share/doc/SFML/SFML.tag"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/SFML.tag"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/SFML/doc/SFML.tag"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/share/doc/SFML/SFML.tag"
+      - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/SFML.tag"
+      - "/usr/local/sbin/SFML/doc/SFML.tag"
+      - "/usr/local/sbin/share/doc/SFML/SFML.tag"
+      - "/usr/local/sbin/SFML.tag"
+      - "/usr/local/bin/SFML/doc/SFML.tag"
+      - "/usr/local/bin/share/doc/SFML/SFML.tag"
+      - "/usr/local/bin/SFML.tag"
+      - "/usr/sbin/SFML/doc/SFML.tag"
+      - "/usr/sbin/share/doc/SFML/SFML.tag"
+      - "/usr/sbin/SFML.tag"
+      - "/usr/bin/SFML/doc/SFML.tag"
+      - "/usr/bin/share/doc/SFML/SFML.tag"
+      - "/usr/bin/SFML.tag"
+      - "/sbin/SFML/doc/SFML.tag"
+      - "/sbin/share/doc/SFML/SFML.tag"
+      - "/sbin/SFML.tag"
+      - "/bin/SFML/doc/SFML.tag"
+      - "/bin/share/doc/SFML/SFML.tag"
+      - "/bin/SFML.tag"
+      - "/usr/games/SFML/doc/SFML.tag"
+      - "/usr/games/share/doc/SFML/SFML.tag"
+      - "/usr/games/SFML.tag"
+      - "/usr/local/games/SFML/doc/SFML.tag"
+      - "/usr/local/games/share/doc/SFML/SFML.tag"
+      - "/usr/local/games/SFML.tag"
+      - "/snap/bin/SFML/doc/SFML.tag"
+      - "/snap/bin/share/doc/SFML/SFML.tag"
+      - "/snap/bin/SFML.tag"
+      - "/usr/local/include/x86_64-linux-gnu/SFML/doc/SFML.tag"
+      - "/usr/local/include/x86_64-linux-gnu/share/doc/SFML/SFML.tag"
+      - "/usr/local/include/x86_64-linux-gnu/SFML.tag"
+      - "/usr/local/include/SFML/doc/SFML.tag"
+      - "/usr/local/include/share/doc/SFML/SFML.tag"
+      - "/usr/local/include/SFML.tag"
+      - "/usr/local/SFML/doc/SFML.tag"
+      - "/usr/local/share/doc/SFML/SFML.tag"
+      - "/usr/local/SFML.tag"
+      - "/usr/include/x86_64-linux-gnu/SFML/doc/SFML.tag"
+      - "/usr/include/x86_64-linux-gnu/share/doc/SFML/SFML.tag"
+      - "/usr/include/x86_64-linux-gnu/SFML.tag"
+      - "/usr/include/SFML/doc/SFML.tag"
+      - "/usr/include/share/doc/SFML/SFML.tag"
+      - "/usr/include/SFML.tag"
+      - "/usr/SFML/doc/SFML.tag"
+      - "/usr/share/doc/SFML/SFML.tag"
+      - "/usr/SFML.tag"
+      - "/include/x86_64-linux-gnu/SFML/doc/SFML.tag"
+      - "/include/x86_64-linux-gnu/share/doc/SFML/SFML.tag"
+      - "/include/x86_64-linux-gnu/SFML.tag"
+      - "/include/SFML/doc/SFML.tag"
+      - "/include/share/doc/SFML/SFML.tag"
+      - "/include/SFML.tag"
+      - "/snap/cmake/1556/include/x86_64-linux-gnu/SFML/doc/SFML.tag"
+      - "/snap/cmake/1556/include/x86_64-linux-gnu/share/doc/SFML/SFML.tag"
+      - "/snap/cmake/1556/include/x86_64-linux-gnu/SFML.tag"
+      - "/snap/cmake/1556/include/SFML/doc/SFML.tag"
+      - "/snap/cmake/1556/include/share/doc/SFML/SFML.tag"
+      - "/snap/cmake/1556/include/SFML.tag"
+      - "/snap/cmake/1556/SFML/doc/SFML.tag"
+      - "/snap/cmake/1556/share/doc/SFML/SFML.tag"
+      - "/snap/cmake/1556/SFML.tag"
+      - "/usr/X11R6/include/x86_64-linux-gnu/SFML/doc/SFML.tag"
+      - "/usr/X11R6/include/x86_64-linux-gnu/share/doc/SFML/SFML.tag"
+      - "/usr/X11R6/include/x86_64-linux-gnu/SFML.tag"
+      - "/usr/X11R6/include/SFML/doc/SFML.tag"
+      - "/usr/X11R6/include/share/doc/SFML/SFML.tag"
+      - "/usr/X11R6/include/SFML.tag"
+      - "/usr/X11R6/SFML/doc/SFML.tag"
+      - "/usr/X11R6/share/doc/SFML/SFML.tag"
+      - "/usr/X11R6/SFML.tag"
+      - "/usr/pkg/include/x86_64-linux-gnu/SFML/doc/SFML.tag"
+      - "/usr/pkg/include/x86_64-linux-gnu/share/doc/SFML/SFML.tag"
+      - "/usr/pkg/include/x86_64-linux-gnu/SFML.tag"
+      - "/usr/pkg/include/SFML/doc/SFML.tag"
+      - "/usr/pkg/include/share/doc/SFML/SFML.tag"
+      - "/usr/pkg/include/SFML.tag"
+      - "/usr/pkg/SFML/doc/SFML.tag"
+      - "/usr/pkg/share/doc/SFML/SFML.tag"
+      - "/usr/pkg/SFML.tag"
+      - "/opt/include/x86_64-linux-gnu/SFML/doc/SFML.tag"
+      - "/opt/include/x86_64-linux-gnu/share/doc/SFML/SFML.tag"
+      - "/opt/include/x86_64-linux-gnu/SFML.tag"
+      - "/opt/include/SFML/doc/SFML.tag"
+      - "/opt/include/share/doc/SFML/SFML.tag"
+      - "/opt/include/SFML.tag"
+      - "/opt/SFML/doc/SFML.tag"
+      - "/opt/share/doc/SFML/SFML.tag"
+      - "/opt/SFML.tag"
+      - "/usr/include/X11/SFML/doc/SFML.tag"
+      - "/usr/include/X11/share/doc/SFML/SFML.tag"
+      - "/usr/include/X11/SFML.tag"
+      - "/usr/local/lib/SFML/doc/SFML.tag"
+      - "/usr/local/lib/share/doc/SFML/SFML.tag"
+      - "/usr/local/lib/SFML.tag"
+      - "/home/galk/Library/Frameworks/SFML/doc/SFML.tag"
+      - "/home/galk/Library/Frameworks/share/doc/SFML/SFML.tag"
+      - "/home/galk/Library/Frameworks/SFML.tag"
+      - "/Library/Frameworks/SFML/doc/SFML.tag"
+      - "/Library/Frameworks/share/doc/SFML/SFML.tag"
+      - "/Library/Frameworks/SFML.tag"
+      - "/usr/local/SFML/doc/SFML.tag"
+      - "/usr/local/share/doc/SFML/SFML.tag"
+      - "/usr/local/SFML.tag"
+      - "/usr/SFML/doc/SFML.tag"
+      - "/usr/share/doc/SFML/SFML.tag"
+      - "/usr/SFML.tag"
+      - "/sw/SFML/doc/SFML.tag"
+      - "/sw/share/doc/SFML/SFML.tag"
+      - "/sw/SFML.tag"
+      - "/opt/local/SFML/doc/SFML.tag"
+      - "/opt/local/share/doc/SFML/SFML.tag"
+      - "/opt/local/SFML.tag"
+      - "/opt/csw/SFML/doc/SFML.tag"
+      - "/opt/csw/share/doc/SFML/SFML.tag"
+      - "/opt/csw/SFML.tag"
+      - "/opt/SFML/doc/SFML.tag"
+      - "/opt/share/doc/SFML/SFML.tag"
+      - "/opt/SFML.tag"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/snap/cmake/1556"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+      CMAKE_SYSTEM_INCLUDE_PATH:
+        - "/usr/include/X11"
+  -
+    kind: "find_package-v1"
+    backtrace:
+      - "CMakeLists.txt:13 (find_package)"
+    name: "SFML"
+    components:
+      -
+        name: "graphics"
+        required: true
+        found: false
+      -
+        name: "window"
+        required: true
+        found: false
+      -
+        name: "system"
+        required: true
+        found: false
+    configs:
+      -
+        filename: "SFML.cps"
+        kind: "cps"
+      -
+        filename: "sfml.cps"
+        kind: "cps"
+      -
+        filename: "SFMLConfig.cmake"
+        kind: "cmake"
+      -
+        filename: "sfml-config.cmake"
+        kind: "cmake"
+    version_request:
+      version: "2.6"
+      version_complete: "2.6"
+      exact: false
+    settings:
+      required: "required_explicit"
+      quiet: false
+      global: false
+      policy_scope: true
+      bypass_provider: false
+      names:
+        - "SFML"
+      path_suffixes:
+        - ""
+      paths:
+        CMAKE_FIND_USE_CMAKE_PATH: true
+        CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+        CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+        CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+        CMAKE_FIND_USE_INSTALL_PREFIX: true
+        CMAKE_FIND_USE_PACKAGE_ROOT_PATH: true
+        CMAKE_FIND_USE_CMAKE_PACKAGE_REGISTRY: true
+        CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY: true
+        CMAKE_FIND_ROOT_PATH_MODE: "BOTH"
+    candidates:
+      -
+        path: "/home/galk/dev/lacam2/build-trace/CMakeFiles/pkgRedirects/SFMLConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/home/galk/dev/lacam2/build-trace/CMakeFiles/pkgRedirects/sfml-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/home/galk/dev/lacam2/build-trace/CMakeFiles/pkgRedirects/lib/x86_64-linux-gnu/cps/SFML.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/dev/lacam2/build-trace/CMakeFiles/pkgRedirects/lib/x86_64-linux-gnu/cps/sfml.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/dev/lacam2/build-trace/CMakeFiles/pkgRedirects/lib/cps/SFML.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/dev/lacam2/build-trace/CMakeFiles/pkgRedirects/lib/cps/sfml.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/dev/lacam2/build-trace/CMakeFiles/pkgRedirects/share/cps/SFML.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/dev/lacam2/build-trace/CMakeFiles/pkgRedirects/share/cps/sfml.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/SFMLConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/sfml-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/lib/x86_64-linux-gnu/cps/SFML.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/lib/x86_64-linux-gnu/cps/sfml.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/lib/cps/SFML.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/lib/cps/sfml.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/share/cps/SFML.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand/share/cps/sfml.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/SFMLConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/sfml-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/lib/x86_64-linux-gnu/cps/SFML.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/lib/x86_64-linux-gnu/cps/sfml.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/lib/cps/SFML.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/lib/cps/sfml.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/share/cps/SFML.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli/share/cps/sfml.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/usr/local/SFMLConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/usr/local/sfml-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "/usr/local/lib/x86_64-linux-gnu/cps/SFML.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/usr/local/lib/x86_64-linux-gnu/cps/sfml.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/usr/local/lib/cps/SFML.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/usr/local/lib/cps/sfml.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/usr/local/share/cps/SFML.cps"
+        mode: "cps"
+        reason: "no_exist"
+      -
+        path: "/usr/local/share/cps/sfml.cps"
+        mode: "cps"
+        reason: "no_exist"
+    found:
+      path: "/usr/local/lib/cmake/SFML/SFMLConfig.cmake"
+      mode: "config"
+      version: "2.6.2"
+    search_context:
+      ENV{PATH}:
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/debugCommand"
+        - "/home/galk/.config/Code/User/globalStorage/github.copilot-chat/copilotCli"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/snap/cmake/1556"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+...

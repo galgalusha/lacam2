@@ -1,0 +1,1 @@
+/usr/bin/g++-9 CMakeFiles/main.dir/main.cpp.o CMakeFiles/main.dir/gui.cpp.o CMakeFiles/main.dir/intent_policy.cpp.o -o main   -L/home/galko/.local/lib  -Wl,-rpath,/usr/local/lib:/home/galko/.local/lib lacam2/liblacam2.a /usr/local/lib/libsfml-graphics.so.2.6.2 /usr/local/lib/libsfml-window.so.2.6.2 /usr/local/lib/libsfml-system.so.2.6.2

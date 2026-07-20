@@ -8,6 +8,7 @@
 #include <iostream>
 #include <limits>
 #include <chrono>
+#include <atomic>
 #include <future>
 #include <list>
 #include <mutex>
@@ -49,10 +50,10 @@ int PIBTPlanner::find_scatter_margin(const Instance* target_ins, HNode* H_init, 
   constexpr int MARGIN_ROLLOUTS = 25;
 
   // Evaluate a given margin: run MARGIN_ROLLOUTS rollouts, return best cost.
-  auto eval_margin = [&](int margin) -> uint {
+  auto eval_margin = [&](int margin, std::mt19937* local_rng) -> uint {
     Scatter sc(target_ins, &D, deadline, 0 /*seed unused*/, 0, margin);
     sc.construct(5);
-    PIBT pibt_inst(target_ins, D, rng, &sc);
+    PIBT pibt_inst(target_ins, D, local_rng, &sc);
     uint best = std::numeric_limits<uint>::max();
     for (int r = 0; r < MARGIN_ROLLOUTS; ++r) {
       if (is_expired(deadline)) break;
@@ -64,12 +65,39 @@ int PIBTPlanner::find_scatter_margin(const Instance* target_ins, HNode* H_init, 
 
   // One round of search: given candidates, return the best margin value.
   auto best_of = [&](const std::vector<int>& candidates) -> int {
+    std::vector<uint32_t> candidate_seeds(candidates.size(), 1);
+    for (size_t i = 0; i < candidates.size(); ++i) {
+      candidate_seeds[i] = (rng != nullptr) ? (*rng)() : static_cast<uint32_t>(i + 1);
+    }
+
+    std::mutex best_mutex;
+    std::atomic<size_t> next_index{0};
     int best_margin = candidates[0];
     uint best_cost = std::numeric_limits<uint>::max();
-    for (int m : candidates) {
-      uint cost = eval_margin(m);
-      if (cost < best_cost) { best_cost = cost; best_margin = m; }
+
+    auto worker = [&]() {
+      while (true) {
+        const size_t index = next_index.fetch_add(1);
+        if (index >= candidates.size()) break;
+        std::mt19937 local_rng(candidate_seeds[index]);
+        const uint cost = eval_margin(candidates[index], &local_rng);
+
+        std::lock_guard<std::mutex> lock(best_mutex);
+        if (cost < best_cost) {
+          best_cost = cost;
+          best_margin = candidates[index];
+        }
+      }
+    };
+
+    std::vector<std::future<void>> futures;
+    const size_t worker_count = std::min(candidates.size(), static_cast<size_t>(NUM_OF_THREADS));
+    futures.reserve(worker_count);
+    for (size_t i = 0; i < worker_count; ++i) {
+      futures.emplace_back(std::async(std::launch::async, worker));
     }
+    for (auto& future : futures) future.wait();
+
     return best_margin;
   };
 
@@ -112,8 +140,8 @@ Solution PIBTPlanner::create_initial_solution(const Instance* target_ins, int pr
 
   auto H_init = new HNode(target_ins->starts, D, nullptr, 0, 0);
 
-  // const int best_margin = find_scatter_margin(target_ins, H_init, MT);
-  const int best_margin = 63; // find_scatter_margin(target_ins, H_init, MT);
+  const int best_margin = find_scatter_margin(target_ins, H_init, MT);
+  // const int best_margin = 40; // find_scatter_margin(target_ins, H_init, MT);
   // Scatter scatter(target_ins, &D, deadline, base_seed, 0, best_margin);
   // scatter.construct();
   // std::mt19937 rng(base_seed);

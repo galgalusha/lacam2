@@ -1,0 +1,3 @@
+./mg.sh build/main -i assets/warehouse-10-20-10-2-1-random-1.scen -m assets/warehouse-10-20-10-2-1.map -N 1000 -v 3 -t 100 -O 2 -seed 15 --pibt_planner --refiner-num 0 --recursive-rate 1
+
+./mg.sh build/main -i ../lacam2/assets/room-64-64-8-even-2.scen -m ../lacam2/assets/room-64-64-8.map -N 1000 -v 3 -t 100 -O 2 -seed 15 --pibt_planner --refiner-num 0 --recursive-rate 1

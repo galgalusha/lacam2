@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/galk/dev/lacam2/build-trace/cmake_install.cmake",
+		"/home/galk/dev/lacam2/build-trace/lacam2/cmake_install.cmake",
+		"/home/galk/dev/lacam2/build-trace/third_party/argparse/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
