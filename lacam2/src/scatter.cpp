@@ -29,16 +29,20 @@ inline int collision(ScatterNode &a)        { return std::get<3>(a); }
 inline Vertex* parent(ScatterNode &a)       { return std::get<4>(a); }
 inline uint32_t tie_breaker(ScatterNode &a) { return std::get<5>(a); }
 
-void Scatter::construct()
+void Scatter::construct(int iterations)
 {
-  info(0, verbose, deadline, "scatter", "\tinvoked");
+  info(1, verbose, deadline, "scatter", "\tinvoked");
 
   // define path finding utilities
   auto cmp = [&](ScatterNode &a, ScatterNode &b) {
     // collision
-    if (collision(a) != collision(b)) return collision(a) > collision(b);
+//    if (collision(a) != collision(b)) return collision(a) > collision(b);
     auto f_a = cost_to_come(a) + cost_to_go(a);
     auto f_b = cost_to_come(b) + cost_to_go(b);
+    int cost_a = collision(a) * 12 + f_a;
+    int cost_b = collision(b) * 12 + f_b;
+    if (cost_a != cost_b) return cost_a > cost_b;
+    if (collision(a) != collision(b)) return collision(a) > collision(b);
     if (f_a != f_b) return f_a > f_b;
     return tie_breaker(a) < tie_breaker(b);
   };
@@ -51,7 +55,7 @@ void Scatter::construct()
   // main loop
   auto loop = 0;
 //  while (loop < 2 || CT.collision_cnt < collision_cnt_last) {
-  while (loop < 50) {
+  while (loop < iterations) {
     ++loop;
     collision_cnt_last = CT.collision_cnt;
 

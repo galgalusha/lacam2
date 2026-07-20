@@ -20,11 +20,11 @@ class PIBTPlanner : public Planner {
   Solution solve(std::string& additional_info);
 
  private:
-  int find_scatter_margin(const Instance* target_ins, HNode* H_init, std::mt19937& rng);
+  int find_scatter_margin(const Instance* target_ins, HNode* H_init, std::mt19937* rng);
   Solution create_initial_solution(const Instance* target_ins, int prefix_cost = 0, int step_offset = 0);
   Solution refine_loop(Solution solution, int prefix_cost = 0, const Instance* target_ins = nullptr);
 
   static constexpr int NUM_SCATTERS = 1;
-  static constexpr int NUM_ROLLOUTS = 500;
+  static constexpr int NUM_ROLLOUTS = 100;
   static constexpr int STEPS = 8;
 };

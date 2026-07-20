@@ -73,7 +73,7 @@ Solution Planner::solve(std::string& additional_info)
   int SCATTER_MARGIN = 10;                 
   scatter = new Scatter(ins, &D, &scatter_deadline, 3, verbose - 4, SCATTER_MARGIN);
 
-  scatter->construct();
+  scatter->construct(10);
   info(1, verbose, deadline, "finish computing SUO",
        ", collision count: ", scatter->CT.collision_cnt,
        ", scatter margin: ", scatter->cost_margin,

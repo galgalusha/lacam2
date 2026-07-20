@@ -720,7 +720,7 @@ void CEMPlanner::set_Scatter()
   int SCATTER_MARGIN = 10;                 
   scatter = new Scatter(ins, &D, &scatter_deadline, 3, verbose, SCATTER_MARGIN);
 
-  scatter->construct();
+  scatter->construct(50);
   info(1, verbose, deadline, "finish computing SUO",
        ", collision count: ", scatter->CT.collision_cnt,
        ", scatter margin: ", scatter->cost_margin,
