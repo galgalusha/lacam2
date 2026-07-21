@@ -7,6 +7,7 @@
 #include "planner.hpp"
 #include "rollout_result.hpp"
 #include "scatter.hpp"
+#include "wait_scatter.hpp"
 #include <array>
 #include <memory>
 #include <vector>
