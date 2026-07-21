@@ -48,17 +48,32 @@ PIBTPlanner::PIBTPlanner(
 int PIBTPlanner::find_scatter_margin(const Instance* target_ins, HNode* H_init, std::mt19937* rng)
 {
   constexpr int MARGIN_ROLLOUTS = 25;
+  constexpr int MAX_MARGIN = 100;
+
+  // Pre-allocate margin_stats for all possible margin values 0..MAX_MARGIN
+  margin_stats.resize(MAX_MARGIN + 1);
+  for (int m = 0; m <= MAX_MARGIN; ++m) margin_stats[m].margin = m;
 
   // Evaluate a given margin: run MARGIN_ROLLOUTS rollouts, return best cost.
+  // Also stores stats for the best rollout into margin_stats[margin].
   auto eval_margin = [&](int margin, std::mt19937* local_rng) -> uint {
     Scatter sc(target_ins, &D, deadline, 0 /*seed unused*/, 0, margin);
     sc.construct(5);
     PIBT pibt_inst(target_ins, D, local_rng, &sc);
     uint best = std::numeric_limits<uint>::max();
+    RolloutResult best_rollout;
+    best_rollout.success = false;
     for (int r = 0; r < MARGIN_ROLLOUTS; ++r) {
       if (is_expired(deadline)) break;
       auto res = pibt_inst.rollout(H_init);
-      if (res.success && res.cost < best) best = res.cost;
+      if (res.success && res.cost < best) {
+        best = res.cost;
+        best_rollout = std::move(res);
+      }
+    }
+    if (best_rollout.success) {
+      margin_stats[margin] = get_rollout_stats(best_rollout, sc);
+      margin_stats[margin].margin = margin;
     }
     return best;
   };
@@ -133,6 +148,58 @@ int PIBTPlanner::find_scatter_margin(const Instance* target_ins, HNode* H_init, 
   return winner;
 }
 
+ScatterBuckets PIBTPlanner::get_rollout_stats(const RolloutResult& rollout, const Scatter& scatter)
+{
+  ScatterBuckets result;
+  const int N = static_cast<int>(scatter.ins->N);
+  const auto& paths = scatter.paths;
+  const auto& configs = rollout.configs;
+
+  for (int a = 0; a < N; ++a) {
+    int matching = 0;
+    const int steps = static_cast<int>(std::min(configs.size(), paths[a].size()));
+    for (int t = 0; t < steps; ++t) {
+      if (configs[t][a] == paths[a][t]) ++matching;
+    }
+    // Find bucket index: lowest threshold T[i] such that matching <= T[i]
+    int bucket = static_cast<int>(ScatterBuckets::THRESHOLDS.size()); // overflow (> last threshold)
+    for (int i = 0; i < static_cast<int>(ScatterBuckets::THRESHOLDS.size()); ++i) {
+      if (matching <= ScatterBuckets::THRESHOLDS[i]) {
+        bucket = i;
+        break;
+      }
+    }
+    result.counts[bucket]++;
+  }
+  return result;
+}
+
+void PIBTPlanner::print_margin_stats() const
+{
+  const auto& T = ScatterBuckets::THRESHOLDS;
+  std::cout << "[PIBTPlanner] Margin stats (agents per matching-steps bucket):" << std::endl;
+  std::cout << "margin";
+  for (int t : T) std::cout << "\t>=" << t;
+  std::cout << "\t>" << T.back() << std::endl;
+
+  for (const auto& s : margin_stats) {
+    if (s.margin < 0) continue;
+    bool any = false;
+    for (int c : s.counts) if (c > 0) { any = true; break; }
+    if (!any) continue;
+
+    // Compute suffix sums so each column shows agents with matching >= threshold
+    const int n = static_cast<int>(s.counts.size());
+    std::vector<int> suffix(n);
+    suffix[n - 1] = s.counts[n - 1];
+    for (int i = n - 2; i >= 0; --i) suffix[i] = suffix[i + 1] + s.counts[i];
+
+    std::cout << s.margin;
+    for (int v : suffix) std::cout << "\t" << v;
+    std::cout << std::endl;
+  }
+}
+
 Solution PIBTPlanner::create_initial_solution(const Instance* target_ins, int prefix_cost, int step_offset)
 {
   const int local_rollouts = NUM_ROLLOUTS / NUM_OF_THREADS;
@@ -140,21 +207,9 @@ Solution PIBTPlanner::create_initial_solution(const Instance* target_ins, int pr
 
   auto H_init = new HNode(target_ins->starts, D, nullptr, 0, 0);
 
-  const int best_margin = find_scatter_margin(target_ins, H_init, MT);
-  // const int best_margin = 40; // find_scatter_margin(target_ins, H_init, MT);
-  // Scatter scatter(target_ins, &D, deadline, base_seed, 0, best_margin);
-  // scatter.construct();
-  // std::mt19937 rng(base_seed);
+  const int best_margin = 48; // find_scatter_margin(target_ins, H_init, MT);
   std::cout << "[PIBTPlanner] offset=" << step_offset
             << " best_margin=" << best_margin << std::endl;
-
-  // constexpr int NUM_SCATTERS = 7;
-  // std::vector<Scatter> scatters;
-  // scatters.reserve(NUM_SCATTERS);
-  // for (int s = 0; s < NUM_SCATTERS; ++s) {
-  //   scatters.emplace_back(target_ins, &D, deadline, 0, s, best_margin);
-  //   scatters.back().construct();
-  // }
 
   std::mutex result_mutex;
   RolloutResult global_best;
@@ -162,9 +217,9 @@ Solution PIBTPlanner::create_initial_solution(const Instance* target_ins, int pr
   global_best.cost = std::numeric_limits<uint>::max();
 
   auto thread_task = [&](int thread_id) {
-    std::mt19937 rng(base_seed + thread_id);
+    std::mt19937 rng(base_seed);
     Scatter scatter(target_ins, &D, deadline, base_seed + thread_id, 0, best_margin);
-    int scatter_iterations = 50;
+    int scatter_iterations = 5;
     scatter.construct(scatter_iterations);
 
     PIBT pibt_inst(target_ins, D, &rng, &scatter);
@@ -224,7 +279,7 @@ Solution PIBTPlanner::refine_loop(Solution solution, int prefix_cost, const Inst
   if (solution.empty()) return solution;
   if (target_ins == nullptr) target_ins = ins;
 
-  auto best_cost = get_sum_of_loss(solution, ins->goals);
+  auto best_cost = get_sum_of_loss(solution);
   std::cout << "[PIBTPlanner] Starting refinement, initial cost: " << (prefix_cost + best_cost) << std::endl;
 
   int seed_refiner = 0;
@@ -253,7 +308,7 @@ Solution PIBTPlanner::refine_loop(Solution solution, int prefix_cost, const Inst
       if (proc.wait_for(TIME_ZERO) != std::future_status::ready) return false;
       auto new_solution = proc.get();
       if (!new_solution.empty()) {
-        auto new_cost = get_sum_of_loss(new_solution, ins->goals);
+        auto new_cost = get_sum_of_loss(new_solution);
         if (new_cost < best_cost) {
           best_cost = new_cost;
           solution = new_solution;
@@ -280,6 +335,7 @@ Solution PIBTPlanner::refine_loop(Solution solution, int prefix_cost, const Inst
 Solution PIBTPlanner::solve(std::string& additional_info)
 {
   auto solution = create_initial_solution(ins, 0, 0);
-  solution = refine_loop(std::move(solution), 0);
+  print_margin_stats();
+  // solution = refine_loop(std::move(solution), 0);
   return solution;
 }
