@@ -17,6 +17,8 @@
 struct IScatter {
   // agent index -> (vertex-id -> next vertex)
   virtual const std::unordered_map<int, Vertex *>& operator[](int agent_id) const = 0;
+  virtual void construct(int iterations) = 0;
+  virtual const std::vector<Path>& get_paths() const = 0;
   virtual ~IScatter() = default;
 };
 
@@ -41,6 +43,8 @@ struct Scatter : IScatter {
   {
     return scatter_data[agent_id];
   }
+
+  const std::vector<Path>& get_paths() const override { return paths; }
 
   // collision data
   CollisionTable CT;

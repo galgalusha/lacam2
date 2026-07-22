@@ -10,7 +10,17 @@
 #include "wait_scatter.hpp"
 #include <array>
 #include <memory>
+#include <string>
 #include <vector>
+
+enum class ScatterType { SCATTER, WAIT_SCATTER };
+
+// Factory: allocates and returns an IScatter of the requested type.
+std::unique_ptr<IScatter> make_scatter(ScatterType type, const Instance *ins,
+                                       DistTable *D,
+                                       const Deadline *deadline,
+                                       int seed = 0, int verbose = 0,
+                                       int cost_margin = 2);
 
 // Buckets: 0,1,2,3,4,5,7,10,15,20,50,100 matching steps per agent
 struct ScatterBuckets {
@@ -35,9 +45,10 @@ class PIBTPlanner : public Planner {
   Solution create_initial_solution(const Instance* target_ins, int prefix_cost = 0, int step_offset = 0);
   Solution refine_loop(Solution solution, int prefix_cost = 0, const Instance* target_ins = nullptr);
 
-  ScatterBuckets get_rollout_stats(const RolloutResult& rollout, const Scatter& scatter);
+  ScatterBuckets get_rollout_stats(const RolloutResult& rollout, const IScatter& scatter, int N);
   void print_margin_stats() const;
 
+  static constexpr ScatterType SCATTER_TYPE = ScatterType::WAIT_SCATTER;
   static constexpr int NUM_SCATTERS = 1;
   static constexpr int NUM_ROLLOUTS = 80;
   static constexpr int STEPS = 8;

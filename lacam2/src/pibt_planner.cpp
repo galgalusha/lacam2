@@ -5,6 +5,20 @@
 #include "../include/refiner.hpp"
 #include "../include/metrics.hpp"
 
+std::unique_ptr<IScatter> make_scatter(ScatterType type, const Instance *ins,
+                                       DistTable *D,
+                                       const Deadline *deadline,
+                                       int seed, int verbose, int cost_margin)
+{
+  switch (type) {
+    case ScatterType::WAIT_SCATTER:
+      return std::make_unique<WaitScatter>(ins, D, deadline, seed, verbose, cost_margin);
+    case ScatterType::SCATTER:
+    default:
+      return std::make_unique<Scatter>(ins, D, deadline, seed, verbose, cost_margin);
+  }
+}
+
 #include <iostream>
 #include <limits>
 #include <chrono>
@@ -57,9 +71,9 @@ int PIBTPlanner::find_scatter_margin(const Instance* target_ins, HNode* H_init, 
   // Evaluate a given margin: run MARGIN_ROLLOUTS rollouts, return best cost.
   // Also stores stats for the best rollout into margin_stats[margin].
   auto eval_margin = [&](int margin, std::mt19937* local_rng) -> uint {
-    Scatter sc(target_ins, &D, deadline, 0 /*seed unused*/, 0, margin);
-    sc.construct(5);
-    PIBT pibt_inst(target_ins, D, local_rng, &sc);
+    auto sc = make_scatter(SCATTER_TYPE, target_ins, &D, deadline, 0, 0, margin);
+    sc->construct(5);
+    PIBT pibt_inst(target_ins, D, local_rng, sc.get());
     uint best = std::numeric_limits<uint>::max();
     RolloutResult best_rollout;
     best_rollout.success = false;
@@ -72,7 +86,7 @@ int PIBTPlanner::find_scatter_margin(const Instance* target_ins, HNode* H_init, 
       }
     }
     if (best_rollout.success) {
-      margin_stats[margin] = get_rollout_stats(best_rollout, sc);
+      margin_stats[margin] = get_rollout_stats(best_rollout, *sc, target_ins->N);
       margin_stats[margin].margin = margin;
     }
     return best;
@@ -148,11 +162,10 @@ int PIBTPlanner::find_scatter_margin(const Instance* target_ins, HNode* H_init, 
   return winner;
 }
 
-ScatterBuckets PIBTPlanner::get_rollout_stats(const RolloutResult& rollout, const Scatter& scatter)
+ScatterBuckets PIBTPlanner::get_rollout_stats(const RolloutResult& rollout, const IScatter& scatter, int N)
 {
   ScatterBuckets result;
-  const int N = static_cast<int>(scatter.ins->N);
-  const auto& paths = scatter.paths;
+  const auto& paths = scatter.get_paths();
   const auto& configs = rollout.configs;
 
   for (int a = 0; a < N; ++a) {
@@ -218,11 +231,11 @@ Solution PIBTPlanner::create_initial_solution(const Instance* target_ins, int pr
 
   auto thread_task = [&](int thread_id) {
     std::mt19937 rng(base_seed);
-    Scatter scatter(target_ins, &D, deadline, base_seed + thread_id, 0, best_margin);
-    int scatter_iterations = 5;
-    scatter.construct(scatter_iterations);
+    auto scatter = make_scatter(SCATTER_TYPE, target_ins, &D, deadline,
+                                base_seed + thread_id, 0, best_margin);
+    scatter->construct(5);
 
-    PIBT pibt_inst(target_ins, D, &rng, &scatter);
+    PIBT pibt_inst(target_ins, D, &rng, scatter.get());
     const bool is_printer = (thread_id == 0);
 
     RolloutResult local_best;

@@ -1,11 +1,12 @@
 #pragma once
 
+#include "scatter.hpp"
 #include "collision_table.hpp"
 #include "dist_table.hpp"
 #include "graph.hpp"
 #include "utils.hpp"
 
-struct WaitScatter {
+struct WaitScatter : IScatter {
   const Instance *ins;
   const Deadline *deadline;
   std::mt19937 MT;
@@ -22,15 +23,17 @@ struct WaitScatter {
   // agent, vertex-id, next vertex
   std::vector<std::unordered_map<int, Vertex *>> scatter_data;
 
-  const std::unordered_map<int, Vertex *>& operator[](int agent_id) const
+  const std::unordered_map<int, Vertex *>& operator[](int agent_id) const override
   {
     return scatter_data[agent_id];
   }
 
+  const std::vector<Path>& get_paths() const override { return paths; }
+
   // collision data
   CollisionTable CT;
 
-  void construct(int iterations);
+  void construct(int iterations) override;
 
   WaitScatter(const Instance *_ins, DistTable *_D, const Deadline *_deadline,
               const int seed = 0, int _verbose = 0, int _cost_margin = 2);
