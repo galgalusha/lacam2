@@ -43,12 +43,12 @@ class PIBTPlanner : public Planner {
  private:
   int find_scatter_margin(const Instance* target_ins, HNode* H_init, std::mt19937* rng);
   Solution create_initial_solution(const Instance* target_ins, int prefix_cost = 0, int step_offset = 0);
-  Solution refine_loop(Solution solution, int prefix_cost = 0, const Instance* target_ins = nullptr);
+  Solution refine_loop(Solution solution, int prefix_cost = 0, const Instance* target_ins = nullptr, int max_iterations = -1);
 
   ScatterBuckets get_rollout_stats(const RolloutResult& rollout, const IScatter& scatter, int N);
   void print_margin_stats() const;
 
-  static constexpr ScatterType SCATTER_TYPE = ScatterType::WAIT_SCATTER;
+  static constexpr ScatterType SCATTER_TYPE = ScatterType::SCATTER;
   static constexpr int NUM_SCATTERS = 1;
   static constexpr int NUM_ROLLOUTS = 80;
   static constexpr int STEPS = 8;

@@ -1,6 +1,36 @@
 #include "../include/scatter.hpp"
 #include "../include/metrics.hpp"
 
+SolutionScatter::SolutionScatter(const std::vector<Config>& solution)
+{
+  if (solution.empty()) return;
+  const int N = static_cast<int>(solution[0].size());
+  scatter_data.resize(N);
+  const int steps = static_cast<int>(solution.size());
+
+  for (int a = 0; a < N; ++a) {
+    // 1. Anchor the goal so PIBT knows to stay put when it arrives
+    auto final_v = solution.back()[a];
+    scatter_data[a][final_v->id] = final_v;
+
+    // 2. Trace BACKWARDS from the end of the path
+    for (int t = steps - 2; t >= 0; --t) {
+      auto current_v = solution[t][a];
+      auto next_v = solution[t + 1][a];
+
+      // 3. Ignore wait actions entirely
+      if (current_v != next_v) {
+        // 4. Only record the final chronological departure from this vertex.
+        // By checking if it's NOT in the map, we lock in the macro-route 
+        // and strip out any spatial loops (like Safe Harbors).
+        if (scatter_data[a].find(current_v->id) == scatter_data[a].end()) {
+          scatter_data[a][current_v->id] = next_v;
+        }
+      }
+    }
+  }
+}
+
 Scatter::Scatter(const Instance *_ins, DistTable *_D, const Deadline *_deadline,
                  const int seed, int _verbose, int _cost_margin)
     : ins(_ins),

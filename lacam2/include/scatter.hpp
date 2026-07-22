@@ -24,6 +24,26 @@ struct IScatter {
   virtual ~IScatter() = default;
 };
 
+// A read-only IScatter built from a Solution (vector<Config>).
+// operator[] returns a next-vertex hint derived from the solution's step sequence.
+// get_paths() returns per-agent paths derived from the solution.
+struct SolutionScatter : IScatter {
+  // scatter_data[agent][vertex-id] = next vertex
+  std::vector<std::unordered_map<int, Vertex *>> scatter_data;
+  std::vector<Path> paths;
+
+  explicit SolutionScatter(const std::vector<Config>& solution);
+
+  const std::unordered_map<int, Vertex *>& operator[](int agent_id) const override
+  {
+    return scatter_data[agent_id];
+  }
+
+  void construct(int) override {}
+  const std::vector<Path>& get_paths() const override { return paths; }
+  void seed_from_paths(const std::vector<Path>&) override {}
+};
+
 struct Scatter : IScatter {
   const Instance *ins;
   const Deadline *deadline;

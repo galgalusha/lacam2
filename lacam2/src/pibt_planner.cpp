@@ -26,6 +26,10 @@ std::unique_ptr<IScatter> make_scatter(ScatterType type, const Instance *ins,
 #include <future>
 #include <list>
 #include <mutex>
+#include <queue>
+#include <thread>
+#include <functional>
+#include <condition_variable>
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -48,6 +52,76 @@ static bool kbhit()
   // Character is already consumed; do not put it back so subsequent calls
   // don't see a stale keypress.
   return ch != EOF;
+}
+
+class ThreadPool {
+public:
+  explicit ThreadPool(int n) : stop_(false) {
+    for (int i = 0; i < n; ++i)
+      workers_.emplace_back([this] {
+        while (true) {
+          std::function<void()> task;
+          {
+            std::unique_lock<std::mutex> lock(mutex_);
+            cv_.wait(lock, [this] { return stop_ || !tasks_.empty(); });
+            if (stop_ && tasks_.empty()) return;
+            task = std::move(tasks_.front());
+            tasks_.pop();
+          }
+          task();
+        }
+      });
+  }
+
+  template<typename F>
+  auto submit(F&& f) -> std::future<decltype(f())> {
+    using R = decltype(f());
+    auto pkg = std::make_shared<std::packaged_task<R()>>(std::forward<F>(f));
+    auto fut = pkg->get_future();
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      tasks_.emplace([pkg] { (*pkg)(); });
+    }
+    cv_.notify_one();
+    return fut;
+  }
+
+  ~ThreadPool() {
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      stop_ = true;
+    }
+    cv_.notify_all();
+    for (auto& w : workers_) w.join();
+  }
+
+private:
+  std::vector<std::thread> workers_;
+  std::queue<std::function<void()>> tasks_;
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  bool stop_;
+};
+
+template<typename F>
+auto parallel_calc(ThreadPool& pool, F func, int iterations)
+    -> std::vector<decltype(func(0))>
+{
+  using R = decltype(func(0));
+  std::vector<std::future<R>> futures;
+  futures.reserve(iterations);
+  for (int i = 0; i < iterations; ++i)
+    futures.emplace_back(pool.submit([func, i] { return func(i); }));
+
+  std::vector<R> results;
+  results.reserve(iterations);
+  for (int i = 0; i < iterations; ++i) {
+    results.push_back(futures[i].get());
+    const int pct = (i + 1) * 100 / iterations;
+    std::cout << "\r[parallel_calc] progress=" << pct << "%   " << std::flush;
+  }
+  std::cout << std::endl;
+  return results;
 }
 
 PIBTPlanner::PIBTPlanner(
@@ -266,7 +340,7 @@ Solution PIBTPlanner::create_initial_solution(const Instance* target_ins, int pr
           int pct = (r + 1) * 100 / local_rollouts;
           std::cout << "[PIBT Planner] "
                     << " progress=" << pct << "%"
-                    << " best_cost=" << (global_best.success ? std::to_string(global_best.cost) : "n/a")
+                    << " best_cost=" << (global_best.success  ? std::to_string(global_best.cost) : "n/a")
                     << "    " << std::endl;
         }
       }
@@ -287,7 +361,7 @@ Solution PIBTPlanner::create_initial_solution(const Instance* target_ins, int pr
   return global_best.configs;
 }
 
-Solution PIBTPlanner::refine_loop(Solution solution, int prefix_cost, const Instance* target_ins)
+Solution PIBTPlanner::refine_loop(Solution solution, int prefix_cost, const Instance* target_ins, int max_iterations)
 {
   if (solution.empty()) return solution;
   if (target_ins == nullptr) target_ins = ins;
@@ -307,18 +381,26 @@ Solution PIBTPlanner::refine_loop(Solution solution, int prefix_cost, const Inst
     });
   };
 
+  int completed = 0;
+  const bool use_iter_limit = (max_iterations > 0);
+
   std::list<std::future<Solution>> refiner_pool;
-  for (int i = 0; i < NUM_OF_THREADS; ++i)
+  const int initial_spawn = use_iter_limit
+      ? std::min(NUM_OF_THREADS, max_iterations)
+      : NUM_OF_THREADS;
+  for (int i = 0; i < initial_spawn; ++i)
     refiner_pool.emplace_back(spawn_refine());
 
   while (!is_expired(deadline)) {
-    if (kbhit()) {
+    if (!use_iter_limit && kbhit()) {
       std::cout << "[PIBTPlanner] Key pressed, stopping refinement." << std::endl;
       break;
     }
+    if (refiner_pool.empty()) break;
 
     refiner_pool.remove_if([&](auto& proc) {
       if (proc.wait_for(TIME_ZERO) != std::future_status::ready) return false;
+      ++completed;
       auto new_solution = proc.get();
       if (!new_solution.empty()) {
         auto new_cost = get_sum_of_loss(new_solution);
@@ -333,7 +415,9 @@ Solution PIBTPlanner::refine_loop(Solution solution, int prefix_cost, const Inst
           }
         }
       }
-      if (!is_expired(deadline))
+      const bool can_spawn = !is_expired(deadline)
+          && (!use_iter_limit || (completed + static_cast<int>(refiner_pool.size())) < max_iterations);
+      if (can_spawn)
         refiner_pool.emplace_back(spawn_refine());
       return true;
     });
@@ -360,47 +444,71 @@ static void seed_scatter_from_rollout(IScatter& scatter, const RolloutResult& ro
 
 Solution PIBTPlanner::solve(std::string& additional_info)
 {
-  // auto solution = create_initial_solution(ins, 0, 0);
-  // print_margin_stats();
-  // solution = refine_loop(std::move(solution), 0);
-
   auto H_init = new HNode(ins->starts, D, nullptr, 0, 0);
-  auto scatter = make_scatter(SCATTER_TYPE, ins, &D, deadline,
-                              get_random_int(MT, 0, 10000), 0, 70);
-  scatter->construct(5);
+
+  // Bootstrap with a plain scatter as the first heuristic.
+  auto init_scatter = make_scatter(SCATTER_TYPE, ins, &D, deadline,
+                                   get_random_int(MT, 0, 10000), 0, 70);
+  init_scatter->construct(5);
+  std::unique_ptr<IScatter> current_scatter = std::move(init_scatter);
+
   Solution solution;
   int best_cost = std::numeric_limits<int>::max();
 
+  ThreadPool pool(NUM_OF_THREADS);
+  int gen = 0;
+
   while (!is_expired(deadline)) {
-    // 20 PIBT rollouts; pick the best (success + minimal cost)
-    constexpr int SOLVE_ROLLOUTS = 80;
-    PIBT pibt(ins, D, MT, scatter.get());
+    gen++;
+    constexpr int SOLVE_ROLLOUTS = 150;
+    const int base_seed = (MT != nullptr) ? static_cast<int>((*MT)()) : 42;
+    IScatter* scatter_ptr = current_scatter.get();
+
+    auto rollout_results = parallel_calc(pool, [&, base_seed, scatter_ptr](int i) {
+      std::mt19937 rng(base_seed + i);
+      PIBT local_pibt(ins, D, &rng, scatter_ptr);
+      return local_pibt.rollout(H_init);
+    }, SOLVE_ROLLOUTS);
+
     RolloutResult best_rollout;
     best_rollout.success = false;
     best_rollout.cost = std::numeric_limits<uint>::max();
-
-    for (int r = 0; r < SOLVE_ROLLOUTS; ++r) {
-      if (is_expired(deadline)) break;
-      auto res = pibt.rollout(H_init);
+    for (auto& res : rollout_results) {
       if (res.success && res.cost < best_rollout.cost)
         best_rollout = std::move(res);
     }
 
+    // if (best_rollout.success)
+    //   std::cout << "[PIBTPlanner] Best rollout cost: " << best_rollout.cost << std::endl;
+
     if (!best_rollout.success) continue;
 
-    // Seed scatter CT from the best rollout's paths, then let scatter refine its heuristic.
-    seed_scatter_from_rollout(*scatter, best_rollout, ins->N);
-    scatter->construct(5);
+    // this->margin_stats.clear();
+    // this->margin_stats.push_back(get_rollout_stats(best_rollout, *current_scatter, ins->N));
+    // print_margin_stats();
 
-    // The real solution comes from PIBT, not scatter (scatter paths are heuristic only).
-    const int iter_cost = static_cast<int>(best_rollout.cost);
+    if (best_rollout.cost < best_cost) {
+      best_cost = best_rollout.cost;
+      solution = best_rollout.configs;
+    }
+
+    // Refine the best PIBT solution for a bounded number of iterations.
+    int REFINE_ITERATIONS = 5 + gen * 3;
+    auto refined = refine_loop(solution, 0, nullptr, REFINE_ITERATIONS);
+    if (refined.empty()) refined = solution;
+
+    // Track the globally best solution.
+    const int iter_cost = get_sum_of_loss(refined);
     const bool improved = (iter_cost < best_cost);
     if (improved) {
       best_cost = iter_cost;
-      solution = best_rollout.configs;
+      solution = refined;
     }
     std::cout << "[PIBTPlanner] solve iter cost=" << iter_cost
               << (improved ? " (cost updated)" : "") << std::endl;
+
+    // Build a SolutionScatter from the refined solution for the next PIBT iteration.
+    current_scatter = std::make_unique<SolutionScatter>(refined);
   }
 
   delete H_init;
