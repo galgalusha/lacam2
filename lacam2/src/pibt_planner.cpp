@@ -367,7 +367,8 @@ Solution PIBTPlanner::refine_loop(Solution solution, int prefix_cost, const Inst
   if (target_ins == nullptr) target_ins = ins;
 
   auto best_cost = get_sum_of_loss(solution);
-  std::cout << "[PIBTPlanner] Starting refinement, initial cost: " << (prefix_cost + best_cost) << std::endl;
+  std::cout << "[PIBTPlanner] " << elapsed_ms(deadline) << "ms"
+            << " Starting SIP, initial cost: " << (prefix_cost + best_cost) << std::endl;
 
   int seed_refiner = 0;
   auto last_print = std::chrono::steady_clock::now();
@@ -410,7 +411,7 @@ Solution PIBTPlanner::refine_loop(Solution solution, int prefix_cost, const Inst
 
           auto now = std::chrono::steady_clock::now();
           if (std::chrono::duration_cast<std::chrono::seconds>(now - last_print).count() >= 1) {
-            std::cout << "[PIBTPlanner] Refinement cost update -> " << (prefix_cost + best_cost) << std::endl;
+            std::cout << "[PIBTPlanner] " << elapsed_ms(deadline) << "ms"                      << " SIPP update -> " << (prefix_cost + best_cost) << std::endl;
             last_print = now;
           }
         }
@@ -495,7 +496,7 @@ Solution PIBTPlanner::solve(std::string& additional_info)
     }
 
     // Refine the best PIBT solution for a bounded number of iterations.
-    int REFINE_ITERATIONS = 5 + gen * 3;
+    int REFINE_ITERATIONS = 5 + gen * 2;
     auto refined = refine_loop(solution, 0, nullptr, REFINE_ITERATIONS);
     if (refined.empty()) refined = solution;
 
@@ -506,7 +507,8 @@ Solution PIBTPlanner::solve(std::string& additional_info)
       best_cost = iter_cost;
       solution = refined;
     }
-    std::cout << "[PIBTPlanner] solve iter cost=" << iter_cost
+    std::cout << "[PIBTPlanner] " << elapsed_ms(deadline) << "ms"
+              << " PIBT cost=" << iter_cost
               << (improved ? " (cost updated)" : "") << std::endl;
 
     // Build a SolutionScatter from the refined solution for the next PIBT iteration.
