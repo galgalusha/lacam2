@@ -1,10 +1,6 @@
 #include "../include/wait_scatter.hpp"
 #include "../include/metrics.hpp"
 
-// HYPER PARAMETERS
-const int COLLISION_WEIGHT = 12;
-const int ASTAR_WEIGHT = 1;
-
 WaitScatter::WaitScatter(const Instance *_ins, DistTable *_D,
                          const Deadline *_deadline, const int seed,
                          int _verbose, int _cost_margin)
@@ -38,7 +34,7 @@ void WaitScatter::construct(int iterations)
   };
 
   auto calc_cost = [](int c, int g, int d) {
-    return c * COLLISION_WEIGHT + g + d * ASTAR_WEIGHT;
+    return c * 12 + g + d;
   };
 
   auto cmp = [&](const Node *a, const Node *b) {
@@ -76,7 +72,7 @@ void WaitScatter::construct(int iterations)
     // single-agent path finding for agent-i
     for (int _i = 0; _i < N; ++_i) {
       current_gen++;
-
+      
       uint32_t fast_seed = MT();
       auto fast_rand = [&fast_seed]() {
           fast_seed ^= fast_seed << 13;
@@ -143,38 +139,28 @@ void WaitScatter::construct(int iterations)
         const auto g_v = node->g;
         const auto c_v = node->collisions;
 
-        bool collision_detected = false;
-
         // expand spatial neighbors
         for (auto u : v->neighbor) {
           auto d_u = D->get(i, u);
           if (u != s_i && d_u + g_v + 1 <= cost_ub) {
-            int step_collisions = CT.getCollisionCost(v, u, g_v);
-            
-            // The Gate: If a spatial move hits traffic, unlock the ability to wait
-            if (step_collisions > 0) {
-              collision_detected = true;
-            }
-
             arena.push_back({u, g_v + 1, d_u,
-                             step_collisions + c_v,
-                             node, fast_rand()});
+                             CT.getCollisionCost(v, u, g_v) + c_v,
+                             node, MT()});
             OPEN.push(&arena.back());
           }
         }
 
-        // expand wait action (stay on v for one timestep) - Semi-Wait-Aware
-        if (collision_detected) {
+        // expand wait action (stay on v for one timestep)
+        {
           auto d_v = D->get(i, v);
           if (d_v + g_v + 1 <= cost_ub) {
             arena.push_back({v, g_v + 1, d_v,
                              CT.getCollisionCost(v, v, g_v) + c_v,
-                             node, fast_rand()});
+                             node, MT()});
             OPEN.push(&arena.back());
           }
         }
-
-      } // end of A*
+      }
 
       // backtrack via parent pointers
       if (solved && goal_node != nullptr) {
