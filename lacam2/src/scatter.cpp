@@ -6,7 +6,14 @@ SolutionScatter::SolutionScatter(const std::vector<Config>& solution)
   if (solution.empty()) return;
   const int N = static_cast<int>(solution[0].size());
   scatter_data.resize(N);
+  paths.resize(N);
   const int steps = static_cast<int>(solution.size());
+
+  // Build per-agent paths from the solution configs
+  for (int a = 0; a < N; ++a) {
+    paths[a].reserve(steps);
+    for (int t = 0; t < steps; ++t) paths[a].push_back(solution[t][a]);
+  }
 
   for (int a = 0; a < N; ++a) {
     // 1. Anchor the goal so PIBT knows to stay put when it arrives

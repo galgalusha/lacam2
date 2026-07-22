@@ -483,9 +483,11 @@ Solution PIBTPlanner::solve(std::string& additional_info)
 
     if (!best_rollout.success) continue;
 
-    // this->margin_stats.clear();
-    // this->margin_stats.push_back(get_rollout_stats(best_rollout, *current_scatter, ins->N));
-    // print_margin_stats();
+    this->margin_stats.clear();
+    auto stats = get_rollout_stats(best_rollout, *current_scatter, ins->N);
+    stats.margin = 0;
+    this->margin_stats.push_back(stats);
+    print_margin_stats();
 
     if (best_rollout.cost < best_cost) {
       best_cost = best_rollout.cost;
