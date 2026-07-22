@@ -40,6 +40,13 @@ struct WaitScatter : IScatter {
 
   const std::vector<Path>& get_paths() const override { return paths; }
 
+  void seed_from_paths(const std::vector<Path>& new_paths) override
+  {
+    for (int i = 0; i < N; ++i) CT.clearPath(i, paths[i]);
+    paths = new_paths;
+    for (int i = 0; i < N; ++i) CT.enrollPath(i, paths[i]);
+  }
+
   // collision data
   CollisionTable CT;
 

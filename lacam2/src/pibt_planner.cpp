@@ -345,10 +345,64 @@ Solution PIBTPlanner::refine_loop(Solution solution, int prefix_cost, const Inst
   return solution;
 }
 
+static void seed_scatter_from_rollout(IScatter& scatter, const RolloutResult& rollout, int N)
+{
+  const auto& configs = rollout.configs;
+  const int makespan = static_cast<int>(configs.size());
+  std::vector<Path> new_paths(N);
+  for (int a = 0; a < N; ++a) {
+    new_paths[a].resize(makespan);
+    for (int t = 0; t < makespan; ++t)
+      new_paths[a][t] = configs[t][a];
+  }
+  scatter.seed_from_paths(new_paths);
+}
+
 Solution PIBTPlanner::solve(std::string& additional_info)
 {
-  auto solution = create_initial_solution(ins, 0, 0);
-  print_margin_stats();
+  // auto solution = create_initial_solution(ins, 0, 0);
+  // print_margin_stats();
   // solution = refine_loop(std::move(solution), 0);
+
+  auto H_init = new HNode(ins->starts, D, nullptr, 0, 0);
+  auto scatter = make_scatter(SCATTER_TYPE, ins, &D, deadline,
+                              get_random_int(MT, 0, 10000), 0, 70);
+  scatter->construct(5);
+  Solution solution;
+  int best_cost = std::numeric_limits<int>::max();
+
+  while (!is_expired(deadline)) {
+    // 20 PIBT rollouts; pick the best (success + minimal cost)
+    constexpr int SOLVE_ROLLOUTS = 80;
+    PIBT pibt(ins, D, MT, scatter.get());
+    RolloutResult best_rollout;
+    best_rollout.success = false;
+    best_rollout.cost = std::numeric_limits<uint>::max();
+
+    for (int r = 0; r < SOLVE_ROLLOUTS; ++r) {
+      if (is_expired(deadline)) break;
+      auto res = pibt.rollout(H_init);
+      if (res.success && res.cost < best_rollout.cost)
+        best_rollout = std::move(res);
+    }
+
+    if (!best_rollout.success) continue;
+
+    // Seed scatter CT from the best rollout's paths, then let scatter refine its heuristic.
+    seed_scatter_from_rollout(*scatter, best_rollout, ins->N);
+    scatter->construct(5);
+
+    // The real solution comes from PIBT, not scatter (scatter paths are heuristic only).
+    const int iter_cost = static_cast<int>(best_rollout.cost);
+    const bool improved = (iter_cost < best_cost);
+    if (improved) {
+      best_cost = iter_cost;
+      solution = best_rollout.configs;
+    }
+    std::cout << "[PIBTPlanner] solve iter cost=" << iter_cost
+              << (improved ? " (cost updated)" : "") << std::endl;
+  }
+
+  delete H_init;
   return solution;
 }

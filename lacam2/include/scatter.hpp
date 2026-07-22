@@ -19,6 +19,8 @@ struct IScatter {
   virtual const std::unordered_map<int, Vertex *>& operator[](int agent_id) const = 0;
   virtual void construct(int iterations) = 0;
   virtual const std::vector<Path>& get_paths() const = 0;
+  // Clear CT and enroll the given paths so the next construct() starts from them.
+  virtual void seed_from_paths(const std::vector<Path>& new_paths) = 0;
   virtual ~IScatter() = default;
 };
 
@@ -45,6 +47,13 @@ struct Scatter : IScatter {
   }
 
   const std::vector<Path>& get_paths() const override { return paths; }
+
+  void seed_from_paths(const std::vector<Path>& new_paths) override
+  {
+    for (int i = 0; i < N; ++i) CT.clearPath(i, paths[i]);
+    paths = new_paths;
+    for (int i = 0; i < N; ++i) CT.enrollPath(i, paths[i]);
+  }
 
   // collision data
   CollisionTable CT;
