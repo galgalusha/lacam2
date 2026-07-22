@@ -28,30 +28,6 @@ void WaitScatter::construct(int iterations)
 {
   info(1, verbose, deadline, "wait_scatter", "\tinvoked");
 
-  struct Node {
-    Vertex *v;
-    int g;           // cost-to-come
-    int d;           // cost-to-go
-    int collisions;
-    Node *parent;
-    uint32_t tie_breaker;
-  };
-
-  auto calc_cost = [](int c, int g, int d) {
-    return c * COLLISION_WEIGHT + g + d * ASTAR_WEIGHT;
-  };
-
-  auto cmp = [&](const Node *a, const Node *b) {
-    int cost_a = calc_cost(a->collisions, a->g, a->d);
-    int cost_b = calc_cost(b->collisions, b->g, b->d);
-    if (cost_a != cost_b) return cost_a > cost_b;
-    if (a->collisions != b->collisions) return a->collisions > b->collisions;
-    auto f_a = a->g + a->d;
-    auto f_b = b->g + b->d;
-    if (f_a != f_b) return f_a > f_b;
-    return a->tie_breaker < b->tie_breaker;
-  };
-
   // metrics
   auto collision_cnt_last = 0;
   auto paths_prev = std::vector<Path>();
@@ -60,8 +36,6 @@ void WaitScatter::construct(int iterations)
   auto CLOSED_gen = std::vector<int>(V_size, 0);
   int current_gen = 0;
 
-  auto arena = std::deque<Node>();
- 
   // main loop
   auto loop = 0;
   while (loop < iterations) {
@@ -77,115 +51,18 @@ void WaitScatter::construct(int iterations)
     for (int _i = 0; _i < N; ++_i) {
       current_gen++;
 
-      uint32_t fast_seed = MT();
-      auto fast_rand = [&fast_seed]() {
-          fast_seed ^= fast_seed << 13;
-          fast_seed ^= fast_seed >> 17;
-          fast_seed ^= fast_seed << 5;
-          return fast_seed;
-      };
-
       if (is_expired(deadline)) break;
 
       const auto i = order[_i];
-      const auto cost_ub = D->get(i, ins->starts[i]) + cost_margin;
 
       if (!paths[i].empty()) sum_of_path_length -= (paths[i].size() - 1);
 
       // clear cache
       CT.clearPath(i, paths[i]);
 
-      arena.clear();
-
-      // setup A*
-      auto OPEN = std::priority_queue<Node *, std::vector<Node *>,
-                                      decltype(cmp)>(cmp);
-
-      const auto s_i = ins->starts[i];
-      arena.push_back({s_i, 0, D->get(i, s_i), 0, nullptr, fast_rand()});
-      OPEN.push(&arena.back());
-
       // A*
-      auto solved = false;
-      Node *goal_node = nullptr;
-      while (!OPEN.empty() && !is_expired(deadline)) {
-        // pop
-        auto node = OPEN.top();
-        OPEN.pop();
-
-        const auto v = node->v;
-        int current_cost = calc_cost(node->collisions, node->g, node->d);
-        bool is_wait = (node->parent != nullptr && node->parent->v == v);
-
-        if (CLOSED_gen[v->id] != current_gen) {
-            CLOSED_cost[v->id] = INT_MAX; // Lazy initialization
-            CLOSED_gen[v->id] = current_gen;
-        }
-
-        // Discard if we've found a strictly cheaper way to this vertex
-        // and this isn't a wait action (to avoid the early-arrival trap)        
-        if (current_cost >= CLOSED_cost[v->id] && !is_wait) {
-          continue;
-        }
-
-        // Update CLOSED only if this spatial arrival is strictly better
-        if (current_cost < CLOSED_cost[v->id]) {
-          CLOSED_cost[v->id] = current_cost;
-        }
-
-        // check goal condition
-        if (v == ins->goals[i]) {
-          solved = true;
-          goal_node = node;
-          break;
-        }
-
-        const auto g_v = node->g;
-        const auto c_v = node->collisions;
-
-        bool collision_detected = false;
-
-        // expand spatial neighbors
-        for (auto u : v->neighbor) {
-          auto d_u = D->get(i, u);
-          if (u != s_i && d_u + g_v + 1 <= cost_ub) {
-            int step_collisions = CT.getCollisionCost(v, u, g_v);
-            
-            // The Gate: If a spatial move hits traffic, unlock the ability to wait
-            if (step_collisions > 0) {
-              collision_detected = true;
-            }
-
-            arena.push_back({u, g_v + 1, d_u,
-                             step_collisions + c_v,
-                             node, fast_rand()});
-            OPEN.push(&arena.back());
-          }
-        }
-
-        // expand wait action (stay on v for one timestep) - Semi-Wait-Aware
-        if (collision_detected) {
-          auto d_v = D->get(i, v);
-          if (d_v + g_v + 1 <= cost_ub) {
-            arena.push_back({v, g_v + 1, d_v,
-                             CT.getCollisionCost(v, v, g_v) + c_v,
-                             node, fast_rand()});
-            OPEN.push(&arena.back());
-          }
-        }
-
-      } // end of A*
-
-      // backtrack via parent pointers
-      if (solved && goal_node != nullptr) {
-        paths[i].clear();
-        auto cur = goal_node;
-        while (cur != nullptr) {
-          paths[i].push_back(cur->v);
-          cur = cur->parent;
-        }
-        std::reverse(paths[i].begin(), paths[i].end());
-      }
+      auto new_path = astar(i, CLOSED_cost, CLOSED_gen, current_gen, MT());
+      if (!new_path.empty()) paths[i] = std::move(new_path);
 
       // register to CT & update collision count
       CT.enrollPath(i, paths[i]);
@@ -213,4 +90,115 @@ void WaitScatter::construct(int iterations)
   }
 
   info(0, verbose, "wait_scatter", "\tcompleted");
+}
+
+Path WaitScatter::astar(int i,
+                        std::vector<int>& CLOSED_cost, std::vector<int>& CLOSED_gen,
+                        int& current_gen, uint32_t fast_seed)
+{
+  const auto cost_ub = D->get(i, ins->starts[i]) + cost_margin;
+  const auto s_i = ins->starts[i];
+
+  auto fast_rand = [&fast_seed]() {
+    fast_seed ^= fast_seed << 13;
+    fast_seed ^= fast_seed >> 17;
+    fast_seed ^= fast_seed << 5;
+    return fast_seed;
+  };
+
+  auto calc_cost = [](int c, int g, int d) {
+    return c * COLLISION_WEIGHT + g + d * ASTAR_WEIGHT;
+  };
+
+  auto cmp = [&](const Node *a, const Node *b) {
+    int cost_a = calc_cost(a->collisions, a->g, a->d);
+    int cost_b = calc_cost(b->collisions, b->g, b->d);
+    if (cost_a != cost_b) return cost_a > cost_b;
+    if (a->collisions != b->collisions) return a->collisions > b->collisions;
+    auto f_a = a->g + a->d;
+    auto f_b = b->g + b->d;
+    if (f_a != f_b) return f_a > f_b;
+    return a->tie_breaker < b->tie_breaker;
+  };
+
+  arena.clear();
+  auto OPEN = std::priority_queue<Node *, std::vector<Node *>, decltype(cmp)>(cmp);
+
+  arena.push_back({s_i, 0, D->get(i, s_i), 0, nullptr, fast_rand()});
+  OPEN.push(&arena.back());
+
+  while (!OPEN.empty() && !is_expired(deadline)) {
+    auto node = OPEN.top();
+    OPEN.pop();
+
+    const auto v = node->v;
+    int current_cost = calc_cost(node->collisions, node->g, node->d);
+    bool is_wait = (node->parent != nullptr && node->parent->v == v);
+
+    if (CLOSED_gen[v->id] != current_gen) {
+      CLOSED_cost[v->id] = INT_MAX;
+      CLOSED_gen[v->id] = current_gen;
+    }
+
+    if (current_cost >= CLOSED_cost[v->id] && !is_wait) continue;
+
+    if (current_cost < CLOSED_cost[v->id]) {
+      CLOSED_cost[v->id] = current_cost;
+    }
+
+    if (v == ins->goals[i]) {
+      Path result;
+      auto cur = node;
+      while (cur != nullptr) {
+        result.push_back(cur->v);
+        cur = cur->parent;
+      }
+      std::reverse(result.begin(), result.end());
+      return result;
+    }
+
+    expand(node, i, s_i, cost_ub, arena, OPEN, fast_rand);
+  }
+
+  return {};
+}
+
+template<typename OpenQueue, typename RandFunc>
+void WaitScatter::expand(Node* node, int i, Vertex* s_i, int cost_ub,
+                         std::deque<Node>& arena, OpenQueue& OPEN, RandFunc& fast_rand)
+{
+  const auto v = node->v;
+  const auto g_v = node->g;
+  const auto c_v = node->collisions;
+
+  bool collision_detected = false;
+
+  // expand spatial neighbors
+  for (auto u : v->neighbor) {
+    auto d_u = D->get(i, u);
+    if (u != s_i && d_u + g_v + 1 <= cost_ub) {
+      int step_collisions = CT.getCollisionCost(v, u, g_v);
+
+      // The Gate: If a spatial move hits traffic, unlock the ability to wait
+      if (step_collisions > 0) {
+        collision_detected = true;
+      }
+
+      arena.push_back({u, g_v + 1, d_u,
+                       step_collisions + c_v,
+                       node, fast_rand()});
+      OPEN.push(&arena.back());
+    }
+  }
+
+  // expand wait action (stay on v for one timestep) - Semi-Wait-Aware
+  if (collision_detected) {
+    auto d_v = D->get(i, v);
+    if (d_v + g_v + 1 <= cost_ub) {
+      arena.push_back({v, g_v + 1, d_v,
+                       CT.getCollisionCost(v, v, g_v) + c_v,
+                       node, fast_rand()});
+      OPEN.push(&arena.back());
+    }
+  }
 }

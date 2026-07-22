@@ -220,7 +220,7 @@ Solution PIBTPlanner::create_initial_solution(const Instance* target_ins, int pr
 
   auto H_init = new HNode(target_ins->starts, D, nullptr, 0, 0);
 
-  const int best_margin = 48; // find_scatter_margin(target_ins, H_init, MT);
+  const int best_margin = 75; // find_scatter_margin(target_ins, H_init, MT);
   std::cout << "[PIBTPlanner] offset=" << step_offset
             << " best_margin=" << best_margin << std::endl;
 

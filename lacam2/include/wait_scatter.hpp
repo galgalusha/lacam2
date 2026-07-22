@@ -7,6 +7,14 @@
 #include "utils.hpp"
 
 struct WaitScatter : IScatter {
+  struct Node {
+    Vertex *v;
+    int g;           // cost-to-come
+    int d;           // cost-to-go
+    int collisions;
+    Node *parent;
+    uint32_t tie_breaker;
+  };
   const Instance *ins;
   const Deadline *deadline;
   std::mt19937 MT;
@@ -15,6 +23,8 @@ struct WaitScatter : IScatter {
   const int V_size;
   const int T;  // makespan lower bound
   DistTable *D;
+  std::deque<Node> arena = std::deque<Node>();
+
   const int cost_margin;
   int sum_of_path_length;
 
@@ -34,6 +44,13 @@ struct WaitScatter : IScatter {
   CollisionTable CT;
 
   void construct(int iterations) override;
+
+  template<typename OpenQueue, typename RandFunc>
+  void expand(Node* node, int i, Vertex* s_i, int cost_ub,
+              std::deque<Node>& arena, OpenQueue& OPEN, RandFunc& fast_rand);
+
+  Path astar(int i, std::vector<int>& CLOSED_cost, std::vector<int>& CLOSED_gen,
+             int& current_gen, uint32_t fast_seed);
 
   WaitScatter(const Instance *_ins, DistTable *_D, const Deadline *_deadline,
               const int seed = 0, int _verbose = 0, int _cost_margin = 2);
